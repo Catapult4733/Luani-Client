@@ -1,0 +1,95 @@
+[gd_scene load_steps=12 format=3 uid="uid://c8luani00player"]
+
+[ext_resource type="Script" path="res://scenes/player/player_avatar.gd" id="1_player"]
+
+[subresource type="CapsuleShape3D" id="CapsuleShape3D_1"]
+radius = 0.4
+height = 1.8
+
+[subresource type="BoxMesh" id="BoxMesh_Torso"]
+size = Vector3(0.8, 0.9, 0.4)
+
+[subresource type="StandardMaterial3D" id="Mat_Torso"]
+albedo_color = Color(0.2, 0.5, 0.85, 1)
+
+[subresource type="BoxMesh" id="BoxMesh_Head"]
+size = Vector3(0.5, 0.5, 0.5)
+
+[subresource type="StandardMaterial3D" id="Mat_Head"]
+albedo_color = Color(0.95, 0.85, 0.7, 1)
+
+[subresource type="BoxMesh" id="BoxMesh_Limb"]
+size = Vector3(0.3, 0.8, 0.3)
+
+[subresource type="StandardMaterial3D" id="Mat_Limb"]
+albedo_color = Color(0.15, 0.18, 0.25, 1)
+
+[subresource type="SceneReplicationConfig" id="SceneReplicationConfig_1"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath(".:velocity")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+
+[node name="PlayerAvatar" type="CharacterBody3D"]
+collision_layer = 2
+script = ExtResource("1_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_1")
+
+[node name="BodyMesh" type="Node3D" parent="."]
+
+[node name="Torso" type="MeshInstance3D" parent="BodyMesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+mesh = SubResource("BoxMesh_Torso")
+surface_material_override/0 = SubResource("Mat_Torso")
+
+[node name="Head" type="MeshInstance3D" parent="BodyMesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.65, 0)
+mesh = SubResource("BoxMesh_Head")
+surface_material_override/0 = SubResource("Mat_Head")
+
+[node name="LeftArm" type="MeshInstance3D" parent="BodyMesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.9, 0)
+mesh = SubResource("BoxMesh_Limb")
+surface_material_override/0 = SubResource("Mat_Limb")
+
+[node name="RightArm" type="MeshInstance3D" parent="BodyMesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.9, 0)
+mesh = SubResource("BoxMesh_Limb")
+surface_material_override/0 = SubResource("Mat_Limb")
+
+[node name="LeftLeg" type="MeshInstance3D" parent="BodyMesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, 0.4, 0)
+mesh = SubResource("BoxMesh_Limb")
+surface_material_override/0 = SubResource("Mat_Limb")
+
+[node name="RightLeg" type="MeshInstance3D" parent="BodyMesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, 0.4, 0)
+mesh = SubResource("BoxMesh_Limb")
+surface_material_override/0 = SubResource("Mat_Limb")
+
+[node name="CameraPivot" type="Node3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot"]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 1.2, 3.2)
+
+[node name="UsernameLabel" type="Label3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+billboard = 1
+text = "Player"
+font_size = 28
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+unique_name_in_owner = true
+replication_config = SubResource("SceneReplicationConfig_1")

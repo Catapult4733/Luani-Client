@@ -1,0 +1,42 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+
+config_version=5
+
+[application]
+
+config/name="Luani"
+config/description="Luani Sandbox Gaming Platform & Studio"
+config/version="0.1.0"
+config/features=PackedStringArray("4.3", "Forward Plus")
+config/icon="res://icon.svg"
+run/main_scene="res://scenes/main.tscn"
+
+[autoload]
+
+ProtocolParser="*res://scripts/protocol_parser.gd"
+GameManager="*res://scripts/game_manager.gd"
+LuauManager="*res://scripts/core/luau_manager.gd"
+NetworkManager="*res://scripts/core/network_manager.gd"
+PlaceLoader="*res://scripts/core/place_loader.gd"
+
+[application/boot_splash]
+
+config/show_image=false
+config/bg_color=Color(0.08, 0.08, 0.1, 1)
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+rendering_device/driver.windows="d3d12"

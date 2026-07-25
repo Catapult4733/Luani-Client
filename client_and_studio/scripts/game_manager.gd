@@ -1,0 +1,95 @@
+# client_and_studio/scripts/game_manager.gd
+class_name GameManager
+extends Node
+
+## Core session manager for Luani Client, Studio, & Server Hosting
+
+signal connection_started(server_ip: String, server_port: int)
+signal session_state_changed(new_state: String)
+
+enum AppState {
+	LAUNCHER,
+	JOINING_SERVER,
+	IN_GAME,
+	STUDIO_MODE,
+	SERVER_HOST
+}
+
+var current_state: AppState = AppState.LAUNCHER
+var active_server_ip: String = ""
+var active_server_port: int = 7777
+var active_auth_token: String = ""
+var active_place_id: String = "place_default_01"
+
+func _ready() -> void:
+	print("[Luani GameManager] Initialized Luani Core Engine.")
+
+	# Check CLI flags for headless server mode or direct URI protocol launch
+	_parse_cmdline_flags()
+
+	# Connect to protocol parser signal
+	var parser := get_node_or_null("/root/ProtocolParser")
+	if parser:
+		parser.protocol_received.connect(_on_protocol_received)
+		if parser.latest_session_data.get("valid", false):
+			_on_protocol_received(parser.latest_session_data)
+
+func _parse_cmdline_flags() -> void:
+	var args := OS.get_cmdline_args()
+	args.append_array(OS.get_cmdline_user_args())
+
+	var is_headless_server := false
+	for arg in args:
+		if arg == "--server" or arg == "--headless":
+			is_headless_server = true
+		elif arg.begins_with("--port="):
+			active_server_port = arg.trim_prefix("--port=").to_int()
+		elif arg.begins_with("--place_id="):
+			active_place_id = arg.trim_prefix("--place_id=")
+
+	if is_headless_server:
+		print("[Luani GameManager] Starting Headless Server Mode on Port: ", active_server_port, " Place: ", active_place_id)
+		host_local_server(active_server_port, active_place_id)
+
+func _on_protocol_received(session_data: Dictionary) -> void:
+	if session_data.get("valid", false) and session_data.get("action") == "join":
+		active_server_ip = session_data.get("server_ip", "127.0.0.1")
+		active_server_port = session_data.get("server_port", 7777)
+		active_auth_token = session_data.get("auth_token", "")
+
+		print("[Luani GameManager] Protocol trigger: Joining server ", active_server_ip, ":", active_server_port)
+		connect_to_server(active_server_ip, active_server_port, active_auth_token)
+
+func connect_to_server(ip: String, port: int, token: String) -> void:
+	active_server_ip = ip
+	active_server_port = port
+	active_auth_token = token
+	current_state = AppState.JOINING_SERVER
+
+	session_state_changed.emit("JOINING_SERVER")
+	connection_started.emit(ip, port)
+
+	var net_mgr := get_node_or_null("/root/NetworkManager")
+	if net_mgr:
+		net_mgr.join_server(ip, port, token)
+
+	get_tree().change_scene_to_file("res://scenes/game/game_world.tscn")
+
+func host_local_server(port: int = 7777, place_id: String = "place_default_01") -> void:
+	active_server_port = port
+	active_place_id = place_id
+	current_state = AppState.SERVER_HOST
+
+	session_state_changed.emit("SERVER_HOST")
+
+	var net_mgr := get_node_or_null("/root/NetworkManager")
+	if net_mgr:
+		net_mgr.host_server(port)
+
+	get_tree().change_scene_to_file("res://scenes/game/game_world.tscn")
+
+func launch_studio() -> void:
+	current_state = AppState.STUDIO_MODE
+	session_state_changed.emit("STUDIO_MODE")
+	print("[Luani GameManager] Launching Luani Studio environment...")
+	get_tree().change_scene_to_file("res://studio/studio_main.tscn")

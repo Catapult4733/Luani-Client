@@ -1,0 +1,14 @@
+[Unit]
+Description=Luani Ubuntu Laptop Server Host Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=username
+WorkingDirectory=/home/username/luani-client/server_daemon
+ExecStart=/usr/bin/python3 daemon.py --backend http://luani.fyi:3000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

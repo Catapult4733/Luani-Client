@@ -1,0 +1,17 @@
+{
+  "name": "luani-web-backend",
+  "version": "0.1.0",
+  "description": "Luani backend API for Raspberry Pi 5 (luani.fyi) - auth, place listings, place uploads, and daemon signaling.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "author": "Luani Team",
+  "license": "MIT"
+}

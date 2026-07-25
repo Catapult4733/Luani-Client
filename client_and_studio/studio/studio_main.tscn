@@ -1,0 +1,202 @@
+[gd_scene load_steps=8 format=3 uid="uid://b8luani00studiomain"]
+
+[ext_resource type="Script" path="res://studio/studio_main.gd" id="1_studiomain"]
+[ext_resource type="Script" path="res://scripts/studio/studio_camera.gd" id="2_studiocamera"]
+[ext_resource type="Script" path="res://scripts/studio/selection_gizmo.gd" id="3_gizmo"]
+[ext_resource type="PackedScene" uid="uid://c8luani00hierarchy" path="res://studio/ui/hierarchy_dock.tscn" id="4_hierarchy"]
+[ext_resource type="PackedScene" uid="uid://c8luani00inspector" path="res://studio/ui/inspector_dock.tscn" id="5_inspector"]
+[ext_resource type="PackedScene" uid="uid://c8luani00scripteditor" path="res://studio/ui/script_editor_dock.tscn" id="6_scripteditor"]
+
+[subresource type="Environment" id="Environment_1"]
+background_mode = 1
+background_color = Color(0.12, 0.14, 0.18, 1)
+ambient_light_color = Color(0.6, 0.65, 0.75, 1)
+ambient_light_energy = 0.8
+
+[node name="StudioMain" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_studiomain")
+
+[node name="MainLayout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="TopToolbar" type="PanelContainer" parent="MainLayout"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="MainLayout/TopToolbar"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_right = 10
+
+[node name="ToolbarBox" type="HBoxContainer" parent="MainLayout/TopToolbar/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Brand" type="Label" parent="MainLayout/TopToolbar/Margin/ToolbarBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "LUANI STUDIO"
+
+[node name="VSeparator1" type="VSeparator" parent="MainLayout/TopToolbar/Margin/ToolbarBox"]
+layout_mode = 2
+
+[node name="Spawners" type="HBoxContainer" parent="MainLayout/TopToolbar/Margin/ToolbarBox"]
+layout_mode = 2
+
+[node name="SpawnBlockBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox/Spawners"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+ Block"
+
+[node name="SpawnSphereBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox/Spawners"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+ Sphere"
+
+[node name="SpawnCylinderBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox/Spawners"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+ Cylinder"
+
+[node name="SpawnWedgeBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox/Spawners"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+ Wedge"
+
+[node name="VSeparator2" type="VSeparator" parent="MainLayout/TopToolbar/Margin/ToolbarBox"]
+layout_mode = 2
+
+[node name="GizmoModes" type="HBoxContainer" parent="MainLayout/TopToolbar/Margin/ToolbarBox"]
+layout_mode = 2
+
+[node name="ModeMoveBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox/GizmoModes"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Move"
+
+[node name="ModeRotateBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox/GizmoModes"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Rotate"
+
+[node name="ModeScaleBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox/GizmoModes"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Scale"
+
+[node name="VSeparator3" type="VSeparator" parent="MainLayout/TopToolbar/Margin/ToolbarBox"]
+layout_mode = 2
+
+[node name="SimulationControls" type="HBoxContainer" parent="MainLayout/TopToolbar/Margin/ToolbarBox"]
+layout_mode = 2
+
+[node name="SimPlayBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox/SimulationControls"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "▶ Play"
+
+[node name="SimPauseBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox/SimulationControls"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "⏸ Pause"
+
+[node name="SimStopBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox/SimulationControls"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "⏹ Stop"
+
+[node name="VSeparator4" type="VSeparator" parent="MainLayout/TopToolbar/Margin/ToolbarBox"]
+layout_mode = 2
+
+[node name="SaveFileBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Save .luani"
+
+[node name="PublishBtn" type="Button" parent="MainLayout/TopToolbar/Margin/ToolbarBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "☁ Publish to luani.fyi"
+
+[node name="StatusBanner" type="Label" parent="MainLayout/TopToolbar/Margin/ToolbarBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.4, 0.8, 1, 1)
+text = "Studio Ready."
+horizontal_alignment = 2
+
+[node name="CenterArea" type="HSplitContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LeftDock" type="PanelContainer" parent="MainLayout/CenterArea"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+
+[node name="HierarchyDock" parent="MainLayout/CenterArea/LeftDock" instance=ExtResource("4_hierarchy")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CenterRightSplit" type="VSplitContainer" parent="MainLayout/CenterArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ViewportSplit" type="HSplitContainer" parent="MainLayout/CenterArea/CenterRightSplit"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 600
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="MainLayout/CenterArea/CenterRightSplit/ViewportSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="MainLayout/CenterArea/CenterRightSplit/ViewportSplit/SubViewportContainer"]
+handle_input_locally = false
+size = Vector2i(600, 400)
+render_target_update_mode = 3
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="MainLayout/CenterArea/CenterRightSplit/ViewportSplit/SubViewportContainer/SubViewport"]
+environment = SubResource("Environment_1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="MainLayout/CenterArea/CenterRightSplit/ViewportSplit/SubViewportContainer/SubViewport"]
+transform = Transform3D(0.866, -0.353, 0.353, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 10, 0)
+shadow_enabled = true
+
+[node name="StudioCamera" type="Camera3D" parent="MainLayout/CenterArea/CenterRightSplit/ViewportSplit/SubViewportContainer/SubViewport"]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 0.866, 0.5, 0, -0.5, 0.866, 0, 8, 12)
+script = ExtResource("2_studiocamera")
+
+[node name="SelectionGizmo" type="Node3D" parent="MainLayout/CenterArea/CenterRightSplit/ViewportSplit/SubViewportContainer/SubViewport"]
+unique_name_in_owner = true
+script = ExtResource("3_gizmo")
+
+[node name="Workspace" type="Node3D" parent="MainLayout/CenterArea/CenterRightSplit/ViewportSplit/SubViewportContainer/SubViewport"]
+unique_name_in_owner = true
+
+[node name="RightDock" type="PanelContainer" parent="MainLayout/CenterArea/CenterRightSplit/ViewportSplit"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+
+[node name="InspectorDock" parent="MainLayout/CenterArea/CenterRightSplit/ViewportSplit/RightDock" instance=ExtResource("5_inspector")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ScriptEditorDock" parent="MainLayout/CenterArea/CenterRightSplit" instance=ExtResource("6_scripteditor")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2

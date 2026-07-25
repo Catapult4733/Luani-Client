@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luani - Sandbox Gaming Platform & Studio</title>
+  <meta name="description" content="Discover, build, host, and play games powered by Luau and Godot on Luani (luani.fyi).">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header / Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <span class="brand-logo">🌌</span>
+        <span class="brand-name">LUANI</span>
+        <span class="brand-domain">luani.fyi</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#discover" class="active">Discover</a>
+        <a href="#studio">Studio</a>
+        <a href="#self-host">Self-Hosting</a>
+      </nav>
+      <div class="user-profile">
+        <div class="avatar-circle">P</div>
+        <span class="user-name">Player_Local</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Portal Layout -->
+  <main class="main-container">
+    <!-- Hero Banner -->
+    <section class="hero-section">
+      <div class="hero-content">
+        <span class="badge">Next-Gen Sandbox Platform</span>
+        <h1>Create, Play, & Host Unlimited Worlds</h1>
+        <p>Built with Godot 4, Luau engine scripting, and open distributed server hosting.</p>
+        <div class="hero-actions">
+          <a href="#discover" class="btn btn-primary">Browse Games</a>
+          <button id="btnLaunchClient" class="btn btn-secondary">Open Luani Client</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Discover Games Section -->
+    <section id="discover" class="section">
+      <div class="section-header">
+        <h2>Featured Places</h2>
+        <p>Select a place to launch instantly via your local Luani client.</p>
+      </div>
+
+      <div id="placesGrid" class="places-grid">
+        <!-- Dynamically populated by app.js -->
+        <div class="loading-spinner">Loading places catalog from luani.fyi...</div>
+      </div>
+    </section>
+
+    <!-- Studio & Creation Section -->
+    <section id="studio" class="section studio-banner">
+      <div class="studio-content">
+        <span class="badge badge-purple">Luani Studio Suite</span>
+        <h2>Build 3D Games in Luau</h2>
+        <p>Construct 3D levels with CSG primitives, write sandboxed scripts, and publish to the global catalog with 1-click.</p>
+        <div class="studio-features">
+          <div class="feat">✨ Built-in Luau Code Editor</div>
+          <div class="feat">📐 Interactive Transform Gizmos</div>
+          <div class="feat">☁ 1-Click Publishing API</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <p>&copy; 2026 Luani Platform (luani.fyi). Powered by Godot Engine & Luau MIT open-source technologies.</p>
+    </div>
+  </footer>
+
+  <!-- Ad Watch Verification Modal -->
+  <div id="adModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Launching Luani Managed Server</h3>
+        <span class="modal-badge">Ad-Gated Free Host</span>
+      </div>
+      <div class="modal-body">
+        <p>Watching sponsor ad before initializing server daemon...</p>
+        <div class="ad-banner">
+          <div class="ad-placeholder">
+            <span class="ad-icon">🎬</span>
+            <div class="ad-title">Sponsor Ad Demonstration</div>
+            <div class="ad-desc">Luani provides free player-hosted and ad-supported managed servers.</div>
+          </div>
+        </div>
+        <div class="progress-bar-container">
+          <div id="adProgressBar" class="progress-bar-fill"></div>
+        </div>
+        <div id="adCountdownText" class="countdown-text">Verification in progress (5s)...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

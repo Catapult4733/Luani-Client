@@ -1,0 +1,56 @@
+[gd_scene load_steps=2 format=3 uid="uid://c8luani00scripteditor"]
+
+[ext_resource type="Script" path="res://studio/ui/script_editor_dock.gd" id="1_scripteditor"]
+
+[node name="ScriptEditorDock" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 6
+script = ExtResource("1_scripteditor")
+
+[node name="HeaderBox" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="TargetLabel" type="Label" parent="HeaderBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "  Script Attached to: Global Place"
+
+[node name="RunButton" type="Button" parent="HeaderBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 30)
+layout_mode = 2
+text = "▶ Run Script"
+
+[node name="CodeEdit" type="TextEdit" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 13
+placeholder_text = "-- Write Luau code here..."
+
+[node name="OutputHeader" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="OutputTitle" type="Label" parent="OutputHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "  Luau Output Console"
+
+[node name="ClearOutputButton" type="Button" parent="OutputHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clear Output"
+
+[node name="OutputBox" type="RichTextLabel" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+bbcode_enabled = true
+text = "[color=gray]Luau output console initialized.[/color]\n"

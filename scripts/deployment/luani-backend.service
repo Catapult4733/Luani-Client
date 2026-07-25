@@ -1,0 +1,15 @@
+[Unit]
+Description=Luani Pi 5 Web Backend Service (luani.fyi)
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/opt/luani/web_backend
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production PORT=3000
+
+[Install]
+WantedBy=multi-user.target

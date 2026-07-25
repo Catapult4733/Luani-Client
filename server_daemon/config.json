@@ -1,0 +1,7 @@
+{
+  "backendUrl": "http://localhost:3000",
+  "domain": "luani.fyi",
+  "maxInstances": 8,
+  "defaultPortRange": [7700, 7800],
+  "pollIntervalSeconds": 3.0
+}

@@ -1,0 +1,142 @@
+[gd_scene load_steps=3 format=3 uid="uid://b1luani00main"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="PackedScene" uid="uid://c8x1luani001" path="res://scenes/ui/credits_menu.tscn" id="2_credits"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.09, 0.12, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainCard" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(520, 460)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="CenterContainer/MainCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 30
+theme_override_constants/margin_bottom = 30
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainCard/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BrandTitle" type="Label" parent="CenterContainer/MainCard/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "LUANI"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="CenterContainer/MainCard/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
+theme_override_font_sizes/font_size = 14
+text = "Sandbox Gaming Platform & Studio"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="CenterContainer/MainCard/Margin/VBox"]
+layout_mode = 2
+
+[node name="ConnectionGrid" type="GridContainer" parent="CenterContainer/MainCard/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 2
+
+[node name="IPLabel" type="Label" parent="CenterContainer/MainCard/Margin/VBox/ConnectionGrid"]
+layout_mode = 2
+text = "Server IP:"
+
+[node name="IPInput" type="LineEdit" parent="CenterContainer/MainCard/Margin/VBox/ConnectionGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "127.0.0.1"
+
+[node name="PortLabel" type="Label" parent="CenterContainer/MainCard/Margin/VBox/ConnectionGrid"]
+layout_mode = 2
+text = "Port:"
+
+[node name="PortInput" type="LineEdit" parent="CenterContainer/MainCard/Margin/VBox/ConnectionGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "7777"
+
+[node name="AuthLabel" type="Label" parent="CenterContainer/MainCard/Margin/VBox/ConnectionGrid"]
+layout_mode = 2
+text = "Auth Token:"
+
+[node name="AuthInput" type="LineEdit" parent="CenterContainer/MainCard/Margin/VBox/ConnectionGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Optional session token"
+
+[node name="ActionButtons" type="HBoxContainer" parent="CenterContainer/MainCard/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ConnectButton" type="Button" parent="CenterContainer/MainCard/Margin/VBox/ActionButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Connect to Server"
+
+[node name="HostButton" type="Button" parent="CenterContainer/MainCard/Margin/VBox/ActionButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Host Local Server (No Ads)"
+
+[node name="StudioButton" type="Button" parent="CenterContainer/MainCard/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Launch Luani Studio"
+
+[node name="StatusLabel" type="Label" parent="CenterContainer/MainCard/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.8, 0.5, 1)
+theme_override_font_sizes/font_size = 12
+text = "Ready."
+horizontal_alignment = 1
+
+[node name="HSeparator2" type="HSeparator" parent="CenterContainer/MainCard/Margin/VBox"]
+layout_mode = 2
+
+[node name="CreditsButton" type="Button" parent="CenterContainer/MainCard/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Licenses & Credits"
+
+[node name="CreditsMenu" parent="." instance=ExtResource("2_credits")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
