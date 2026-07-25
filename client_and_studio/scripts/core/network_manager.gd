@@ -1,5 +1,4 @@
 # client_and_studio/scripts/core/network_manager.gd
-class_name NetworkManager
 extends Node
 
 ## Singleton managing ENet Multiplayer Peers for Player Self-Hosting and Client Connections
@@ -7,13 +6,13 @@ extends Node
 signal server_started(port: int)
 signal client_connected_to_server(ip: String, port: int)
 signal connection_failed(reason: String)
-signal player_spawned(peer_id: int, player_node: Node3D)
+signal player_spawned(peer_id: int, player_node: Node)
 
 const PLAYER_AVATAR_SCENE := preload("res://scenes/player/player_avatar.tscn")
 
 var active_peer: ENetMultiplayerPeer
 var is_server: bool = false
-var players_container: Node3D
+var players_container: Node
 
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
@@ -22,7 +21,7 @@ func _ready() -> void:
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
-func setup_players_container(container: Node3D) -> void:
+func setup_players_container(container: Node) -> void:
 	players_container = container
 
 ## Starts an ENet server instance for self-hosting or headless server mode
@@ -57,7 +56,7 @@ func join_server(ip: String, port: int, auth_token: String = "") -> Error:
 	print("[Luani NetworkManager] Client connecting to %s:%d..." % [ip, port])
 	return OK
 
-func spawn_player_avatar(peer_id: int) -> Node3D:
+func spawn_player_avatar(peer_id: int) -> Node:
 	if not players_container:
 		players_container = get_node_or_null("/root/Main/Players")
 		if not players_container:
@@ -65,7 +64,7 @@ func spawn_player_avatar(peer_id: int) -> Node3D:
 
 	# Avoid duplicate avatar spawning
 	if players_container.has_node(str(peer_id)):
-		return players_container.get_node(str(peer_id))
+		return players_container.get_node(str(peer_id)) as Node
 
 	var avatar := PLAYER_AVATAR_SCENE.instantiate() as CharacterBody3D
 	avatar.name = str(peer_id)

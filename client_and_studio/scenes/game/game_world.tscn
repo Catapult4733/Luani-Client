@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scenes/game/game_world.gd" id="1_gameworld"]
 
-[subresource type="Environment" id="Environment_1"]
+[sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
 background_color = Color(0.1, 0.12, 0.16, 1)
 ambient_light_color = Color(0.7, 0.75, 0.85, 1)

@@ -1,5 +1,4 @@
 # client_and_studio/scripts/core/place_loader.gd
-class_name PlaceLoader
 extends Node
 
 ## Loads and instantiates .luani place JSON files from API endpoints or local storage

@@ -1,5 +1,4 @@
 # client_and_studio/scripts/core/luau_manager.gd
-class_name LuauManager
 extends Node
 
 ## Singleton managing sandboxed Luau script execution, runtime environment, and API bindings

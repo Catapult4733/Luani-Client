@@ -1,5 +1,4 @@
 # client_and_studio/scripts/game_manager.gd
-class_name GameManager
 extends Node
 
 ## Core session manager for Luani Client, Studio, & Server Hosting

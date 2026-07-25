@@ -1,5 +1,4 @@
 # client_and_studio/scripts/protocol_parser.gd
-class_name ProtocolParser
 extends Node
 
 ## Handles custom URI protocol parsing for Luani (luani://join?server=IP:PORT&auth=TOKEN)
