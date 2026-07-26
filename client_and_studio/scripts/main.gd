@@ -18,6 +18,8 @@ extends Control
 @onready var refresh_servers_btn: Button = %RefreshServersBtn
 @onready var server_tree: Tree = %ServerTree
 
+@export var backend_api_url: String = "https://www.luani.fyi/api/servers/active"
+
 var active_servers_list: Array = []
 var is_uri_launched: bool = false
 
@@ -35,19 +37,36 @@ func _ready() -> void:
 	if game_mgr:
 		game_mgr.session_state_changed.connect(_on_session_state_changed)
 
-	# Check if launched via luani:// URI
-	var parser := get_node_or_null("/root/ProtocolParser")
-	if parser and parser.latest_session_data.get("valid", false):
+	# Inspect all command line arguments for luani:// URI
+	var all_args: Array = OS.get_cmdline_args() + OS.get_cmdline_user_args()
+	var uri_found := ""
+
+	for arg in all_args:
+		if arg.begins_with("luani://") or "luani://join" in arg:
+			uri_found = arg
+			break
+		elif arg.begins_with("--uri="):
+			uri_found = arg.trim_prefix("--uri=")
+			break
+
+	if uri_found != "":
 		is_uri_launched = true
-		var data: Dictionary = parser.latest_session_data
 		
-		# Immediately hide main menu UI root node for direct URI launch
+		# 1. Immediately hide main launcher UI root node
 		hide()
-		print("[Luani Launcher] Direct URI launch detected. Hiding main menu and initiating immediate server connection.")
-		
-		# Direct join connection
-		call_deferred("_trigger_direct_uri_join", data)
+		print("[Luani Launcher] Direct URI launch detected: '", uri_found, "'. Hiding launcher menu.")
+
+		# 2. Extract IP, Port, and Auth token via ProtocolParser
+		var parser := get_node_or_null("/root/ProtocolParser")
+		var session_data := {}
+		if parser:
+			session_data = parser.parse_uri(uri_found)
+
+		# 3. Directly trigger connection & skip calling fetch_server_list()
+		call_deferred("_trigger_direct_uri_join", session_data)
 	else:
+		# Show main menu as normal and fetch active server list
+		show()
 		status_label.text = "Ready to connect, self-host, or browse servers."
 		_fetch_active_servers()
 
@@ -56,6 +75,7 @@ func _trigger_direct_uri_join(data: Dictionary) -> void:
 	var port: int = data.get("server_port", 7777)
 	var auth: String = data.get("auth_token", "")
 	
+	print("[Luani Launcher] Connecting directly to ", ip, ":", port, "...")
 	var game_mgr := get_node_or_null("/root/GameManager")
 	if game_mgr:
 		game_mgr.connect_to_server(ip, port, auth)
@@ -118,7 +138,7 @@ func _fetch_active_servers() -> void:
 		http.queue_free()
 	)
 	
-	var err := http.request("http://localhost:3000/api/servers/active")
+	var err := http.request(backend_api_url)
 	if err != OK:
 		status_label.text = "API connection error."
 

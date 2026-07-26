@@ -7,7 +7,7 @@ signal place_loading_started(place_id: String)
 signal place_loaded(place_id: String, world_root: Node3D)
 signal place_load_failed(place_id: String, error_msg: String)
 
-@export var backend_api_url: String = "http://localhost:3000/api/places"
+@export var backend_api_url: String = "https://www.luani.fyi/api/places"
 
 ## Loads a place by ID into target_world_root (downloads from backend or falls back to starter place)
 func load_place(place_id: String, target_world_root: Node3D) -> void:

@@ -71,7 +71,7 @@ static func deserialize_workspace(place_dict: Dictionary, workspace_node: Node3D
 			mesh_inst.material_override = mat
 
 ## Publishes place data dictionary to Luani backend API (luani.fyi)
-func publish_place_to_backend(place_dict: Dictionary, api_url: String = "http://localhost:3000/api/places/publish", http_request: HTTPRequest = null) -> void:
+func publish_place_to_backend(place_dict: Dictionary, api_url: String = "https://www.luani.fyi/api/places/publish", http_request: HTTPRequest = null) -> void:
 	var json_str := JSON.stringify(place_dict)
 	print("[Luani PlaceSerializer] Publishing place file to: ", api_url)
 	

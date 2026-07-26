@@ -6,7 +6,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
-CLIENT_EXEC="$ROOT_DIR/client_and_studio/bin/luani.x86_64"
+CLIENT_EXEC="$ROOT_DIR/client_and_studio/bin/LuaniClient.x86_64"
 
 # Fallback to godot binary if compiled binary does not yet exist
 if [ ! -f "$CLIENT_EXEC" ]; then
@@ -14,7 +14,7 @@ if [ ! -f "$CLIENT_EXEC" ]; then
     if [ -n "$GODOT_BIN" ]; then
         CLIENT_EXEC="$GODOT_BIN --path $ROOT_DIR/client_and_studio"
     else
-        CLIENT_EXEC="$ROOT_DIR/client_and_studio/luani.x86_64"
+        CLIENT_EXEC="$ROOT_DIR/client_and_studio/bin/LuaniClient.x86_64"
     fi
 fi
 
