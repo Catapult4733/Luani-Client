@@ -26,6 +26,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnOptionOfficial = document.getElementById('btnOptionOfficial');
   const btnOptionHosted = document.getElementById('btnOptionHosted');
 
+  // Game Loading Overlay Elements
+  const gameLoadingOverlay = document.getElementById('gameLoadingOverlay');
+  const loadingSpinner = document.getElementById('loadingSpinner');
+  const loadingTitleText = document.getElementById('loadingTitleText');
+  const loadingStatusText = document.getElementById('loadingStatusText');
+  const loadingErrorBox = document.getElementById('loadingErrorBox');
+  const loadingErrorText = document.getElementById('loadingErrorText');
+  const btnCloseLoadingOverlay = document.getElementById('btnCloseLoadingOverlay');
+
   // User Profile Elements
   const profileAvatarLarge = document.getElementById('profileAvatarLarge');
   const profileUsernameTitle = document.getElementById('profileUsernameTitle');
@@ -93,6 +102,21 @@ document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
   loadPlaces();
 
+  // Inspect URL parameters for ?game=GAME_ID
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialGameId = urlParams.get('game');
+  if (initialGameId) {
+    fetchPlaceByIdAndOpen(initialGameId);
+  }
+
+  window.addEventListener('popstate', (event) => {
+    if (event.state && event.state.gameId) {
+      fetchPlaceByIdAndOpen(event.state.gameId);
+    } else {
+      showView('discover');
+    }
+  });
+
   // --- SPA VIEW ROUTER ---
   function showView(viewId) {
     [discoverView, gameDetailsView, userProfileView, searchResultsView].forEach(v => v.classList.add('hidden'));
@@ -104,9 +128,22 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo(0, 0);
   }
 
-  brandLogoBtn.addEventListener('click', () => showView('discover'));
-  navDiscover.addEventListener('click', (e) => { e.preventDefault(); showView('discover'); });
-  btnBackToDiscover.addEventListener('click', () => showView('discover'));
+  brandLogoBtn.addEventListener('click', () => {
+    history.pushState(null, '', window.location.pathname);
+    showView('discover');
+  });
+
+  navDiscover.addEventListener('click', (e) => {
+    e.preventDefault();
+    history.pushState(null, '', window.location.pathname);
+    showView('discover');
+  });
+
+  btnBackToDiscover.addEventListener('click', () => {
+    history.pushState(null, '', window.location.pathname);
+    showView('discover');
+  });
+
   btnBackFromProfile.addEventListener('click', () => showView('discover'));
 
   if (btnLaunchClient) {
@@ -114,6 +151,36 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!requireAuthGuard()) return;
       window.location.href = `luani://join?server=127.0.0.1:7777&username=${encodeURIComponent(currentUser.username)}`;
     });
+  }
+
+  // --- FULL-SCREEN LOADING OVERLAY & RED ERROR UI STATE MACHINE ---
+  function showLoadingOverlay(title = "Connecting to Server...", status = "Requesting server instance...") {
+    if (!gameLoadingOverlay) return;
+    loadingTitleText.textContent = title;
+    loadingStatusText.textContent = status;
+    loadingSpinner.classList.remove('hidden');
+    loadingErrorBox.classList.add('hidden');
+    gameLoadingOverlay.classList.remove('hidden');
+  }
+
+  function updateLoadingOverlayStatus(status) {
+    if (loadingStatusText) loadingStatusText.textContent = status;
+  }
+
+  function showLoadingOverlayError(errorMsg) {
+    if (!gameLoadingOverlay) return;
+    loadingSpinner.classList.add('hidden');
+    loadingStatusText.textContent = "Server Connection Failed";
+    loadingErrorText.textContent = errorMsg;
+    loadingErrorBox.classList.remove('hidden');
+  }
+
+  function hideLoadingOverlay() {
+    if (gameLoadingOverlay) gameLoadingOverlay.classList.add('hidden');
+  }
+
+  if (btnCloseLoadingOverlay) {
+    btnCloseLoadingOverlay.addEventListener('click', hideLoadingOverlay);
   }
 
   // --- AUTH GUARD ENFORCEMENT ---
@@ -404,14 +471,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- GAME DETAILS PAGE VIEW ---
+  // --- GAME DETAILS PAGE VIEW & UNIQUE URL ROUTING (?game=GAME_ID) ---
 
-  function openGameDetails(place) {
+  async function fetchPlaceByIdAndOpen(placeId) {
+    try {
+      const response = await fetch(`/api/places/${encodeURIComponent(placeId)}`);
+      const data = await response.json();
+      if (data.success && data.place) {
+        openGameDetails(data.place, false);
+      }
+    } catch (err) {
+      console.error('Error fetching place by ID:', err);
+    }
+  }
+
+  function openGameDetails(place, pushHistory = true) {
     currentGame = place;
     detailGameIcon.textContent = place.icon || '🎮';
     detailGameTitle.textContent = place.name;
     detailGameCreatorLink.textContent = place.creator || 'Luani Team';
     detailGameDescription.textContent = place.description || 'No description provided for this sandbox place.';
+
+    if (pushHistory && place.id) {
+      const newUrl = `${window.location.pathname}?game=${encodeURIComponent(place.id)}`;
+      history.pushState({ gameId: place.id }, place.name, newUrl);
+    }
 
     detailGameCreatorLink.onclick = (e) => {
       e.preventDefault();
@@ -490,7 +574,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (srv.serverType === 'official' || !srv.serverType) {
           triggerAdAndJoin(uri);
         } else {
-          window.location.href = uri;
+          showLoadingOverlay("Launching Game...", "Connecting to hosted server...");
+          setTimeout(() => {
+            hideLoadingOverlay();
+            window.location.href = uri;
+          }, 800);
         }
       });
 
@@ -696,13 +784,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let readyJoinUri = null;
     let timerFinished = false;
+    let requestFailed = false;
 
     // Start backend matchmaking request concurrently
     requestMatchmakingAndLaunch(placeId, 'official', true).then(uri => {
-      readyJoinUri = uri;
-      if (timerFinished && readyJoinUri) {
-        adModal.classList.add('hidden');
-        window.location.href = readyJoinUri;
+      if (uri) {
+        readyJoinUri = uri;
+        if (timerFinished && readyJoinUri) {
+          adModal.classList.add('hidden');
+          showLoadingOverlay("Launching Game...", "Connecting to official server...");
+          setTimeout(() => {
+            hideLoadingOverlay();
+            window.location.href = readyJoinUri;
+          }, 800);
+        }
+      } else {
+        requestFailed = true;
       }
     });
 
@@ -714,7 +811,13 @@ document.addEventListener('DOMContentLoaded', () => {
       timerFinished = true;
       if (readyJoinUri) {
         adModal.classList.add('hidden');
-        window.location.href = readyJoinUri;
+        showLoadingOverlay("Launching Game...", "Connecting to official server...");
+        setTimeout(() => {
+          hideLoadingOverlay();
+          window.location.href = readyJoinUri;
+        }, 800);
+      } else if (requestFailed) {
+        adModal.classList.add('hidden');
       } else {
         adCountdownText.textContent = 'Connecting to official server...';
       }
@@ -750,7 +853,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const finishJoin = () => {
       clearInterval(interval);
       adModal.classList.add('hidden');
-      window.location.href = joinUri;
+      showLoadingOverlay("Launching Game...", "Connecting to official server...");
+      setTimeout(() => {
+        hideLoadingOverlay();
+        window.location.href = joinUri;
+      }, 800);
     };
 
     if (btnSkipAd) btnSkipAd.onclick = finishJoin;
@@ -769,8 +876,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 100);
   }
 
-  // Core Matchmaking Backend Request (`type: official` vs `type: hosted`)
+  // Core Matchmaking Backend Request with Loading & Red Error UI Handling
   async function requestMatchmakingAndLaunch(placeId, serverType, deferLaunch = false) {
+    if (!deferLaunch) {
+      showLoadingOverlay("Connecting to Server...", "Requesting server instance from daemon...");
+    }
+
     try {
       const response = await fetch('/api/servers/request', {
         method: 'POST',
@@ -786,16 +897,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await response.json();
       if (data.success && data.joinUri) {
         if (!deferLaunch) {
-          window.location.href = data.joinUri;
+          updateLoadingOverlayStatus("Launching native Luani client...");
+          setTimeout(() => {
+            hideLoadingOverlay();
+            window.location.href = data.joinUri;
+          }, 800);
         }
         return data.joinUri;
       } else {
-        alert('Server connection failed: ' + (data.error || 'Unknown error'));
+        const errDetail = data.error || 'Server at target address failed to respond in time.';
+        const fullErrMsg = `Connection Refused: ${errDetail}`;
+        showLoadingOverlayError(fullErrMsg);
         adModal.classList.add('hidden');
       }
     } catch (err) {
       console.error('Matchmaking error:', err);
-      alert('Network error connecting to luani.fyi matchmaker.');
+      const networkErrMsg = `Connection Refused: Server at server1785082720032q:7777 failed to respond in time.`;
+      showLoadingOverlayError(networkErrMsg);
       adModal.classList.add('hidden');
     }
     return null;

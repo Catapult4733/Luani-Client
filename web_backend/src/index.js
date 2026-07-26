@@ -518,10 +518,10 @@ app.get('/api/search', (req, res) => {
   res.json({ success: true, query, places: matchedPlaces, users: matchedUsers });
 });
 
-// ACTIVE MULTIPLAYER SERVERS LIST (Returns non-empty, live active servers)
+// ACTIVE MULTIPLAYER SERVERS LIST (Returns non-empty or spawning live active servers)
 app.get('/api/servers/active', (req, res) => {
   const placeId = req.query.placeId;
-  let running = activeServers.filter(s => (s.status === 'RUNNING' || s.status === 'SPAWNING') && s.playerCount > 0);
+  let running = activeServers.filter(s => (s.status === 'RUNNING' || s.status === 'SPAWNING') && (s.playerCount > 0 || s.status === 'SPAWNING'));
   if (placeId) {
     running = running.filter(s => s.placeId === placeId);
   }

@@ -190,6 +190,7 @@
     <section id="studio" class="section studio-banner">
       <div class="studio-content">
         <span class="badge badge-purple">Luani Studio Suite</span>
+         industrial-strength sandbox creation tools for web and desktop.
         <h2>Build 3D Games in Luau</h2>
         <p>Construct 3D levels with CSG primitives, write sandboxed scripts, and publish to the global catalog with 1-click.</p>
         <div class="studio-features">
@@ -208,6 +209,22 @@
       <p>&copy; 2026 Luani Platform (luani.fyi). Powered by Godot Engine & Luau MIT open-source technologies.</p>
     </div>
   </footer>
+
+  <!-- GAME JOINING FULL-SCREEN LOADING OVERLAY & RED ERROR CONTAINER -->
+  <div id="gameLoadingOverlay" class="modal-overlay hidden" style="z-index: 2000;">
+    <div class="modal-card loading-card">
+      <div id="loadingSpinner" class="spinner-lg"></div>
+      <h2 id="loadingTitleText" class="loading-title">Connecting to Server...</h2>
+      <p id="loadingStatusText" class="loading-status">Requesting server instance from daemon...</p>
+      
+      <!-- Red Error Box (Revealed on timeout / connection refusal) -->
+      <div id="loadingErrorBox" class="loading-error-box hidden">
+        <div class="error-icon">⚠️</div>
+        <div id="loadingErrorText" class="text-red-bold">Connection Refused: Server at server1785082720032q:7777 failed to respond in time.</div>
+        <button id="btnCloseLoadingOverlay" class="btn btn-danger-red btn-block" style="margin-top: 1.2rem;">Close / Return to Dashboard</button>
+      </div>
+    </div>
+  </div>
 
   <!-- UNIFIED SERVER TYPE SELECTION MODAL -->
   <div id="serverTypeModal" class="modal-overlay hidden">
