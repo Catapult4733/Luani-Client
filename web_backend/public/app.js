@@ -1,12 +1,36 @@
 // web_backend/public/app.js
 document.addEventListener('DOMContentLoaded', () => {
-  const placesGrid = document.getElementById('placesGrid');
-  const adModal = document.getElementById('adModal');
-  const adProgressBar = document.getElementById('adProgressBar');
-  const adCountdownText = document.getElementById('adCountdownText');
+  // Navigation & Views
+  const brandLogoBtn = document.getElementById('brandLogoBtn');
+  const navDiscover = document.getElementById('navDiscover');
+  const discoverView = document.getElementById('discoverView');
+  const gameDetailsView = document.getElementById('gameDetailsView');
+  const userProfileView = document.getElementById('userProfileView');
+  const searchResultsView = document.getElementById('searchResultsView');
+
+  const btnBackToDiscover = document.getElementById('btnBackToDiscover');
+  const btnBackFromProfile = document.getElementById('btnBackFromProfile');
   const btnLaunchClient = document.getElementById('btnLaunchClient');
 
-  // Auth elements
+  // Game Details Elements
+  const detailGameIcon = document.getElementById('detailGameIcon');
+  const detailGameTitle = document.getElementById('detailGameTitle');
+  const detailGameCreatorLink = document.getElementById('detailGameCreatorLink');
+  const detailGameDescription = document.getElementById('detailGameDescription');
+  const btnDetailJoinServer = document.getElementById('btnDetailJoinServer');
+  const btnDetailSelfHost = document.getElementById('btnDetailSelfHost');
+  const detailActiveServersList = document.getElementById('detailActiveServersList');
+
+  // User Profile Elements
+  const profileAvatarLarge = document.getElementById('profileAvatarLarge');
+  const profileUsernameTitle = document.getElementById('profileUsernameTitle');
+  const profileJoinedText = document.getElementById('profileJoinedText');
+  const profileBioText = document.getElementById('profileBioText');
+  const btnSendFriendReq = document.getElementById('btnSendFriendReq');
+  const btnUnfriend = document.getElementById('btnUnfriend');
+  const btnBlockUser = document.getElementById('btnBlockUser');
+
+  // Auth Elements
   const authModal = document.getElementById('authModal');
   const authModalTitle = document.getElementById('authModalTitle');
   const authModalClose = document.getElementById('authModalClose');
@@ -20,27 +44,64 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnLoginOpen = document.getElementById('btnLoginOpen');
   const btnRegisterOpen = document.getElementById('btnRegisterOpen');
-  const btnLogout = document.getElementById('btnLogout');
   const loggedOutView = document.getElementById('loggedOutView');
   const loggedInView = document.getElementById('loggedInView');
+  const userProfileWidget = document.getElementById('userProfileWidget');
+  const userProfileDropdown = document.getElementById('userProfileDropdown');
   const userNameLabel = document.getElementById('userNameLabel');
   const userAvatar = document.getElementById('userAvatar');
+  const menuViewProfile = document.getElementById('menuViewProfile');
+  const menuEditBio = document.getElementById('menuEditBio');
+  const menuLogout = document.getElementById('menuLogout');
 
-  // Search & Friends elements
+  // Edit Bio Modal
+  const editBioModal = document.getElementById('editBioModal');
+  const editBioClose = document.getElementById('editBioClose');
+  const editBioForm = document.getElementById('editBioForm');
+  const bioInputText = document.getElementById('bioInputText');
+
+  // Notifications Bell
+  const notificationBellBtn = document.getElementById('notificationBellBtn');
+  const notificationBadge = document.getElementById('notificationBadge');
+  const notificationDropdown = document.getElementById('notificationDropdown');
+  const notificationList = document.getElementById('notificationList');
+
+  // Search Elements
   const searchInput = document.getElementById('searchInput');
-  const searchResultsSection = document.getElementById('searchResultsSection');
   const searchQueryText = document.getElementById('searchQueryText');
   const searchPlacesGrid = document.getElementById('searchPlacesGrid');
   const searchUsersGrid = document.getElementById('searchUsersGrid');
+  const placesGrid = document.getElementById('placesGrid');
   const friendsList = document.getElementById('friendsList');
+
+  // Ad Modal Elements
+  const adModal = document.getElementById('adModal');
+  const adProgressBar = document.getElementById('adProgressBar');
+  const adCountdownText = document.getElementById('adCountdownText');
 
   let isRegisterMode = false;
   let currentUser = null;
+  let currentGame = null;
 
   // Initialize
   checkAuth();
   loadPlaces();
-  loadFriends();
+
+  // --- SPA VIEW ROUTER ---
+  function showView(viewId) {
+    [discoverView, gameDetailsView, userProfileView, searchResultsView].forEach(v => v.classList.add('hidden'));
+    if (viewId === 'discover') discoverView.classList.remove('hidden');
+    else if (viewId === 'details') gameDetailsView.classList.remove('hidden');
+    else if (viewId === 'profile') userProfileView.classList.remove('hidden');
+    else if (viewId === 'search') searchResultsView.classList.remove('hidden');
+
+    window.scrollTo(0, 0);
+  }
+
+  brandLogoBtn.addEventListener('click', () => showView('discover'));
+  navDiscover.addEventListener('click', (e) => { e.preventDefault(); showView('discover'); });
+  btnBackToDiscover.addEventListener('click', () => showView('discover'));
+  btnBackFromProfile.addEventListener('click', () => showView('discover'));
 
   if (btnLaunchClient) {
     btnLaunchClient.addEventListener('click', () => {
@@ -76,6 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
     userAvatar.textContent = user.username.charAt(0).toUpperCase();
     loggedOutView.classList.add('hidden');
     loggedInView.classList.remove('hidden');
+    loadNotifications();
+    loadFriends();
   }
 
   function clearAuth() {
@@ -83,12 +146,13 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem('luani_auth_token');
     loggedOutView.classList.remove('hidden');
     loggedInView.classList.add('hidden');
+    friendsList.innerHTML = '<span class="friends-loading">Log in to view friends list</span>';
   }
 
   btnLoginOpen.addEventListener('click', () => openAuthModal(false));
   btnRegisterOpen.addEventListener('click', () => openAuthModal(true));
   authModalClose.addEventListener('click', () => authModal.classList.add('hidden'));
-  btnLogout.addEventListener('click', () => clearAuth());
+  menuLogout.addEventListener('click', (e) => { e.preventDefault(); clearAuth(); userProfileDropdown.classList.add('hidden'); });
 
   authSwitchLink.addEventListener('click', (e) => {
     e.preventDefault();
@@ -145,11 +209,142 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- FRIENDS BAR ---
+  // User Header Dropdown Toggle
+  userProfileWidget.addEventListener('click', (e) => {
+    e.stopPropagation();
+    userProfileDropdown.classList.toggle('hidden');
+    notificationDropdown.classList.add('hidden');
+  });
+
+  menuViewProfile.addEventListener('click', (e) => {
+    e.preventDefault();
+    userProfileDropdown.classList.add('hidden');
+    if (currentUser) openUserProfile(currentUser.username);
+  });
+
+  menuEditBio.addEventListener('click', (e) => {
+    e.preventDefault();
+    userProfileDropdown.classList.add('hidden');
+    if (currentUser) {
+      bioInputText.value = currentUser.bio || '';
+      editBioModal.classList.remove('hidden');
+    }
+  });
+
+  editBioClose.addEventListener('click', () => editBioModal.classList.add('hidden'));
+
+  editBioForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('luani_auth_token');
+    const newBio = bioInputText.value;
+
+    try {
+      const response = await fetch('/api/user/description', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ bio: newBio })
+      });
+      const data = await response.json();
+      if (data.success) {
+        if (currentUser) currentUser.bio = data.bio;
+        editBioModal.classList.add('hidden');
+        if (!userProfileView.classList.contains('hidden') && profileUsernameTitle.textContent === currentUser.username) {
+          profileBioText.textContent = data.bio;
+        }
+      }
+    } catch (err) {
+      console.error('Error updating bio:', err);
+    }
+  });
+
+  // --- NOTIFICATION BELL DROPDOWN ---
+  notificationBellBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    notificationDropdown.classList.toggle('hidden');
+    userProfileDropdown.classList.add('hidden');
+  });
+
+  document.addEventListener('click', () => {
+    notificationDropdown.classList.add('hidden');
+    userProfileDropdown.classList.add('hidden');
+  });
+
+  async function loadNotifications() {
+    const token = localStorage.getItem('luani_auth_token');
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/notifications', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      if (data.success && Array.isArray(data.pendingRequests)) {
+        renderNotifications(data.pendingRequests);
+      }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  }
+
+  function renderNotifications(requests) {
+    if (requests.length > 0) {
+      notificationBadge.textContent = requests.length;
+      notificationBadge.classList.remove('hidden');
+
+      notificationList.innerHTML = '';
+      requests.forEach(req => {
+        const item = document.createElement('div');
+        item.className = 'req-item';
+        item.innerHTML = `
+          <span><strong>${escapeHtml(req.fromUsername)}</strong> sent a friend request</span>
+          <div class="req-actions">
+            <button class="btn-xs btn-xs-accept" data-id="${req.id}">Accept</button>
+            <button class="btn-xs btn-xs-decline" data-id="${req.id}">Decline</button>
+          </div>
+        `;
+
+        item.querySelector('.btn-xs-accept').addEventListener('click', () => respondFriendRequest(req.id, true));
+        item.querySelector('.btn-xs-decline').addEventListener('click', () => respondFriendRequest(req.id, false));
+        notificationList.appendChild(item);
+      });
+    } else {
+      notificationBadge.classList.add('hidden');
+      notificationList.innerHTML = '<div class="dropdown-empty">No pending notifications</div>';
+    }
+  }
+
+  async function respondFriendRequest(requestId, accept) {
+    const token = localStorage.getItem('luani_auth_token');
+    try {
+      await fetch('/api/friends/respond', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ requestId, accept })
+      });
+      loadNotifications();
+      loadFriends();
+    } catch (err) {
+      console.error('Error responding to request:', err);
+    }
+  }
+
+  // --- FRIENDS LIST ---
 
   async function loadFriends() {
+    const token = localStorage.getItem('luani_auth_token');
+    if (!token) return;
+
     try {
-      const response = await fetch('/api/friends');
+      const response = await fetch('/api/friends', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
 
       if (data.success && Array.isArray(data.friends)) {
@@ -162,25 +357,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderFriends(friends) {
     friendsList.innerHTML = '';
+    if (friends.length === 0) {
+      friendsList.innerHTML = '<span class="friends-loading">No friends added yet. Search users to send requests!</span>';
+      return;
+    }
+
     friends.forEach(f => {
       const item = document.createElement('div');
       item.className = 'friend-item';
-      
       const isOnline = f.status === 'ONLINE';
-      const statusClass = isOnline ? 'online' : 'offline';
-      
+
       item.innerHTML = `
-        <span class="status-dot ${statusClass}"></span>
-        <span><strong>${escapeHtml(f.username)}</strong></span>
-        ${isOnline && f.serverIp ? `<button class="btn-join-friend" data-ip="${f.serverIp}" data-port="${f.serverPort}">Join Game</button>` : `<span style="color:var(--text-muted); font-size:0.75rem;">${f.status}</span>`}
+        <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+        <span style="cursor:pointer;" class="friend-name"><strong>${escapeHtml(f.username)}</strong></span>
+        ${isOnline && f.serverIp ? `<button class="btn-join-friend" data-ip="${f.serverIp}" data-port="${f.serverPort}">Join</button>` : `<span style="color:var(--text-muted); font-size:0.75rem;">${f.status}</span>`}
       `;
 
+      item.querySelector('.friend-name').addEventListener('click', () => openUserProfile(f.username));
       const joinBtn = item.querySelector('.btn-join-friend');
       if (joinBtn) {
         joinBtn.addEventListener('click', () => {
-          const ip = joinBtn.getAttribute('data-ip');
-          const port = joinBtn.getAttribute('data-port');
-          window.location.href = `luani://join?server=${ip}:${port}`;
+          window.location.href = `luani://join?server=${joinBtn.getAttribute('data-ip')}:${joinBtn.getAttribute('data-port')}`;
         });
       }
 
@@ -188,7 +385,151 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- GLOBAL SEARCH SYSTEM ---
+  // --- GAME DETAILS PAGE VIEW ---
+
+  function openGameDetails(place) {
+    currentGame = place;
+    detailGameIcon.textContent = place.icon || '🎮';
+    detailGameTitle.textContent = place.name;
+    detailGameCreatorLink.textContent = place.creator || 'Luani Team';
+    detailGameDescription.textContent = place.description || 'No description provided for this sandbox place.';
+
+    detailGameCreatorLink.onclick = (e) => {
+      e.preventDefault();
+      openUserProfile(place.creator);
+    };
+
+    btnDetailJoinServer.onclick = () => {
+      window.location.href = `luani://join?server=127.0.0.1:7777`;
+    };
+
+    btnDetailSelfHost.onclick = () => {
+      triggerPlayFlow(place.id);
+    };
+
+    fetchActiveServersForPlace(place.id);
+    showView('details');
+  }
+
+  async function fetchActiveServersForPlace(placeId) {
+    detailActiveServersList.innerHTML = '<div class="loading-spinner">Fetching active servers...</div>';
+    try {
+      const response = await fetch(`/api/servers/active?placeId=${placeId}`);
+      const data = await response.json();
+
+      if (data.success && Array.isArray(data.servers)) {
+        renderActiveServers(data.servers);
+      } else {
+        detailActiveServersList.innerHTML = '<div style="color:var(--text-muted);">No active server instances currently running. Click "Self Host" to spawn one!</div>';
+      }
+    } catch (err) {
+      detailActiveServersList.innerHTML = '<div style="color:var(--text-muted);">Could not load server list.</div>';
+    }
+  }
+
+  function renderActiveServers(servers) {
+    detailActiveServersList.innerHTML = '';
+    if (servers.length === 0) {
+      detailActiveServersList.innerHTML = '<div style="color:var(--text-muted);">No active servers running. Click "Self Host" to spawn one!</div>';
+      return;
+    }
+
+    servers.forEach(srv => {
+      const row = document.createElement('div');
+      row.className = 'server-item-row';
+      row.innerHTML = `
+        <div>
+          <strong>${escapeHtml(srv.name || 'Managed Instance')}</strong>
+          <div style="font-size:0.8rem; color:var(--text-muted);">${srv.serverIp}:${srv.serverPort} • ${srv.playerCount}/${srv.maxPlayers} Players</div>
+        </div>
+        <button class="btn btn-sm btn-primary btn-join-srv">Join</button>
+      `;
+
+      row.querySelector('.btn-join-srv').addEventListener('click', () => {
+        window.location.href = `luani://join?server=${srv.serverIp}:${srv.serverPort}&auth=${srv.authToken || ''}`;
+      });
+
+      detailActiveServersList.appendChild(row);
+    });
+  }
+
+  // --- USER PROFILE PAGE VIEW ---
+
+  async function openUserProfile(username) {
+    if (!username) return;
+    const token = localStorage.getItem('luani_auth_token');
+
+    try {
+      const response = await fetch(`/api/user/${encodeURIComponent(username)}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      const data = await response.json();
+
+      if (data.success && data.user) {
+        const u = data.user;
+        profileUsernameTitle.textContent = u.username;
+        profileAvatarLarge.textContent = u.username.charAt(0).toUpperCase();
+        profileJoinedText.textContent = `Registered Member`;
+        profileBioText.textContent = u.bio || `No bio written yet.`;
+
+        // Configure dynamic relationship buttons
+        btnSendFriendReq.classList.add('hidden');
+        btnUnfriend.classList.add('hidden');
+
+        if (currentUser && currentUser.username === u.username) {
+          // Own profile
+          btnSendFriendReq.classList.add('hidden');
+          btnUnfriend.classList.add('hidden');
+        } else if (u.isFriend) {
+          btnUnfriend.classList.remove('hidden');
+        } else if (u.isPending) {
+          btnSendFriendReq.textContent = '⏳ Friend Request Pending';
+          btnSendFriendReq.disabled = true;
+          btnSendFriendReq.classList.remove('hidden');
+        } else {
+          btnSendFriendReq.textContent = '➕ Send Friend Request';
+          btnSendFriendReq.disabled = false;
+          btnSendFriendReq.classList.remove('hidden');
+
+          btnSendFriendReq.onclick = async () => {
+            if (!currentUser) return openAuthModal(false);
+            await fetch('/api/friends/request', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ targetUsername: u.username })
+            });
+            openUserProfile(u.username);
+          };
+        }
+
+        btnUnfriend.onclick = async () => {
+          await fetch('/api/user/unfriend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ targetUsername: u.username })
+          });
+          openUserProfile(u.username);
+          loadFriends();
+        };
+
+        btnBlockUser.onclick = async () => {
+          await fetch('/api/user/block', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ targetUsername: u.username })
+          });
+          alert(`Blocked user ${u.username}`);
+          showView('discover');
+        };
+
+        showView('profile');
+      }
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+    }
+  }
+
+  // --- SEARCH SYSTEM ---
 
   let searchTimeout = null;
   searchInput.addEventListener('input', () => {
@@ -198,7 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (query.length >= 2) {
         performSearch(query);
       } else {
-        searchResultsSection.classList.add('hidden');
+        showView('discover');
       }
     }, 250);
   });
@@ -211,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         searchQueryText.textContent = query;
         renderSearchResults(data.places || [], data.users || []);
-        searchResultsSection.classList.remove('hidden');
+        showView('search');
       }
     } catch (err) {
       console.error('Search error:', err);
@@ -241,12 +582,13 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="avatar-circle">${user.username.charAt(0).toUpperCase()}</div>
           <div><strong>${escapeHtml(user.username)}</strong></div>
         `;
+        uCard.addEventListener('click', () => openUserProfile(user.username));
         searchUsersGrid.appendChild(uCard);
       });
     }
   }
 
-  // --- PLACES DISCOVERY CATALOG ---
+  // --- DISCOVER PLACES CATALOG ---
 
   async function loadPlaces() {
     try {
@@ -278,19 +620,21 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const icons = ['🎮', '🏎', '🏙', '⚔️', '🚀'];
     const icon = icons[Math.floor(Math.random() * icons.length)];
+    place.icon = icon;
     
     card.innerHTML = `
       <div class="card-banner">${icon}</div>
       <div class="card-title">${escapeHtml(place.name)}</div>
       <div class="card-meta">By ${escapeHtml(place.creator || 'Luani Creator')} • Max Players: ${place.maxPlayers || 16}</div>
       <div class="card-desc">${escapeHtml(place.description || 'No description provided.')}</div>
-      <button class="btn btn-primary btn-play" data-id="${place.id}">▶ Play Game</button>
+      <button class="btn btn-primary btn-play">View & Play</button>
     `;
     
-    const playBtn = card.querySelector('.btn-play');
-    playBtn.addEventListener('click', () => triggerPlayFlow(place.id));
+    card.addEventListener('click', () => openGameDetails(place));
     return card;
   }
+
+  // --- AD MODAL AD-GATED SPIN UP ---
 
   function triggerPlayFlow(placeId) {
     adModal.classList.remove('hidden');

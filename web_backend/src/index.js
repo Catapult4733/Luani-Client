@@ -13,22 +13,22 @@ app.use(express.json());
 // Serve static web portal frontend
 app.use(express.static(path.join(__dirname, '../public')));
 
-// In-memory User accounts database (Username + Password only, no email)
-const users = [
-  { id: 'usr_01', username: 'Player_Local', password: 'password123', createdAt: new Date().toISOString() },
-  { id: 'usr_02', username: 'LuauDeveloper', password: 'password123', createdAt: new Date().toISOString() },
-  { id: 'usr_03', username: 'BuilderPro', password: 'password123', createdAt: new Date().toISOString() }
-];
+// User Database (Starts clean - NO dummy / mock seed profiles)
+const users = [];
 
-const sessions = new Map(); // token -> user profile
+// Session Store (token -> user profile)
+const sessions = new Map();
 
-// Friends graph
-const friends = [
-  { id: 'usr_02', username: 'LuauDeveloper', status: 'ONLINE', game: 'Luani Starter World', serverIp: '127.0.0.1', serverPort: 7777 },
-  { id: 'usr_03', username: 'BuilderPro', status: 'OFFLINE', game: null }
-];
+// Friends Requests Store (id, fromUserId, fromUsername, toUserId, toUsername, status: 'PENDING' | 'ACCEPTED' | 'DECLINED', createdAt)
+const friendRequests = [];
 
-// Default place catalog
+// User Friendships (pair string: "id1_id2")
+const friendships = new Set();
+
+// User Blocked List (pair string: "blockerId_blockedId")
+const blockList = new Set();
+
+// Default Places Catalog
 const places = [
   {
     id: 'place_default_01',
@@ -63,7 +63,7 @@ const places = [
   {
     id: 'place_demo_02',
     name: 'Speedway Track',
-    creator: 'LuauDeveloper',
+    creator: 'Luani Team',
     description: 'High speed physics racing sandbox world.',
     maxPlayers: 8,
     version: 1,
@@ -82,7 +82,7 @@ const places = [
   }
 ];
 
-// Active game servers list
+// Active Game Servers List
 const activeServers = [
   {
     requestId: 'req_system_main',
@@ -94,18 +94,6 @@ const activeServers = [
     maxPlayers: 16,
     ping: 12,
     isUserHosted: false,
-    status: 'RUNNING'
-  },
-  {
-    requestId: 'req_user_hosted_01',
-    name: 'BuilderPro\'s Local Server',
-    placeId: 'place_demo_02',
-    serverIp: '127.0.0.1',
-    serverPort: 7788,
-    playerCount: 1,
-    maxPlayers: 8,
-    ping: 25,
-    isUserHosted: true,
     status: 'RUNNING'
   }
 ];
@@ -125,6 +113,17 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// Helper: Extract user from Bearer Token
+function getAuthUser(req) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader ? authHeader.replace('Bearer ', '') : req.query.token;
+  if (token && sessions.has(token)) {
+    const sess = sessions.get(token);
+    return users.find(u => u.id === sess.id) || null;
+  }
+  return null;
+}
+
 // --- API ROUTES ---
 
 // Healthcheck
@@ -140,15 +139,17 @@ app.post('/api/auth/register', (req, res) => {
     return res.status(400).json({ success: false, error: 'Username and password are required.' });
   }
 
-  const existing = users.find(u => u.username.toLowerCase() === username.trim().toLowerCase());
+  const cleanName = username.trim();
+  const existing = users.find(u => u.username.toLowerCase() === cleanName.toLowerCase());
   if (existing) {
     return res.status(400).json({ success: false, error: 'Username is already taken.' });
   }
 
   const newUser = {
     id: `usr_${Date.now()}`,
-    username: username.trim(),
+    username: cleanName,
     password: password,
+    bio: `Hello! I am ${cleanName} on Luani.`,
     createdAt: new Date().toISOString()
   };
 
@@ -157,7 +158,7 @@ app.post('/api/auth/register', (req, res) => {
   sessions.set(token, { id: newUser.id, username: newUser.username });
 
   console.log(`[Luani Auth] Registered user: ${newUser.username}`);
-  res.json({ success: true, token, user: { id: newUser.id, username: newUser.username } });
+  res.json({ success: true, token, user: { id: newUser.id, username: newUser.username, bio: newUser.bio } });
 });
 
 app.post('/api/auth/login', (req, res) => {
@@ -176,22 +177,184 @@ app.post('/api/auth/login', (req, res) => {
   sessions.set(token, { id: user.id, username: user.username });
 
   console.log(`[Luani Auth] Logged in user: ${user.username}`);
-  res.json({ success: true, token, user: { id: user.id, username: user.username } });
+  res.json({ success: true, token, user: { id: user.id, username: user.username, bio: user.bio } });
 });
 
 app.get('/api/auth/me', (req, res) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader ? authHeader.replace('Bearer ', '') : req.query.token;
-
-  if (token && sessions.has(token)) {
-    return res.json({ success: true, user: sessions.get(token) });
+  const user = getAuthUser(req);
+  if (user) {
+    return res.json({ success: true, user: { id: user.id, username: user.username, bio: user.bio } });
   }
   res.status(401).json({ success: false, error: 'Not authenticated.' });
 });
 
-// FRIENDS SYSTEM
+// USER PROFILE & DESCRIPTION BIO EDITING
+app.get('/api/user/:username', (req, res) => {
+  const targetUsername = req.params.username;
+  const targetUser = users.find(u => u.username.toLowerCase() === targetUsername.toLowerCase());
+
+  if (!targetUser) {
+    return res.status(404).json({ success: false, error: 'User not found.' });
+  }
+
+  const currentUser = getAuthUser(req);
+  let isFriend = false;
+  let isPending = false;
+  let isBlocked = false;
+
+  if (currentUser) {
+    const pair1 = `${currentUser.id}_${targetUser.id}`;
+    const pair2 = `${targetUser.id}_${currentUser.id}`;
+    isFriend = friendships.has(pair1) || friendships.has(pair2);
+    isBlocked = blockList.has(`${currentUser.id}_${targetUser.id}`);
+    
+    const pendingReq = friendRequests.find(r => 
+      r.status === 'PENDING' && 
+      ((r.fromUserId === currentUser.id && r.toUserId === targetUser.id) || (r.fromUserId === targetUser.id && r.toUserId === currentUser.id))
+    );
+    if (pendingReq) isPending = true;
+  }
+
+  res.json({
+    success: true,
+    user: {
+      id: targetUser.id,
+      username: targetUser.username,
+      bio: targetUser.bio || `Welcome to ${targetUser.username}'s profile.`,
+      createdAt: targetUser.createdAt,
+      isFriend,
+      isPending,
+      isBlocked
+    }
+  });
+});
+
+app.post('/api/user/description', (req, res) => {
+  const user = getAuthUser(req);
+  if (!user) {
+    return res.status(401).json({ success: false, error: 'Must be logged in to update profile bio.' });
+  }
+
+  const { bio } = req.body;
+  user.bio = (bio || '').trim();
+  console.log(`[Luani User] Updated bio for ${user.username}`);
+
+  res.json({ success: true, message: 'Profile description updated.', bio: user.bio });
+});
+
+// FRIENDS & NOTIFICATION SYSTEM
 app.get('/api/friends', (req, res) => {
-  res.json({ success: true, friends });
+  const user = getAuthUser(req);
+  if (!user) {
+    return res.json({ success: true, friends: [] });
+  }
+
+  const userFriends = users.filter(u => {
+    if (u.id === user.id) return false;
+    return friendships.has(`${user.id}_${u.id}`) || friendships.has(`${u.id}_${user.id}`);
+  }).map(u => ({
+    id: u.id,
+    username: u.username,
+    status: 'ONLINE',
+    game: 'Luani Starter World',
+    serverIp: '127.0.0.1',
+    serverPort: 7777
+  }));
+
+  res.json({ success: true, friends: userFriends });
+});
+
+app.get('/api/notifications', (req, res) => {
+  const user = getAuthUser(req);
+  if (!user) {
+    return res.json({ success: true, pendingRequests: [] });
+  }
+
+  const pending = friendRequests.filter(r => r.toUserId === user.id && r.status === 'PENDING');
+  res.json({ success: true, pendingRequests: pending });
+});
+
+app.post('/api/friends/request', (req, res) => {
+  const user = getAuthUser(req);
+  if (!user) {
+    return res.status(401).json({ success: false, error: 'Must be logged in.' });
+  }
+
+  const { targetUsername } = req.body;
+  const targetUser = users.find(u => u.username.toLowerCase() === (targetUsername || '').toLowerCase());
+  if (!targetUser) {
+    return res.status(404).json({ success: false, error: 'Target user not found.' });
+  }
+
+  if (targetUser.id === user.id) {
+    return res.status(400).json({ success: false, error: 'Cannot friend yourself.' });
+  }
+
+  const reqId = `freq_${Date.now()}`;
+  const newReq = {
+    id: reqId,
+    fromUserId: user.id,
+    fromUsername: user.username,
+    toUserId: targetUser.id,
+    toUsername: targetUser.username,
+    status: 'PENDING',
+    createdAt: new Date().toISOString()
+  };
+
+  friendRequests.push(newReq);
+  res.json({ success: true, message: `Friend request sent to ${targetUser.username}.` });
+});
+
+app.post('/api/friends/respond', (req, res) => {
+  const user = getAuthUser(req);
+  if (!user) {
+    return res.status(401).json({ success: false, error: 'Must be logged in.' });
+  }
+
+  const { requestId, accept } = req.body;
+  const freq = friendRequests.find(r => r.id === requestId && r.toUserId === user.id);
+
+  if (!freq) {
+    return res.status(404).json({ success: false, error: 'Friend request not found.' });
+  }
+
+  freq.status = accept ? 'ACCEPTED' : 'DECLINED';
+  if (accept) {
+    friendships.add(`${freq.fromUserId}_${freq.toUserId}`);
+  }
+
+  res.json({ success: true, message: accept ? 'Accepted friend request.' : 'Declined friend request.' });
+});
+
+app.post('/api/user/unfriend', (req, res) => {
+  const user = getAuthUser(req);
+  if (!user) {
+    return res.status(401).json({ success: false, error: 'Must be logged in.' });
+  }
+
+  const { targetUsername } = req.body;
+  const targetUser = users.find(u => u.username.toLowerCase() === (targetUsername || '').toLowerCase());
+  if (targetUser) {
+    friendships.delete(`${user.id}_${targetUser.id}`);
+    friendships.delete(`${targetUser.id}_${user.id}`);
+  }
+  res.json({ success: true, message: 'Unfriended user.' });
+});
+
+app.post('/api/user/block', (req, res) => {
+  const user = getAuthUser(req);
+  if (!user) {
+    return res.status(401).json({ success: false, error: 'Must be logged in.' });
+  }
+
+  const { targetUsername } = req.body;
+  const targetUser = users.find(u => u.username.toLowerCase() === (targetUsername || '').toLowerCase());
+  if (targetUser) {
+    blockList.add(`${user.id}_${targetUser.id}`);
+    friendships.delete(`${user.id}_${targetUser.id}`);
+    friendships.delete(`${targetUser.id}_${user.id}`);
+  }
+  res.json({ success: true, message: 'Blocked user.' });
 });
 
 // GLOBAL SEARCH SYSTEM (Places + Users)
@@ -210,7 +373,11 @@ app.get('/api/search', (req, res) => {
 
 // ACTIVE MULTIPLAYER SERVERS LIST
 app.get('/api/servers/active', (req, res) => {
-  const running = activeServers.filter(s => s.status === 'RUNNING' || s.status === 'SPAWNING');
+  const placeId = req.query.placeId;
+  let running = activeServers.filter(s => s.status === 'RUNNING' || s.status === 'SPAWNING');
+  if (placeId) {
+    running = running.filter(s => s.placeId === placeId);
+  }
   res.json({ success: true, count: running.length, servers: running });
 });
 
@@ -232,6 +399,9 @@ app.get('/api/places/:id', (req, res) => {
     place: {
       id: placeId,
       name: `Luani Dynamic World (${placeId})`,
+      creator: 'Luani Team',
+      description: 'Dynamic sandbox place instance.',
+      maxPlayers: 16,
       format_version: 1,
       parts: [
         {
@@ -300,12 +470,15 @@ app.post('/api/servers/request', (req, res) => {
     });
   }
 
+  const placeObj = places.find(p => p.id === placeId);
+  const placeName = placeObj ? placeObj.name : placeId;
+
   const requestId = `req_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
   const port = 7700 + (activeServers.length % 100);
 
   const newServer = {
     requestId,
-    name: `Managed Server (${placeId})`,
+    name: `${placeName} Instance #${activeServers.length + 1}`,
     placeId,
     serverIp: '127.0.0.1',
     serverPort: port,

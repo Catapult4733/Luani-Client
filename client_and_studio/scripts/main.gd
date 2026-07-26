@@ -41,9 +41,9 @@ func _ready() -> void:
 		is_uri_launched = true
 		var data: Dictionary = parser.latest_session_data
 		
-		# Hide Host Option and Main Card for direct URI launch
-		host_button.visible = false
-		status_label.text = "Protocol launch received! Connecting directly..."
+		# Immediately hide main menu UI root node for direct URI launch
+		hide()
+		print("[Luani Launcher] Direct URI launch detected. Hiding main menu and initiating immediate server connection.")
 		
 		# Direct join connection
 		call_deferred("_trigger_direct_uri_join", data)

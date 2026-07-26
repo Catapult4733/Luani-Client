@@ -14,67 +14,168 @@
   <!-- Top Navigation Bar -->
   <header class="navbar">
     <div class="nav-container">
-      <div class="brand">
+      <div class="brand" id="brandLogoBtn" style="cursor: pointer;">
         <span class="brand-logo">🌌</span>
         <span class="brand-name">LUANI</span>
         <span class="brand-domain">luani.fyi</span>
       </div>
 
-      <!-- Search Bar -->
+      <!-- Global Search Bar -->
       <div class="search-container">
         <span class="search-icon">🔍</span>
         <input type="text" id="searchInput" placeholder="Search games & people..." autocomplete="off">
       </div>
 
       <nav class="nav-links">
-        <a href="#discover" class="active">Discover</a>
-        <a href="#studio">Studio</a>
-        <a href="#friends">Friends</a>
+        <a href="#" id="navDiscover" class="active">Discover</a>
+        <a href="#studio" id="navStudio">Studio</a>
       </nav>
 
-      <!-- Auth & User Profile Container -->
+      <!-- Auth, Notifications, & User Menu -->
       <div class="user-auth-area">
         <div id="loggedOutView" class="auth-buttons">
           <button id="btnLoginOpen" class="btn btn-sm btn-secondary">Log In</button>
           <button id="btnRegisterOpen" class="btn btn-sm btn-primary">Sign Up</button>
         </div>
-        <div id="loggedInView" class="user-profile hidden">
-          <div class="avatar-circle" id="userAvatar">P</div>
-          <span class="user-name" id="userNameLabel">Player_Local</span>
-          <button id="btnLogout" class="btn-logout" title="Log Out">🚪</button>
+        
+        <div id="loggedInView" class="user-logged-in-container hidden">
+          <!-- Notification Bell -->
+          <div class="notification-wrapper">
+            <button id="notificationBellBtn" class="bell-btn" title="Notifications">
+              🔔<span id="notificationBadge" class="badge-counter hidden">0</span>
+            </button>
+            <div id="notificationDropdown" class="dropdown-panel hidden">
+              <div class="dropdown-header">Friend Requests</div>
+              <div id="notificationList" class="dropdown-body">
+                <div class="dropdown-empty">No pending notifications</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Profile Widget & Menu -->
+          <div class="user-profile-wrapper">
+            <div id="userProfileWidget" class="user-profile">
+              <div class="avatar-circle" id="userAvatar">P</div>
+              <span class="user-name" id="userNameLabel">Player_Local</span>
+              <span class="dropdown-arrow">▼</span>
+            </div>
+            <div id="userProfileDropdown" class="dropdown-panel hidden">
+              <a href="#" id="menuViewProfile">👤 View Profile</a>
+              <a href="#" id="menuEditBio">✏ Edit Description</a>
+              <div class="dropdown-divider"></div>
+              <a href="#" id="menuLogout" class="text-danger">🚪 Log Out</a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- Friends Bar Header Overlay -->
+  <!-- Friends Header Bar -->
   <section id="friendsBarSection" class="friends-bar">
     <div class="friends-container">
-      <div class="friends-label">👥 Online Friends:</div>
+      <div class="friends-label">👥 Friends:</div>
       <div id="friendsList" class="friends-list">
-        <!-- Dynamically rendered by app.js -->
-        <span class="friends-loading">Loading friends...</span>
+        <span class="friends-loading">Log in to view friends list</span>
       </div>
     </div>
   </section>
 
-  <!-- Main Portal Layout -->
+  <!-- Main Content Container -->
   <main class="main-container">
-    <!-- Hero Banner -->
-    <section class="hero-section">
-      <div class="hero-content">
-        <span class="badge">Next-Gen Sandbox Platform</span>
-        <h1>Create, Play, & Host Unlimited Worlds</h1>
-        <p>Built with Godot 4, Luau engine scripting, and open distributed server hosting.</p>
-        <div class="hero-actions">
-          <a href="#discover" class="btn btn-primary">Browse Games</a>
-          <button id="btnLaunchClient" class="btn btn-secondary">Open Luani Client</button>
+
+    <!-- 1. DISCOVER HOMEPAGE VIEW -->
+    <div id="discoverView">
+      <section class="hero-section">
+        <div class="hero-content">
+          <span class="badge">Next-Gen Sandbox Platform</span>
+          <h1>Create, Play, & Host Unlimited Worlds</h1>
+          <p>Built with Godot 4, Luau engine scripting, and open distributed server hosting.</p>
+          <div class="hero-actions">
+            <a href="#discoverGrid" class="btn btn-primary">Browse Games</a>
+            <button id="btnLaunchClient" class="btn btn-secondary">Open Luani Client</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="discoverGrid" class="section">
+        <div class="section-header">
+          <h2>Featured Places</h2>
+          <p>Click any place to view details, join active servers, or spawn a self-hosted instance.</p>
+        </div>
+
+        <div id="placesGrid" class="places-grid">
+          <div class="loading-spinner">Loading places catalog from luani.fyi...</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 2. GAME DETAILS VIEW (Top Left Thumbnail, Top Right Details/Actions, Bottom Servers) -->
+    <div id="gameDetailsView" class="hidden">
+      <button id="btnBackToDiscover" class="btn-back">← Back to Discover</button>
+      
+      <div class="game-details-header">
+        <!-- Top Left: Large Game Thumbnail -->
+        <div class="game-thumbnail-large" id="detailGameIcon">🎮</div>
+
+        <!-- Top Right: Info & Actions -->
+        <div class="game-info-top">
+          <h1 id="detailGameTitle" class="game-title-large">Game Title</h1>
+          <div class="game-creator-subtext">
+            Created by <a href="#" id="detailGameCreatorLink" class="creator-link">CreatorName</a>
+          </div>
+          
+          <div class="game-action-buttons">
+            <button id="btnDetailJoinServer" class="btn btn-primary btn-lg">▶ Join Server</button>
+            <button id="btnDetailSelfHost" class="btn btn-secondary btn-lg">⚡ Self Host (Spawn Instance)</button>
+          </div>
         </div>
       </div>
-    </section>
 
-    <!-- Search Results Section (Shown when searching) -->
-    <section id="searchResultsSection" class="section hidden">
+      <!-- Bottom Section: Description & Active Servers -->
+      <div class="game-details-body">
+        <div class="details-box">
+          <h3>About This Place</h3>
+          <p id="detailGameDescription">Game description text goes here.</p>
+        </div>
+
+        <div class="details-box">
+          <h3>Active Server Instances</h3>
+          <div id="detailActiveServersList" class="active-servers-grid">
+            <div class="loading-spinner">Fetching running servers...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. USER PROFILE VIEW -->
+    <div id="userProfileView" class="hidden">
+      <button id="btnBackFromProfile" class="btn-back">← Back</button>
+
+      <div class="profile-card">
+        <div class="profile-header-area">
+          <div class="avatar-large" id="profileAvatarLarge">U</div>
+          <div class="profile-title-area">
+            <h1 id="profileUsernameTitle">Username</h1>
+            <div class="profile-meta-text" id="profileJoinedText">Joined Luani</div>
+          </div>
+        </div>
+
+        <div class="profile-bio-box">
+          <h3>Description / Bio</h3>
+          <p id="profileBioText">User bio description text.</p>
+        </div>
+
+        <div id="profileRelationshipActions" class="profile-actions-bar">
+          <button id="btnSendFriendReq" class="btn btn-primary">➕ Send Friend Request</button>
+          <button id="btnUnfriend" class="btn btn-secondary text-danger hidden">❌ Unfriend</button>
+          <button id="btnBlockUser" class="btn btn-secondary text-danger">⛔ Block User</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. SEARCH RESULTS VIEW -->
+    <div id="searchResultsView" class="hidden">
       <div class="section-header">
         <h2>Search Results for "<span id="searchQueryText"></span>"</h2>
       </div>
@@ -84,22 +185,9 @@
         <h3 style="margin-top: 1.5rem;">People</h3>
         <div id="searchUsersGrid" class="users-grid"></div>
       </div>
-    </section>
+    </div>
 
-    <!-- Discover Games Section -->
-    <section id="discover" class="section">
-      <div class="section-header">
-        <h2>Featured Places</h2>
-        <p>Select a place to launch instantly via your local Luani client.</p>
-      </div>
-
-      <div id="placesGrid" class="places-grid">
-        <!-- Dynamically populated by app.js -->
-        <div class="loading-spinner">Loading places catalog from luani.fyi...</div>
-      </div>
-    </section>
-
-    <!-- Studio & Creation Section -->
+    <!-- 5. STUDIO SECTION -->
     <section id="studio" class="section studio-banner">
       <div class="studio-content">
         <span class="badge badge-purple">Luani Studio Suite</span>
@@ -112,6 +200,7 @@
         </div>
       </div>
     </section>
+
   </main>
 
   <!-- Footer -->
@@ -121,7 +210,7 @@
     </div>
   </footer>
 
-  <!-- Auth Modal (Login / Register - Username & Password only) -->
+  <!-- AUTH MODAL (Login / Register - Username & Password only) -->
   <div id="authModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
@@ -147,7 +236,24 @@
     </div>
   </div>
 
-  <!-- Ad Watch Verification Modal -->
+  <!-- EDIT PROFILE DESCRIPTION BIO MODAL -->
+  <div id="editBioModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Edit Profile Description</h3>
+        <button id="editBioClose" class="btn-close">&times;</button>
+      </div>
+      <form id="editBioForm" class="modal-body">
+        <div class="form-group">
+          <label for="bioInputText">Description / Bio</label>
+          <textarea id="bioInputText" rows="4" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border-card); color: white; border-radius: 8px; font-family: inherit; outline: none;"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Save Description</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- AD WATCH VERIFICATION MODAL -->
   <div id="adModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
