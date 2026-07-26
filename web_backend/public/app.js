@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const adModal = document.getElementById('adModal');
   const adProgressBar = document.getElementById('adProgressBar');
   const adCountdownText = document.getElementById('adCountdownText');
+  const btnSkipAd = document.getElementById('btnSkipAd');
 
   let isRegisterMode = false;
   let currentUser = null;
@@ -377,7 +378,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const joinBtn = item.querySelector('.btn-join-friend');
       if (joinBtn) {
         joinBtn.addEventListener('click', () => {
-          window.location.href = `luani://join?server=${joinBtn.getAttribute('data-ip')}:${joinBtn.getAttribute('data-port')}`;
+          // Direct friend join shows 5-second sponsor ad modal before launch
+          const uri = `luani://join?server=${joinBtn.getAttribute('data-ip')}:${joinBtn.getAttribute('data-port')}`;
+          triggerAdAndJoin(uri);
         });
       }
 
@@ -399,12 +402,14 @@ document.addEventListener('DOMContentLoaded', () => {
       openUserProfile(place.creator);
     };
 
+    // 1. Join Server button (Official / Laptop servers): Displays 5-Second Sponsor Ad Modal before launching luani://
     btnDetailJoinServer.onclick = () => {
-      window.location.href = `luani://join?server=127.0.0.1:7777`;
+      triggerAdAndJoin(`luani://join?server=127.0.0.1:7777`);
     };
 
-    btnDetailSelfHost.onclick = () => {
-      triggerPlayFlow(place.id);
+    // 2. Self Host button: Spawns player-hosted server & launches luani:// IMMEDIATELY with NO ad modal
+    btnDetailSelfHost.onclick = async () => {
+      await requestServerSpinUpDirect(place.id);
     };
 
     fetchActiveServersForPlace(place.id);
@@ -446,7 +451,9 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
 
       row.querySelector('.btn-join-srv').addEventListener('click', () => {
-        window.location.href = `luani://join?server=${srv.serverIp}:${srv.serverPort}&auth=${srv.authToken || ''}`;
+        // Joining official / active server displays 5-Second Sponsor Ad Modal
+        const uri = `luani://join?server=${srv.serverIp}:${srv.serverPort}&auth=${srv.authToken || ''}`;
+        triggerAdAndJoin(uri);
       });
 
       detailActiveServersList.appendChild(row);
@@ -634,32 +641,43 @@ document.addEventListener('DOMContentLoaded', () => {
     return card;
   }
 
-  // --- AD MODAL AD-GATED SPIN UP ---
+  // --- AD MODAL & SERVER LAUNCH LOGIC ---
 
-  function triggerPlayFlow(placeId) {
+  // Displays 5-Second Sponsor Ad Modal before triggering target luani:// URI
+  function triggerAdAndJoin(joinUri) {
     adModal.classList.remove('hidden');
+    if (btnSkipAd) btnSkipAd.classList.remove('hidden');
     adProgressBar.style.width = '0%';
     
     let duration = 5;
     let elapsed = 0;
     
-    const interval = setInterval(async () => {
+    const finishJoin = () => {
+      clearInterval(interval);
+      adModal.classList.add('hidden');
+      window.location.href = joinUri;
+    };
+
+    if (btnSkipAd) {
+      btnSkipAd.onclick = finishJoin;
+    }
+    
+    const interval = setInterval(() => {
       elapsed += 0.1;
       const progress = (elapsed / duration) * 100;
       adProgressBar.style.width = `${Math.min(progress, 100)}%`;
       
       const remaining = Math.ceil(duration - elapsed);
-      adCountdownText.textContent = `Verification in progress (${remaining}s)...`;
+      adCountdownText.textContent = `Sponsored Ad Verification (${remaining}s)...`;
       
       if (elapsed >= duration) {
-        clearInterval(interval);
-        adCountdownText.textContent = 'Ad verified! Requesting server spin-up...';
-        await requestServerSpinUp(placeId);
+        finishJoin();
       }
     }, 100);
   }
 
-  async function requestServerSpinUp(placeId) {
+  // Spawns player-hosted server & launches luani:// IMMEDIATELY with NO ad modal
+  async function requestServerSpinUpDirect(placeId) {
     try {
       const response = await fetch('/api/servers/request', {
         method: 'POST',
@@ -667,25 +685,20 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({
           placeId: placeId,
           userId: currentUser ? currentUser.id : 'guest_user',
-          adWatchToken: `ad_token_${Date.now()}`
+          adWatchToken: `direct_self_host_${Date.now()}`
         })
       });
       
       const data = await response.json();
       if (data.success && data.joinUri) {
-        adCountdownText.textContent = 'Launching native Luani client...';
-        setTimeout(() => {
-          adModal.classList.add('hidden');
-          window.location.href = data.joinUri;
-        }, 1000);
+        // Direct launch with NO ad modal
+        window.location.href = data.joinUri;
       } else {
         alert('Server spin-up failed: ' + (data.error || 'Unknown error'));
-        adModal.classList.add('hidden');
       }
     } catch (err) {
       console.error('Error requesting server launch:', err);
       alert('Network error connecting to luani.fyi backend.');
-      adModal.classList.add('hidden');
     }
   }
 
