@@ -679,12 +679,13 @@ app.post('/api/servers/request', (req, res) => {
 
 // Daemon / Server Heartbeat & Status Signaling
 app.post('/api/daemon/heartbeat', (req, res) => {
-  const { requestId, playerCount, status } = req.body;
+  const { requestId, playerCount, status, serverIp } = req.body;
   const srv = activeServers.find(s => s.requestId === requestId);
   if (srv) {
     srv.lastHeartbeat = Date.now();
     if (playerCount !== undefined) srv.playerCount = parseInt(playerCount);
     if (status) srv.status = status;
+    if (serverIp && serverIp !== '127.0.0.1') srv.serverIp = serverIp;
     return res.json({ success: true, server: srv });
   }
   res.status(404).json({ success: false, error: 'Server instance not found.' });
@@ -696,13 +697,14 @@ app.get('/api/daemon/pending-tasks', (req, res) => {
 });
 
 app.post('/api/daemon/update-status', (req, res) => {
-  const { requestId, status, playerCount } = req.body;
+  const { requestId, status, playerCount, serverIp } = req.body;
   const srv = activeServers.find(s => s.requestId === requestId);
   if (srv) {
     srv.status = status;
     srv.lastHeartbeat = Date.now();
     if (playerCount !== undefined) srv.playerCount = parseInt(playerCount);
-    console.log(`[Luani Web Backend] Daemon updated server ${requestId} status to: ${status}`);
+    if (serverIp && serverIp !== '127.0.0.1') srv.serverIp = serverIp;
+    console.log(`[Luani Web Backend] Daemon updated server ${requestId} status to: ${status} (Host IP: ${srv.serverIp})`);
     return res.json({ success: true });
   }
   res.status(404).json({ success: false, error: 'Server instance request not found.' });
