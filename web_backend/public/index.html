@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Header / Navigation Bar -->
+  <!-- Top Navigation Bar -->
   <header class="navbar">
     <div class="nav-container">
       <div class="brand">
@@ -19,17 +19,44 @@
         <span class="brand-name">LUANI</span>
         <span class="brand-domain">luani.fyi</span>
       </div>
+
+      <!-- Search Bar -->
+      <div class="search-container">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search games & people..." autocomplete="off">
+      </div>
+
       <nav class="nav-links">
         <a href="#discover" class="active">Discover</a>
         <a href="#studio">Studio</a>
-        <a href="#self-host">Self-Hosting</a>
+        <a href="#friends">Friends</a>
       </nav>
-      <div class="user-profile">
-        <div class="avatar-circle">P</div>
-        <span class="user-name">Player_Local</span>
+
+      <!-- Auth & User Profile Container -->
+      <div class="user-auth-area">
+        <div id="loggedOutView" class="auth-buttons">
+          <button id="btnLoginOpen" class="btn btn-sm btn-secondary">Log In</button>
+          <button id="btnRegisterOpen" class="btn btn-sm btn-primary">Sign Up</button>
+        </div>
+        <div id="loggedInView" class="user-profile hidden">
+          <div class="avatar-circle" id="userAvatar">P</div>
+          <span class="user-name" id="userNameLabel">Player_Local</span>
+          <button id="btnLogout" class="btn-logout" title="Log Out">🚪</button>
+        </div>
       </div>
     </div>
   </header>
+
+  <!-- Friends Bar Header Overlay -->
+  <section id="friendsBarSection" class="friends-bar">
+    <div class="friends-container">
+      <div class="friends-label">👥 Online Friends:</div>
+      <div id="friendsList" class="friends-list">
+        <!-- Dynamically rendered by app.js -->
+        <span class="friends-loading">Loading friends...</span>
+      </div>
+    </div>
+  </section>
 
   <!-- Main Portal Layout -->
   <main class="main-container">
@@ -43,6 +70,19 @@
           <a href="#discover" class="btn btn-primary">Browse Games</a>
           <button id="btnLaunchClient" class="btn btn-secondary">Open Luani Client</button>
         </div>
+      </div>
+    </section>
+
+    <!-- Search Results Section (Shown when searching) -->
+    <section id="searchResultsSection" class="section hidden">
+      <div class="section-header">
+        <h2>Search Results for "<span id="searchQueryText"></span>"</h2>
+      </div>
+      <div class="search-results-container">
+        <h3>Places</h3>
+        <div id="searchPlacesGrid" class="places-grid"></div>
+        <h3 style="margin-top: 1.5rem;">People</h3>
+        <div id="searchUsersGrid" class="users-grid"></div>
       </div>
     </section>
 
@@ -80,6 +120,32 @@
       <p>&copy; 2026 Luani Platform (luani.fyi). Powered by Godot Engine & Luau MIT open-source technologies.</p>
     </div>
   </footer>
+
+  <!-- Auth Modal (Login / Register - Username & Password only) -->
+  <div id="authModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="authModalTitle">Log In to Luani</h3>
+        <button id="authModalClose" class="btn-close">&times;</button>
+      </div>
+      <form id="authForm" class="modal-body">
+        <div class="form-group">
+          <label for="authUsername">Username</label>
+          <input type="text" id="authUsername" required placeholder="Enter username" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="authPassword">Password</label>
+          <input type="password" id="authPassword" required placeholder="Enter password" autocomplete="current-password">
+        </div>
+        <div id="authErrorMsg" class="error-msg hidden"></div>
+        <button type="submit" id="authSubmitBtn" class="btn btn-primary btn-block">Log In</button>
+        <div class="auth-switch">
+          <span id="authSwitchText">Don't have an account?</span>
+          <a href="#" id="authSwitchLink">Sign Up</a>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Ad Watch Verification Modal -->
   <div id="adModal" class="modal-overlay hidden">

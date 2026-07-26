@@ -128,7 +128,7 @@ class ServerDaemon:
 
 def main():
     parser = argparse.ArgumentParser(description="Luani Server Host Daemon")
-    parser.add_argument("--backend", default="http://localhost:3000", help="Backend API URL (luani.fyi)")
+    parser.add_argument("--backend", default="https://www.luani.fyi", help="Backend API URL (luani.fyi)")
     parser.add_argument("--test", action="store_true", help="Run self-test dry-run")
     args = parser.parse_args()
 

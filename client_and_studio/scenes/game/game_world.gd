@@ -1,17 +1,18 @@
 # client_and_studio/scenes/game/game_world.gd
 extends Node3D
 
-## Gameplay scene handling multiplayer world loading and player avatar spawning
+## Gameplay scene handling multiplayer world loading, avatar spawning, and pause menu
 
 @onready var world_root: Node3D = %WorldRoot
 @onready var players_container: Node3D = %Players
 @onready var status_label: Label = %StatusLabel
-@onready var disconnect_button: Button = %DisconnectButton
+@onready var menu_button: Button = %MenuButton
+@onready var pause_menu: Control = %PauseMenu
 
 var current_place_id: String = "place_default_01"
 
 func _ready() -> void:
-	disconnect_button.pressed.connect(_on_disconnect_pressed)
+	menu_button.pressed.connect(_on_menu_button_pressed)
 
 	var net_mgr := get_node_or_null("/root/NetworkManager")
 	if net_mgr:
@@ -32,14 +33,18 @@ func _ready() -> void:
 	else:
 		status_label.text = "Connected to Server (Place: " + current_place_id + ")"
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		if pause_menu:
+			pause_menu.toggle_menu()
+			get_viewport().set_input_as_handled()
+
+func _on_menu_button_pressed() -> void:
+	if pause_menu:
+		pause_menu.toggle_menu()
+
 func _on_connected(_ip: String, _port: int) -> void:
 	status_label.text = "Connected to Luani Game Server!"
 
 func _on_connection_failed(reason: String) -> void:
 	status_label.text = "Connection Error: " + reason
-
-func _on_disconnect_pressed() -> void:
-	var net_mgr := get_node_or_null("/root/NetworkManager")
-	if net_mgr:
-		net_mgr.disconnect_network()
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
