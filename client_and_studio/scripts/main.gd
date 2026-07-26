@@ -42,11 +42,13 @@ func _ready() -> void:
 	var uri_found := ""
 
 	for arg in all_args:
-		if arg.begins_with("luani://") or "luani://join" in arg:
-			uri_found = arg
+		var clean_arg: String = arg.strip_edges().trim_prefix("'").trim_suffix("'").trim_prefix("\"").trim_suffix("\"").strip_edges()
+		if clean_arg.begins_with("luani://") or "luani://join" in clean_arg:
+			uri_found = clean_arg
 			break
-		elif arg.begins_with("--uri="):
-			uri_found = arg.trim_prefix("--uri=")
+		elif clean_arg.begins_with("--uri="):
+			var sub_uri := clean_arg.trim_prefix("--uri=").strip_edges().trim_prefix("'").trim_suffix("'").trim_prefix("\"").trim_suffix("\"").strip_edges()
+			uri_found = sub_uri
 			break
 
 	if uri_found != "":
@@ -122,7 +124,7 @@ func _on_refresh_servers_pressed() -> void:
 func _fetch_active_servers() -> void:
 	status_label.text = "Fetching active servers from luani.fyi..."
 	var http := HTTPRequest.new()
-	add_child(http)
+	add_child.call_deferred(http)
 	
 	http.request_completed.connect(func(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:

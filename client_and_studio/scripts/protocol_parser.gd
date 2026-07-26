@@ -21,15 +21,16 @@ func _ready() -> void:
 	
 	var uri_found := ""
 	for arg in args:
-		if arg.begins_with("luani://"):
-			uri_found = arg
+		var clean_arg: String = arg.strip_edges().trim_prefix("'").trim_suffix("'").trim_prefix("\"").trim_suffix("\"").strip_edges()
+		if clean_arg.begins_with("luani://") or "luani://join" in clean_arg:
+			uri_found = clean_arg
 			break
-		elif arg.begins_with("--uri="):
-			uri_found = arg.trim_prefix("--uri=")
+		elif clean_arg.begins_with("--uri="):
+			var sub_uri := clean_arg.trim_prefix("--uri=").strip_edges().trim_prefix("'").trim_suffix("'").trim_prefix("\"").trim_suffix("\"").strip_edges()
+			uri_found = sub_uri
 			break
 			
 	if uri_found != "":
-		print("[Luani ProtocolParser] Found protocol URI in arguments: ", uri_found)
 		latest_session_data = parse_uri(uri_found)
 		if latest_session_data.get("valid", false):
 			print("[Luani ProtocolParser] Successfully parsed URI data: ", latest_session_data)
@@ -39,20 +40,23 @@ func _ready() -> void:
 
 ## Parses a luani:// URI into a Dictionary containing server details and auth token
 func parse_uri(uri_string: String) -> Dictionary:
+	var clean_uri := uri_string.strip_edges().trim_prefix("'").trim_suffix("'").trim_prefix("\"").trim_suffix("\"").strip_edges()
+	print("[Luani ProtocolParser] Cleaned launch URI: ", clean_uri)
+
 	var result := {
 		"valid": false,
 		"action": "",
 		"server_ip": "127.0.0.1",
 		"server_port": 7777,
 		"auth_token": "",
-		"raw_uri": uri_string
+		"raw_uri": clean_uri
 	}
 	
-	if not uri_string.begins_with("luani://"):
+	if not clean_uri.begins_with("luani://"):
 		return result
 
 	# Strip scheme prefix
-	var path_and_query := uri_string.trim_prefix("luani://")
+	var path_and_query := clean_uri.trim_prefix("luani://")
 	
 	# Separate action (e.g. 'join') and query parameters ('?server=IP:PORT&auth=TOKEN')
 	var action := ""
@@ -90,7 +94,7 @@ func parse_uri(uri_string: String) -> Dictionary:
 				elif key == "avatar":
 					result["avatar"] = value.uri_decode()
 					
-	# Validation rule: 'join' action requires valid IP and non-zero port
+	# Validation rule: 'join' action requires valid IP/domain and non-zero port
 	if action == "join" or action == "":
 		result["action"] = "join"
 		if result["server_ip"] != "" and result["server_port"] > 0:

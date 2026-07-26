@@ -30,9 +30,10 @@ def get_host_ip() -> str:
         return "127.0.0.1"
 
 class ServerDaemon:
-    def __init__(self, backend_url: str, public_host: str = "luani.fyi", public_port: Optional[int] = None, max_instances: int = 8, idle_timeout: float = 300.0):
+    def __init__(self, backend_url: str, public_host: str = "luani.fyi", public_port: Optional[int] = None, local_port: int = 7700, max_instances: int = 8, idle_timeout: float = 300.0):
         self.primary_backend = backend_url.rstrip('/')
         self.public_host = public_host or os.environ.get("PUBLIC_HOST", "luani.fyi")
+        self.local_port = local_port
         
         env_port = os.environ.get("PUBLIC_PORT")
         if public_port is not None:
@@ -124,11 +125,11 @@ class ServerDaemon:
             return
 
         request_id = task.get('requestId')
-        game_port = task.get('serverPort', 7777)
+        bind_port = self.local_port if self.local_port else task.get('serverPort', 7700)
         place_id = task.get('placeId', 'place_default_01')
-        effective_public_port = self.public_port if self.public_port is not None else game_port
+        effective_public_port = self.public_port if self.public_port is not None else bind_port
 
-        self.log(f"Spawning headless Godot server instance {request_id} for place '{place_id}' on host {self.host_ip}:{effective_public_port} (Local bind port: {game_port})...")
+        self.log(f"Spawning headless Godot server instance {request_id} for place '{place_id}' (Local bind port: {bind_port} -> Advertised public host: {self.host_ip}:{effective_public_port})...")
 
         cmd = [
             "godot",
@@ -136,7 +137,7 @@ class ServerDaemon:
             "--path", "../client_and_studio",
             "--",
             "--server",
-            f"--port={game_port}",
+            f"--port={bind_port}",
             f"--place_id={place_id}"
         ]
 
@@ -144,19 +145,19 @@ class ServerDaemon:
             proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.active_processes[request_id] = {
                 "process": proc,
-                "port": game_port,
+                "port": bind_port,
                 "public_port": effective_public_port,
                 "place_id": place_id,
                 "start_time": time.time(),
                 "last_activity": time.time()
             }
             self.update_server_status(request_id, "RUNNING", player_count=1, port=effective_public_port)
-            self.log(f"Server {request_id} launched with PID {proc.pid} on host {self.host_ip}:{effective_public_port}")
+            self.log(f"Server {request_id} launched with PID {proc.pid} (Local bind port: {bind_port} | Advertised public host: {self.host_ip}:{effective_public_port})")
         except FileNotFoundError:
             self.log(f"Godot executable not found on PATH. Registering mock runner for {request_id}.")
             self.active_processes[request_id] = {
                 "process": None,
-                "port": game_port,
+                "port": bind_port,
                 "public_port": effective_public_port,
                 "place_id": place_id,
                 "start_time": time.time(),
@@ -186,8 +187,8 @@ class ServerDaemon:
             self.update_server_status(req_id, "STOPPED", player_count=0, port=eff_port)
 
     def run(self):
-        port_msg = f":{self.public_port}" if self.public_port is not None else " (dynamic)"
-        self.log(f"Luani Server Daemon running. Configured Public Host: {self.host_ip}{port_msg}")
+        pub_port_str = f":{self.public_port}" if self.public_port is not None else ""
+        self.log(f"Local bind port: {self.local_port} | Advertised public host: {self.host_ip}{pub_port_str}")
         self.log(f"Connecting to backend endpoints: {self.fallback_urls}")
         while self.running:
             self.send_daemon_heartbeat()
@@ -202,23 +203,27 @@ class ServerDaemon:
 
 def main():
     default_host = os.environ.get("PUBLIC_HOST", "luani.fyi")
-    env_port_str = os.environ.get("PUBLIC_PORT")
-    default_port = int(env_port_str) if env_port_str and env_port_str.isdigit() else None
+    env_pub_port_str = os.environ.get("PUBLIC_PORT")
+    default_public_port = int(env_pub_port_str) if env_pub_port_str and env_pub_port_str.isdigit() else None
+    
+    env_local_port_str = os.environ.get("LOCAL_PORT")
+    default_local_port = int(env_local_port_str) if env_local_port_str and env_local_port_str.isdigit() else 7700
 
     parser = argparse.ArgumentParser(description="Luani Server Host Daemon")
     parser.add_argument("--backend", default="https://www.luani.fyi", help="Backend API URL (luani.fyi)")
     parser.add_argument("--public-host", default=default_host, help="Public hostname reported for client connections (default: luani.fyi)")
-    parser.add_argument("--public-port", type=int, default=default_port, help="Public port override for tunnels like playit.gg")
+    parser.add_argument("--public-port", type=int, default=default_public_port, help="Public port override for tunnels like playit.gg")
+    parser.add_argument("--local-port", "-lp", type=int, default=default_local_port, help="Local bind port passed to Godot executable (default: 7700)")
     parser.add_argument("--test", action="store_true", help="Run self-test dry-run")
     args = parser.parse_args()
 
     if args.test:
-        daemon_test = ServerDaemon(backend_url=args.backend, public_host=args.public_host, public_port=args.public_port)
-        port_str = f":{daemon_test.public_port}" if daemon_test.public_port else " (dynamic)"
-        print(f"[Luani Daemon Test] Self-test PASSED. Reported public host: {daemon_test.host_ip}{port_str}. HTTP SSL fallbacks configured.")
+        daemon_test = ServerDaemon(backend_url=args.backend, public_host=args.public_host, public_port=args.public_port, local_port=args.local_port)
+        pub_port_str = f":{daemon_test.public_port}" if daemon_test.public_port else ""
+        print(f"[Luani Daemon Test] Self-test PASSED. Local bind port: {daemon_test.local_port} | Advertised public host: {daemon_test.host_ip}{pub_port_str}. HTTP SSL fallbacks configured.")
         sys.exit(0)
 
-    daemon = ServerDaemon(backend_url=args.backend, public_host=args.public_host, public_port=args.public_port)
+    daemon = ServerDaemon(backend_url=args.backend, public_host=args.public_host, public_port=args.public_port, local_port=args.local_port)
     try:
         daemon.run()
     except KeyboardInterrupt:

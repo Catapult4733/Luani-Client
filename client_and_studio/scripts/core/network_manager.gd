@@ -1,7 +1,7 @@
 # client_and_studio/scripts/core/network_manager.gd
 extends Node
 
-## Singleton managing ENet Multiplayer Peers for Player Self-Hosting, Client Connections, and Loading/Error UI
+## Singleton managing ENet Multiplayer Peers for Player Self-Hosting, Client Connections, Domain Resolution, and Loading/Error UI
 
 signal server_started(port: int)
 signal client_connected_to_server(ip: String, port: int)
@@ -66,35 +66,49 @@ func host_server(port: int = 7777, max_clients: int = 16) -> Error:
 	spawn_player_avatar(1)
 	return OK
 
-## Connects client peer to a Luani server IP:Port with 12s timeout & loading screen
+## Connects client peer to a Luani server IP or Domain Name (playit.gg) with 12s timeout & loading screen
 func join_server(ip: String, port: int, auth_token: String = "") -> Error:
 	target_server_ip = ip
 	target_server_port = port
 	connection_elapsed = 0.0
 	connection_timer_active = true
 
-	# Show Loading Overlay UI
-	_show_loading_screen(ip, port)
+	var connect_host := ip.strip_edges()
+	var resolved_ip := connect_host
+
+	if not connect_host.is_valid_ip_address():
+		print("[Luani NetworkManager] Target host '%s' is a domain name. Resolving IPv4..." % connect_host)
+		var dns_result := IP.resolve_hostname(connect_host, IP.TYPE_IPV4)
+		if dns_result != "" and dns_result.is_valid_ip_address():
+			print("[Luani NetworkManager] Resolved domain '%s' -> IP: %s" % [connect_host, dns_result])
+			resolved_ip = dns_result
+		else:
+			print("[Luani NetworkManager] Warning: IP.resolve_hostname returned '%s' for domain '%s'. Passing hostname directly." % [dns_result, connect_host])
+
+	print("[Luani NetworkManager] Connecting to host: %s (resolved IP: %s) port: %d..." % [connect_host, resolved_ip, port])
+
+	# Show Loading Overlay UI (Safely deferred to prevent scene tree lock)
+	call_deferred("_show_loading_screen", ip, port)
 
 	active_peer = ENetMultiplayerPeer.new()
-	var err := active_peer.create_client(ip, port)
+	var err := active_peer.create_client(resolved_ip, port)
 	if err != OK:
-		push_error("[Luani NetworkManager] Failed to create client connection to %s:%d: %s" % [ip, port, str(err)])
+		push_error("[Luani NetworkManager] Failed to create client connection to %s (%s):%d: %s" % [ip, resolved_ip, port, str(err)])
 		_handle_connection_failure("[Connection Refused] Could not establish connection to " + ip + ":" + str(port) + ". Server may be offline or port blocked.")
 		return err
 
 	multiplayer.multiplayer_peer = active_peer
 	is_server = false
-	print("[Luani NetworkManager] Client connecting to %s:%d (12s timeout active)..." % [ip, port])
+	print("[Luani NetworkManager] Client connection initialized for %s (%s):%d (12s timeout active)..." % [ip, resolved_ip, port])
 	return OK
 
 func _show_loading_screen(ip: String, port: int) -> void:
 	if not loading_overlay_node or not is_instance_valid(loading_overlay_node):
 		loading_overlay_node = LOADING_OVERLAY_SCENE.instantiate() as CanvasLayer
-		get_tree().root.add_child(loading_overlay_node)
+		get_tree().root.add_child.call_deferred(loading_overlay_node)
 	
 	if loading_overlay_node.has_method("start_loading"):
-		loading_overlay_node.call("start_loading", ip, port)
+		loading_overlay_node.call_deferred("start_loading", ip, port)
 
 func _handle_connection_failure(reason: String) -> void:
 	connection_timer_active = false
@@ -103,10 +117,10 @@ func _handle_connection_failure(reason: String) -> void:
 
 	if not loading_overlay_node or not is_instance_valid(loading_overlay_node):
 		loading_overlay_node = LOADING_OVERLAY_SCENE.instantiate() as CanvasLayer
-		get_tree().root.add_child(loading_overlay_node)
+		get_tree().root.add_child.call_deferred(loading_overlay_node)
 
 	if loading_overlay_node.has_method("show_error"):
-		loading_overlay_node.call("show_error", reason)
+		loading_overlay_node.call_deferred("show_error", reason)
 
 func spawn_player_avatar(peer_id: int) -> Node:
 	if not players_container or not is_instance_valid(players_container):
@@ -123,11 +137,11 @@ func spawn_player_avatar(peer_id: int) -> Node:
 	var avatar := PLAYER_AVATAR_SCENE.instantiate() as CharacterBody3D
 	avatar.name = str(peer_id)
 	avatar.position = Vector3(randf_range(-2, 2), 2.0, randf_range(-2, 2))
-	players_container.add_child(avatar)
+	players_container.add_child.call_deferred(avatar)
 
 	if avatar.has_method("set_player_username"):
 		var uname: String = local_username if peer_id == multiplayer.get_unique_id() else "Player_" + str(peer_id)
-		avatar.call("set_player_username", uname)
+		avatar.call_deferred("set_player_username", uname)
 
 	print("[Luani NetworkManager] Spawned PlayerAvatar for peer ID: ", peer_id, " under container: ", players_container.get_path())
 	player_spawned.emit(peer_id, avatar)
