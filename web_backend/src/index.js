@@ -695,13 +695,14 @@ app.post('/api/servers/request', (req, res) => {
 
 // Daemon / Server Heartbeat & Status Signaling
 app.post('/api/daemon/heartbeat', (req, res) => {
-  const { requestId, playerCount, status, serverIp } = req.body;
+  const { requestId, playerCount, status, serverIp, serverPort } = req.body;
   const srv = activeServers.find(s => s.requestId === requestId);
   if (srv) {
     srv.lastHeartbeat = Date.now();
     if (playerCount !== undefined) srv.playerCount = parseInt(playerCount);
     if (status) srv.status = status;
     if (serverIp) srv.serverIp = getPublicServerIp(serverIp);
+    if (serverPort !== undefined && !isNaN(parseInt(serverPort))) srv.serverPort = parseInt(serverPort);
     return res.json({ success: true, server: { ...srv, serverIp: getPublicServerIp(srv.serverIp) } });
   }
   res.status(404).json({ success: false, error: 'Server instance not found.' });
@@ -713,14 +714,15 @@ app.get('/api/daemon/pending-tasks', (req, res) => {
 });
 
 app.post('/api/daemon/update-status', (req, res) => {
-  const { requestId, status, playerCount, serverIp } = req.body;
+  const { requestId, status, playerCount, serverIp, serverPort } = req.body;
   const srv = activeServers.find(s => s.requestId === requestId);
   if (srv) {
     srv.status = status;
     srv.lastHeartbeat = Date.now();
     if (playerCount !== undefined) srv.playerCount = parseInt(playerCount);
     if (serverIp) srv.serverIp = getPublicServerIp(serverIp);
-    console.log(`[Luani Web Backend] Daemon updated server ${requestId} status to: ${status} (Public Host: ${getPublicServerIp(srv.serverIp)})`);
+    if (serverPort !== undefined && !isNaN(parseInt(serverPort))) srv.serverPort = parseInt(serverPort);
+    console.log(`[Luani Web Backend] Daemon updated server ${requestId} status to: ${status} (Public Host: ${getPublicServerIp(srv.serverIp)}:${srv.serverPort})`);
     return res.json({ success: true });
   }
   res.status(404).json({ success: false, error: 'Server instance request not found.' });
