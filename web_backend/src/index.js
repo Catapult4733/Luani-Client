@@ -62,7 +62,7 @@ const places = [
     name: 'Luani Starter World',
     creator: 'Luani Team',
     description: 'Welcome to the Luani platform default sandbox world.',
-    maxPlayers: 16,
+    maxPlayers: 10,
     version: 1,
     format_version: 1,
     parts: [
@@ -92,7 +92,7 @@ const places = [
     name: 'Speedway Track',
     creator: 'Luani Team',
     description: 'High speed physics racing sandbox world.',
-    maxPlayers: 8,
+    maxPlayers: 10,
     version: 1,
     format_version: 1,
     parts: [
@@ -109,8 +109,23 @@ const places = [
   }
 ];
 
-// Active Game Servers List (STRICTLY live servers reported by daemon - purged dummy servers)
+// Active Game Servers List
 const activeServers = [];
+
+// Stale & Empty Server Cleanup Routine (runs every 10 seconds)
+setInterval(() => {
+  const now = Date.now();
+  for (let i = activeServers.length - 1; i >= 0; i--) {
+    const srv = activeServers[i];
+    const isStale = srv.lastHeartbeat && (now - srv.lastHeartbeat > 30000);
+    const isEmpty = srv.playerCount <= 0 && (now - new Date(srv.launchedAt).getTime() > 15000);
+
+    if (isEmpty || isStale) {
+      console.log(`[Luani Matchmaker] Purged inactive/empty server instance: ${srv.name} (${srv.requestId})`);
+      activeServers.splice(i, 1);
+    }
+  }
+}, 10000);
 
 // Storage for uploaded place PCK / JSON files
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -147,6 +162,7 @@ app.get('/api/health', (req, res) => {
     service: 'luani-web-backend', 
     domain: 'luani.fyi', 
     supabaseConfigured: !!supabase,
+    activeServersCount: activeServers.length,
     timestamp: new Date().toISOString() 
   });
 });
@@ -195,7 +211,7 @@ app.post('/api/auth/register', async (req, res) => {
         .from('users')
         .insert([{
           username: cleanName,
-          password_hash: hashedPassword, // MUST match the SQL table column name
+          password_hash: hashedPassword,
           bio: newUser.bio,
           avatar_url: ''
         }])
@@ -502,10 +518,10 @@ app.get('/api/search', (req, res) => {
   res.json({ success: true, query, places: matchedPlaces, users: matchedUsers });
 });
 
-// ACTIVE MULTIPLAYER SERVERS LIST (Purged dummy servers - returns live active servers)
+// ACTIVE MULTIPLAYER SERVERS LIST (Returns non-empty, live active servers)
 app.get('/api/servers/active', (req, res) => {
   const placeId = req.query.placeId;
-  let running = activeServers.filter(s => s.status === 'RUNNING' || s.status === 'SPAWNING');
+  let running = activeServers.filter(s => (s.status === 'RUNNING' || s.status === 'SPAWNING') && s.playerCount > 0);
   if (placeId) {
     running = running.filter(s => s.placeId === placeId);
   }
@@ -532,7 +548,7 @@ app.get('/api/places/:id', (req, res) => {
       name: `Luani Dynamic World (${placeId})`,
       creator: 'Luani Team',
       description: 'Dynamic sandbox place instance.',
-      maxPlayers: 16,
+      maxPlayers: 10,
       format_version: 1,
       parts: [
         {
@@ -568,7 +584,7 @@ app.post('/api/places/publish', upload.single('placeFile'), (req, res) => {
     name: name || 'Untitled Place',
     creator: creator || 'Anonymous Creator',
     description: description || '',
-    maxPlayers: parseInt(maxPlayers) || 12,
+    maxPlayers: parseInt(maxPlayers) || 10,
     filePath: req.file ? req.file.path : null,
     createdAt: new Date().toISOString(),
     format_version: 1,
@@ -585,66 +601,107 @@ app.post('/api/places/publish', upload.single('placeFile'), (req, res) => {
   });
 });
 
-// Request Server Spin-up (Ad-Gated Managed Server flow)
+// MATCHMAKING ENGINE: Request Server Join or Spin-up
 app.post('/api/servers/request', (req, res) => {
-  const { placeId, userId, adWatchToken } = req.body;
+  const { placeId, serverType, username, avatar } = req.body;
 
   if (!placeId) {
     return res.status(400).json({ success: false, error: 'Missing placeId parameter.' });
   }
 
-  if (!adWatchToken) {
-    return res.status(403).json({
-      success: false,
-      error: 'Ad watch verification required for Luani Managed Server instance.',
-      adRequired: true
+  const targetType = serverType === 'hosted' ? 'hosted' : 'official';
+  const playerUsername = (username || 'Player').trim();
+  const playerAvatar = avatar || '';
+
+  // 1. Check for existing active server with capacity (current_players < max_players)
+  const existingServer = activeServers.find(s => 
+    s.placeId === placeId && 
+    s.serverType === targetType && 
+    (s.status === 'RUNNING' || s.status === 'SPAWNING') && 
+    s.playerCount < s.maxPlayers
+  );
+
+  if (existingServer) {
+    existingServer.playerCount += 1;
+    existingServer.lastHeartbeat = Date.now();
+    console.log(`[Luani Matchmaker] Reusing open ${targetType} server instance: ${existingServer.name} (${existingServer.playerCount}/${existingServer.maxPlayers} players)`);
+
+    const joinUri = `luani://join?server=${existingServer.serverIp}:${existingServer.serverPort}&auth=${existingServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
+
+    return res.json({
+      success: true,
+      reused: true,
+      requestId: existingServer.requestId,
+      server: existingServer,
+      joinUri
     });
   }
 
+  // 2. Spawn new server instance if no open server exists or all are full
   const placeObj = places.find(p => p.id === placeId);
   const placeName = placeObj ? placeObj.name : placeId;
+  const isOfficial = targetType === 'official';
+  const serverName = isOfficial ? `${playerUsername}@server${Date.now()}q` : `${playerUsername}'s Hosted Server`;
 
   const requestId = `req_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
   const port = 7700 + (activeServers.length % 100);
 
   const newServer = {
     requestId,
-    name: `${placeName} Instance #${activeServers.length + 1}`,
+    name: serverName,
     placeId,
+    serverType: targetType,
     serverIp: '127.0.0.1',
     serverPort: port,
     playerCount: 1,
-    maxPlayers: 16,
+    maxPlayers: 10,
     ping: 15,
-    isUserHosted: false,
+    isUserHosted: !isOfficial,
     authToken: `tok_${Math.random().toString(36).substring(2, 15)}`,
     status: 'SPAWNING',
+    lastHeartbeat: Date.now(),
     launchedAt: new Date().toISOString()
   };
 
   activeServers.push(newServer);
+  console.log(`[Luani Matchmaker] Created new ${targetType} server instance: ${newServer.name} on port ${newServer.serverPort}`);
 
-  const joinUri = `luani://join?server=${newServer.serverIp}:${newServer.serverPort}&auth=${newServer.authToken}`;
+  const joinUri = `luani://join?server=${newServer.serverIp}:${newServer.serverPort}&auth=${newServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
 
   res.json({
     success: true,
+    reused: false,
     requestId,
     server: newServer,
     joinUri
   });
 });
 
-// Daemon Tunnel Signaling
+// Daemon / Server Heartbeat & Status Signaling
+app.post('/api/daemon/heartbeat', (req, res) => {
+  const { requestId, playerCount, status } = req.body;
+  const srv = activeServers.find(s => s.requestId === requestId);
+  if (srv) {
+    srv.lastHeartbeat = Date.now();
+    if (playerCount !== undefined) srv.playerCount = parseInt(playerCount);
+    if (status) srv.status = status;
+    return res.json({ success: true, server: srv });
+  }
+  res.status(404).json({ success: false, error: 'Server instance not found.' });
+});
+
 app.get('/api/daemon/pending-tasks', (req, res) => {
   const spawning = activeServers.filter(s => s.status === 'SPAWNING');
   res.json({ pendingCount: spawning.length, tasks: spawning });
 });
 
 app.post('/api/daemon/update-status', (req, res) => {
-  const { requestId, status } = req.body;
+  const { requestId, status, playerCount } = req.body;
   const srv = activeServers.find(s => s.requestId === requestId);
   if (srv) {
     srv.status = status;
+    srv.lastHeartbeat = Date.now();
+    if (playerCount !== undefined) srv.playerCount = parseInt(playerCount);
     console.log(`[Luani Web Backend] Daemon updated server ${requestId} status to: ${status}`);
     return res.json({ success: true });
   }

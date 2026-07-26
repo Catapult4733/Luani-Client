@@ -1,7 +1,7 @@
 # client_and_studio/scenes/player/player_avatar.gd
 extends CharacterBody3D
 
-## Multiplayer 3D Humanoid Player Avatar with WASD, Jump, Mouse Look, and ENet Sync
+## Multiplayer 3D Humanoid Player Avatar with WASD, Jump, Mouse Look, and Username Label
 
 @export var move_speed: float = 8.0
 @export var jump_velocity: float = 6.5
@@ -13,6 +13,7 @@ extends CharacterBody3D
 @onready var username_label: Label3D = %UsernameLabel
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
+var player_username: String = "Player"
 
 func _enter_tree() -> void:
 	# Set multiplayer authority based on node name (peer id)
@@ -24,11 +25,19 @@ func _ready() -> void:
 	var is_local := is_multiplayer_authority()
 	camera.current = is_local
 
-	if is_local:
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-		username_label.text = "You"
-	else:
-		username_label.text = "Player_" + str(name)
+	var net_mgr := get_node_or_null("/root/NetworkManager")
+	if is_local and net_mgr and net_mgr.local_username != "":
+		player_username = net_mgr.local_username
+	elif player_username == "Player":
+		player_username = "Player_" + str(name)
+
+	username_label.text = player_username
+
+func set_player_username(uname: String) -> void:
+	if uname != "":
+		player_username = uname
+		if username_label:
+			username_label.text = uname
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():

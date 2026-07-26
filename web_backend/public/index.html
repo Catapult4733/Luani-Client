@@ -101,7 +101,7 @@
       <section id="discoverGrid" class="section">
         <div class="section-header">
           <h2>Featured Places</h2>
-          <p>Click any place to view details, join active servers, or spawn a self-hosted instance.</p>
+          <p>Click any place to view details and join official or hosted multiplayer servers.</p>
         </div>
 
         <div id="placesGrid" class="places-grid">
@@ -110,7 +110,7 @@
       </section>
     </div>
 
-    <!-- 2. GAME DETAILS VIEW (Top Left Thumbnail, Top Right Details/Actions, Bottom Servers) -->
+    <!-- 2. GAME DETAILS VIEW -->
     <div id="gameDetailsView" class="hidden">
       <button id="btnBackToDiscover" class="btn-back">← Back to Discover</button>
       
@@ -126,8 +126,7 @@
           </div>
           
           <div class="game-action-buttons">
-            <button id="btnDetailJoinServer" class="btn btn-primary btn-lg">▶ Join Server</button>
-            <button id="btnDetailSelfHost" class="btn btn-secondary btn-lg">⚡ Self Host (Spawn Instance)</button>
+            <button id="btnDetailUnifiedJoin" class="btn btn-primary btn-lg">▶ Join Game</button>
           </div>
         </div>
       </div>
@@ -210,6 +209,30 @@
     </div>
   </footer>
 
+  <!-- UNIFIED SERVER TYPE SELECTION MODAL -->
+  <div id="serverTypeModal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <h3>Select Server Mode</h3>
+        <button id="serverTypeModalClose" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body server-options-grid">
+        <div id="btnOptionOfficial" class="server-option-card">
+          <div class="option-icon">🌐</div>
+          <div class="option-title">Join an Official Server</div>
+          <div class="option-desc">Connects to managed servers (username@server...q). Supported by a 5-second sponsor ad.</div>
+          <span class="btn btn-primary btn-sm" style="margin-top: 1rem;">Select Official</span>
+        </div>
+        <div id="btnOptionHosted" class="server-option-card">
+          <div class="option-icon">⚡</div>
+          <div class="option-title">Join a Hosted Server</div>
+          <div class="option-desc">Spawns or joins a player-hosted instance immediately with NO advertisements.</div>
+          <span class="btn btn-secondary btn-sm" style="margin-top: 1rem;">Select Hosted</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- AUTH MODAL -->
   <div id="authModal" class="modal-overlay hidden">
     <div class="modal-card">
@@ -253,26 +276,26 @@
     </div>
   </div>
 
-  <!-- AD WATCH VERIFICATION MODAL FOR SELF-HOSTING -->
+  <!-- OFFICIAL SERVER SPONSOR AD MODAL -->
   <div id="adModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Spawning Luani Self-Hosted Instance</h3>
+        <h3>Official Server Matchmaking</h3>
         <span class="modal-badge">Sponsored Server Host</span>
       </div>
       <div class="modal-body">
-        <p>Watching sponsor ad before initializing server daemon...</p>
+        <p>Connecting to official server instance...</p>
         <div class="ad-banner">
           <div class="ad-placeholder">
             <span class="ad-icon">🎬</span>
             <div class="ad-title">Sponsor Ad Demonstration</div>
-            <div class="ad-desc">Luani provides free player-hosted and ad-supported managed servers.</div>
+            <div class="ad-desc">Luani official servers are supported by sponsor ads.</div>
           </div>
         </div>
         <div class="progress-bar-container">
           <div id="adProgressBar" class="progress-bar-fill"></div>
         </div>
-        <div id="adCountdownText" class="countdown-text">Verification in progress (5s)...</div>
+        <div id="adCountdownText" class="countdown-text">Sponsored Ad Verification (5s)...</div>
         <button id="btnSkipAd" class="btn btn-primary btn-block hidden" style="margin-top: 1rem;">▶ Continue to Game</button>
       </div>
     </div>

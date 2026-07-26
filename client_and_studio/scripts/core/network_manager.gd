@@ -13,6 +13,8 @@ const PLAYER_AVATAR_SCENE := preload("res://scenes/player/player_avatar.tscn")
 var active_peer: ENetMultiplayerPeer
 var is_server: bool = false
 var players_container: Node
+var local_username: String = "Player"
+var local_avatar: String = ""
 
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
@@ -20,6 +22,12 @@ func _ready() -> void:
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
+
+	var parser := get_node_or_null("/root/ProtocolParser")
+	if parser and parser.latest_session_data.get("username", "") != "":
+		local_username = parser.latest_session_data.get("username")
+		local_avatar = parser.latest_session_data.get("avatar", "")
+		print("[Luani NetworkManager] Initialized local player identity: ", local_username)
 
 func setup_players_container(container: Node) -> void:
 	players_container = container
@@ -72,6 +80,10 @@ func spawn_player_avatar(peer_id: int) -> Node:
 	avatar.name = str(peer_id)
 	avatar.position = Vector3(randf_range(-2, 2), 2.0, randf_range(-2, 2))
 	players_container.add_child(avatar)
+
+	if avatar.has_method("set_player_username"):
+		var uname: String = local_username if peer_id == multiplayer.get_unique_id() else "Player_" + str(peer_id)
+		avatar.call("set_player_username", uname)
 
 	print("[Luani NetworkManager] Spawned PlayerAvatar for peer ID: ", peer_id, " under container: ", players_container.get_path())
 	player_spawned.emit(peer_id, avatar)

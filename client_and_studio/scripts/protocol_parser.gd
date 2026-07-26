@@ -85,6 +85,10 @@ func parse_uri(uri_string: String) -> Dictionary:
 						result["server_ip"] = value
 				elif key == "auth" or key == "token":
 					result["auth_token"] = value
+				elif key == "username" or key == "user":
+					result["username"] = value.uri_decode()
+				elif key == "avatar":
+					result["avatar"] = value.uri_decode()
 					
 	# Validation rule: 'join' action requires valid IP and non-zero port
 	if action == "join" or action == "":

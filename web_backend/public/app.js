@@ -17,9 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const detailGameTitle = document.getElementById('detailGameTitle');
   const detailGameCreatorLink = document.getElementById('detailGameCreatorLink');
   const detailGameDescription = document.getElementById('detailGameDescription');
-  const btnDetailJoinServer = document.getElementById('btnDetailJoinServer');
-  const btnDetailSelfHost = document.getElementById('btnDetailSelfHost');
+  const btnDetailUnifiedJoin = document.getElementById('btnDetailUnifiedJoin');
   const detailActiveServersList = document.getElementById('detailActiveServersList');
+
+  // Server Type Selection Modal
+  const serverTypeModal = document.getElementById('serverTypeModal');
+  const serverTypeModalClose = document.getElementById('serverTypeModalClose');
+  const btnOptionOfficial = document.getElementById('btnOptionOfficial');
+  const btnOptionHosted = document.getElementById('btnOptionHosted');
 
   // User Profile Elements
   const profileAvatarLarge = document.getElementById('profileAvatarLarge');
@@ -106,8 +111,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnLaunchClient) {
     btnLaunchClient.addEventListener('click', () => {
-      window.location.href = 'luani://join?server=127.0.0.1:7777';
+      if (!requireAuthGuard()) return;
+      window.location.href = `luani://join?server=127.0.0.1:7777&username=${encodeURIComponent(currentUser.username)}`;
     });
+  }
+
+  // --- AUTH GUARD ENFORCEMENT ---
+  function requireAuthGuard() {
+    if (!currentUser) {
+      authErrorMsg.textContent = 'Log in or sign up to play on Luani.';
+      authErrorMsg.classList.remove('hidden');
+      openAuthModal(false);
+      return false;
+    }
+    return true;
   }
 
   // --- AUTH SYSTEM ---
@@ -162,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openAuthModal(registerMode) {
     isRegisterMode = registerMode;
-    authErrorMsg.classList.add('hidden');
     authUsername.value = '';
     authPassword.value = '';
 
@@ -378,8 +394,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const joinBtn = item.querySelector('.btn-join-friend');
       if (joinBtn) {
         joinBtn.addEventListener('click', () => {
-          // Direct friend join shows 5-second sponsor ad modal before launch
-          const uri = `luani://join?server=${joinBtn.getAttribute('data-ip')}:${joinBtn.getAttribute('data-port')}`;
+          if (!requireAuthGuard()) return;
+          const uri = `luani://join?server=${joinBtn.getAttribute('data-ip')}:${joinBtn.getAttribute('data-port')}&username=${encodeURIComponent(currentUser.username)}`;
           triggerAdAndJoin(uri);
         });
       }
@@ -402,18 +418,36 @@ document.addEventListener('DOMContentLoaded', () => {
       openUserProfile(place.creator);
     };
 
-    // 1. Join Server button (Official / Laptop servers): Displays 5-Second Sponsor Ad Modal before launching luani://
-    btnDetailJoinServer.onclick = () => {
-      triggerAdAndJoin(`luani://join?server=127.0.0.1:7777`);
-    };
-
-    // 2. Self Host button: Spawns player-hosted server & launches luani:// IMMEDIATELY with NO ad modal
-    btnDetailSelfHost.onclick = async () => {
-      await requestServerSpinUpDirect(place.id);
+    // Unified Join Button opens Server Type selection modal
+    btnDetailUnifiedJoin.onclick = () => {
+      if (!requireAuthGuard()) return;
+      openServerTypeModal(place);
     };
 
     fetchActiveServersForPlace(place.id);
     showView('details');
+  }
+
+  // --- UNIFIED SERVER SELECTION MODAL ---
+
+  function openServerTypeModal(place) {
+    serverTypeModal.classList.remove('hidden');
+
+    // 1. Join an Official Server: Shows 5-Second Sponsor Ad Modal while requesting matchmaking
+    btnOptionOfficial.onclick = async () => {
+      serverTypeModal.classList.add('hidden');
+      triggerOfficialAdFlow(place.id);
+    };
+
+    // 2. Join a Hosted Server: Matchmaking request & luani:// launch IMMEDIATELY with NO ad modal
+    btnOptionHosted.onclick = async () => {
+      serverTypeModal.classList.add('hidden');
+      await requestMatchmakingAndLaunch(place.id, 'hosted', false);
+    };
+  }
+
+  if (serverTypeModalClose) {
+    serverTypeModalClose.addEventListener('click', () => serverTypeModal.classList.add('hidden'));
   }
 
   async function fetchActiveServersForPlace(placeId) {
@@ -425,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success && Array.isArray(data.servers)) {
         renderActiveServers(data.servers);
       } else {
-        detailActiveServersList.innerHTML = '<div style="color:var(--text-muted);">No active server instances currently running. Click "Self Host" to spawn one!</div>';
+        detailActiveServersList.innerHTML = '<div style="color:var(--text-muted);">No active server instances currently running. Click "Join Game" to select a server mode!</div>';
       }
     } catch (err) {
       detailActiveServersList.innerHTML = '<div style="color:var(--text-muted);">Could not load server list.</div>';
@@ -435,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderActiveServers(servers) {
     detailActiveServersList.innerHTML = '';
     if (servers.length === 0) {
-      detailActiveServersList.innerHTML = '<div style="color:var(--text-muted);">No active servers running. Click "Self Host" to spawn one!</div>';
+      detailActiveServersList.innerHTML = '<div style="color:var(--text-muted);">No active servers running. Click "Join Game" to select a server mode!</div>';
       return;
     }
 
@@ -445,15 +479,19 @@ document.addEventListener('DOMContentLoaded', () => {
       row.innerHTML = `
         <div>
           <strong>${escapeHtml(srv.name || 'Managed Instance')}</strong>
-          <div style="font-size:0.8rem; color:var(--text-muted);">${srv.serverIp}:${srv.serverPort} • ${srv.playerCount}/${srv.maxPlayers} Players</div>
+          <div style="font-size:0.8rem; color:var(--text-muted);">${srv.serverIp}:${srv.serverPort} • ${srv.playerCount}/${srv.maxPlayers} Players (${srv.serverType || 'official'})</div>
         </div>
         <button class="btn btn-sm btn-primary btn-join-srv">Join</button>
       `;
 
       row.querySelector('.btn-join-srv').addEventListener('click', () => {
-        // Joining official / active server displays 5-Second Sponsor Ad Modal
-        const uri = `luani://join?server=${srv.serverIp}:${srv.serverPort}&auth=${srv.authToken || ''}`;
-        triggerAdAndJoin(uri);
+        if (!requireAuthGuard()) return;
+        const uri = `luani://join?server=${srv.serverIp}:${srv.serverPort}&auth=${srv.authToken || ''}&username=${encodeURIComponent(currentUser.username)}`;
+        if (srv.serverType === 'official' || !srv.serverType) {
+          triggerAdAndJoin(uri);
+        } else {
+          window.location.href = uri;
+        }
       });
 
       detailActiveServersList.appendChild(row);
@@ -499,7 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
           btnSendFriendReq.classList.remove('hidden');
 
           btnSendFriendReq.onclick = async () => {
-            if (!currentUser) return openAuthModal(false);
+            if (!requireAuthGuard()) return;
             await fetch('/api/friends/request', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -632,74 +670,135 @@ document.addEventListener('DOMContentLoaded', () => {
     card.innerHTML = `
       <div class="card-banner">${icon}</div>
       <div class="card-title">${escapeHtml(place.name)}</div>
-      <div class="card-meta">By ${escapeHtml(place.creator || 'Luani Creator')} • Max Players: ${place.maxPlayers || 16}</div>
+      <div class="card-meta">By ${escapeHtml(place.creator || 'Luani Creator')} • Max Players: ${place.maxPlayers || 10}</div>
       <div class="card-desc">${escapeHtml(place.description || 'No description provided.')}</div>
-      <button class="btn btn-primary btn-play">View & Play</button>
+      <button class="btn btn-primary btn-play">Join Game</button>
     `;
     
+    card.querySelector('.btn-play').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!requireAuthGuard()) return;
+      openGameDetails(place);
+      openServerTypeModal(place);
+    });
+
     card.addEventListener('click', () => openGameDetails(place));
     return card;
   }
 
-  // --- AD MODAL & SERVER LAUNCH LOGIC ---
+  // --- MATCHMAKING & AD FLOW ---
 
-  // Displays 5-Second Sponsor Ad Modal before triggering target luani:// URI
-  function triggerAdAndJoin(joinUri) {
+  // Official Server Ad Flow: 5-Second Sponsor Ad Modal while requesting matchmaking
+  async function triggerOfficialAdFlow(placeId) {
     adModal.classList.remove('hidden');
     if (btnSkipAd) btnSkipAd.classList.remove('hidden');
     adProgressBar.style.width = '0%';
-    
+
+    let readyJoinUri = null;
+    let timerFinished = false;
+
+    // Start backend matchmaking request concurrently
+    requestMatchmakingAndLaunch(placeId, 'official', true).then(uri => {
+      readyJoinUri = uri;
+      if (timerFinished && readyJoinUri) {
+        adModal.classList.add('hidden');
+        window.location.href = readyJoinUri;
+      }
+    });
+
     let duration = 5;
     let elapsed = 0;
-    
+
     const finishJoin = () => {
       clearInterval(interval);
-      adModal.classList.add('hidden');
-      window.location.href = joinUri;
+      timerFinished = true;
+      if (readyJoinUri) {
+        adModal.classList.add('hidden');
+        window.location.href = readyJoinUri;
+      } else {
+        adCountdownText.textContent = 'Connecting to official server...';
+      }
     };
 
     if (btnSkipAd) {
       btnSkipAd.onclick = finishJoin;
     }
-    
+
     const interval = setInterval(() => {
       elapsed += 0.1;
       const progress = (elapsed / duration) * 100;
       adProgressBar.style.width = `${Math.min(progress, 100)}%`;
-      
+
       const remaining = Math.ceil(duration - elapsed);
       adCountdownText.textContent = `Sponsored Ad Verification (${remaining}s)...`;
-      
+
       if (elapsed >= duration) {
         finishJoin();
       }
     }, 100);
   }
 
-  // Spawns player-hosted server & launches luani:// IMMEDIATELY with NO ad modal
-  async function requestServerSpinUpDirect(placeId) {
+  // Generic ad trigger helper
+  function triggerAdAndJoin(joinUri) {
+    adModal.classList.remove('hidden');
+    if (btnSkipAd) btnSkipAd.classList.remove('hidden');
+    adProgressBar.style.width = '0%';
+
+    let duration = 5;
+    let elapsed = 0;
+
+    const finishJoin = () => {
+      clearInterval(interval);
+      adModal.classList.add('hidden');
+      window.location.href = joinUri;
+    };
+
+    if (btnSkipAd) btnSkipAd.onclick = finishJoin;
+
+    const interval = setInterval(() => {
+      elapsed += 0.1;
+      const progress = (elapsed / duration) * 100;
+      adProgressBar.style.width = `${Math.min(progress, 100)}%`;
+
+      const remaining = Math.ceil(duration - elapsed);
+      adCountdownText.textContent = `Sponsored Ad Verification (${remaining}s)...`;
+
+      if (elapsed >= duration) {
+        finishJoin();
+      }
+    }, 100);
+  }
+
+  // Core Matchmaking Backend Request (`type: official` vs `type: hosted`)
+  async function requestMatchmakingAndLaunch(placeId, serverType, deferLaunch = false) {
     try {
       const response = await fetch('/api/servers/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           placeId: placeId,
-          userId: currentUser ? currentUser.id : 'guest_user',
-          adWatchToken: `direct_self_host_${Date.now()}`
+          serverType: serverType,
+          username: currentUser ? currentUser.username : 'Player',
+          adWatchToken: `token_${Date.now()}`
         })
       });
-      
+
       const data = await response.json();
       if (data.success && data.joinUri) {
-        // Direct launch with NO ad modal
-        window.location.href = data.joinUri;
+        if (!deferLaunch) {
+          window.location.href = data.joinUri;
+        }
+        return data.joinUri;
       } else {
-        alert('Server spin-up failed: ' + (data.error || 'Unknown error'));
+        alert('Server connection failed: ' + (data.error || 'Unknown error'));
+        adModal.classList.add('hidden');
       }
     } catch (err) {
-      console.error('Error requesting server launch:', err);
-      alert('Network error connecting to luani.fyi backend.');
+      console.error('Matchmaking error:', err);
+      alert('Network error connecting to luani.fyi matchmaker.');
+      adModal.classList.add('hidden');
     }
+    return null;
   }
 
   function escapeHtml(str) {
