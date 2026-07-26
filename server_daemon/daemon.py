@@ -3,7 +3,7 @@
 Luani Server Host Daemon (Ubuntu Laptop Host)
 Polls Pi 5 backend API, spawns dynamic headless Godot server instances,
 reports public/LAN host domain addresses and dynamic public ports (playit.gg support),
-and monitors process lifecycles with idle timeout auto-shutdown.
+and monitors process lifecycles with empty server idle timeout auto-shutdown.
 """
 
 import os
@@ -30,10 +30,11 @@ def get_host_ip() -> str:
         return "127.0.0.1"
 
 class ServerDaemon:
-    def __init__(self, backend_url: str, public_host: str = "luani.fyi", public_port: Optional[int] = None, local_port: int = 7700, max_instances: int = 8, idle_timeout: float = 300.0):
+    def __init__(self, backend_url: str, public_host: str = "luani.fyi", public_port: Optional[int] = None, local_port: int = 7700, idle_timeout: float = 0.0, max_instances: int = 8):
         self.primary_backend = backend_url.rstrip('/')
         self.public_host = public_host or os.environ.get("PUBLIC_HOST", "luani.fyi")
         self.local_port = local_port
+        self.idle_timeout = idle_timeout
         
         env_port = os.environ.get("PUBLIC_PORT")
         if public_port is not None:
@@ -57,7 +58,6 @@ class ServerDaemon:
             "http://127.0.0.1:3000"
         ]
         self.max_instances = max_instances
-        self.idle_timeout = idle_timeout
         self.active_processes: Dict[str, dict] = {}
         self.running = True
         self.ssl_context = ssl._create_unverified_context()
@@ -93,6 +93,22 @@ class ServerDaemon:
         }
         payload = json.dumps(payload_dict).encode('utf-8')
         self._http_request("/api/daemon/heartbeat", data=payload)
+
+    def sync_active_server_counts(self):
+        """Syncs active player counts for running processes from backend active servers API."""
+        success, data = self._http_request("/api/servers/active")
+        if success and isinstance(data, dict):
+            servers = data.get("servers", [])
+            server_map = {s.get("requestId"): s.get("playerCount", 0) for s in servers if isinstance(s, dict)}
+            now = time.time()
+            for req_id, info in self.active_processes.items():
+                if req_id in server_map:
+                    cnt = server_map[req_id]
+                    info["player_count"] = cnt
+                    if cnt > 0:
+                        info["empty_since"] = None
+                    elif info.get("empty_since") is None:
+                        info["empty_since"] = now
 
     def poll_tasks(self) -> list:
         success, data = self._http_request("/api/daemon/pending-tasks")
@@ -138,7 +154,8 @@ class ServerDaemon:
             "--",
             "--server",
             f"--port={bind_port}",
-            f"--place_id={place_id}"
+            f"--place_id={place_id}",
+            f"--request-id={request_id}"
         ]
 
         try:
@@ -149,7 +166,8 @@ class ServerDaemon:
                 "public_port": effective_public_port,
                 "place_id": place_id,
                 "start_time": time.time(),
-                "last_activity": time.time()
+                "player_count": 1,
+                "empty_since": None
             }
             self.update_server_status(request_id, "RUNNING", player_count=1, port=effective_public_port)
             self.log(f"Server {request_id} launched with PID {proc.pid} (Local bind port: {bind_port} | Advertised public host: {self.host_ip}:{effective_public_port})")
@@ -161,7 +179,8 @@ class ServerDaemon:
                 "public_port": effective_public_port,
                 "place_id": place_id,
                 "start_time": time.time(),
-                "last_activity": time.time()
+                "player_count": 1,
+                "empty_since": None
             }
             self.update_server_status(request_id, "RUNNING_MOCK", player_count=1, port=effective_public_port)
 
@@ -172,15 +191,20 @@ class ServerDaemon:
         for req_id, info in self.active_processes.items():
             proc = info.get("process")
             eff_port = info.get("public_port", info.get("port"))
+            player_cnt = info.get("player_count", 0)
+
             if isinstance(proc, subprocess.Popen):
                 ret = proc.poll()
                 if ret is not None:
                     self.log(f"Server process {req_id} exited with code {ret}.")
                     stopped.append((req_id, eff_port))
-                elif (now - info.get("start_time", now)) > self.idle_timeout:
-                    self.log(f"Server process {req_id} reached idle timeout limit ({self.idle_timeout}s). Terminating...")
-                    proc.terminate()
-                    stopped.append((req_id, eff_port))
+                elif self.idle_timeout > 0 and player_cnt == 0:
+                    empty_since = info.get("empty_since") or now
+                    empty_duration = now - empty_since
+                    if empty_duration >= self.idle_timeout:
+                        self.log(f"Server process {req_id} has been empty for {empty_duration:.1f}s (exceeds idle timeout {self.idle_timeout}s). Terminating...")
+                        proc.terminate()
+                        stopped.append((req_id, eff_port))
 
         for req_id, eff_port in stopped:
             del self.active_processes[req_id]
@@ -188,10 +212,12 @@ class ServerDaemon:
 
     def run(self):
         pub_port_str = f":{self.public_port}" if self.public_port is not None else ""
-        self.log(f"Local bind port: {self.local_port} | Advertised public host: {self.host_ip}{pub_port_str}")
+        timeout_msg = f"{self.idle_timeout}s (empty servers only)" if self.idle_timeout > 0 else "DISABLED (0s)"
+        self.log(f"Local bind port: {self.local_port} | Advertised public host: {self.host_ip}{pub_port_str} | Idle Timeout: {timeout_msg}")
         self.log(f"Connecting to backend endpoints: {self.fallback_urls}")
         while self.running:
             self.send_daemon_heartbeat()
+            self.sync_active_server_counts()
             tasks = self.poll_tasks()
             for task in tasks:
                 req_id = task.get('requestId')
@@ -209,21 +235,26 @@ def main():
     env_local_port_str = os.environ.get("LOCAL_PORT")
     default_local_port = int(env_local_port_str) if env_local_port_str and env_local_port_str.isdigit() else 7700
 
+    env_timeout_str = os.environ.get("IDLE_TIMEOUT")
+    default_idle_timeout = float(env_timeout_str) if env_timeout_str else 0.0
+
     parser = argparse.ArgumentParser(description="Luani Server Host Daemon")
     parser.add_argument("--backend", default="https://www.luani.fyi", help="Backend API URL (luani.fyi)")
     parser.add_argument("--public-host", default=default_host, help="Public hostname reported for client connections (default: luani.fyi)")
     parser.add_argument("--public-port", type=int, default=default_public_port, help="Public port override for tunnels like playit.gg")
     parser.add_argument("--local-port", "-lp", type=int, default=default_local_port, help="Local bind port passed to Godot executable (default: 7700)")
+    parser.add_argument("--idle-timeout", "-it", type=float, default=default_idle_timeout, help="Empty server idle timeout in seconds (default: 0 = disabled)")
     parser.add_argument("--test", action="store_true", help="Run self-test dry-run")
     args = parser.parse_args()
 
     if args.test:
-        daemon_test = ServerDaemon(backend_url=args.backend, public_host=args.public_host, public_port=args.public_port, local_port=args.local_port)
+        daemon_test = ServerDaemon(backend_url=args.backend, public_host=args.public_host, public_port=args.public_port, local_port=args.local_port, idle_timeout=args.idle_timeout)
         pub_port_str = f":{daemon_test.public_port}" if daemon_test.public_port else ""
-        print(f"[Luani Daemon Test] Self-test PASSED. Local bind port: {daemon_test.local_port} | Advertised public host: {daemon_test.host_ip}{pub_port_str}. HTTP SSL fallbacks configured.")
+        timeout_msg = f"{daemon_test.idle_timeout}s (empty servers only)" if daemon_test.idle_timeout > 0 else "DISABLED (0s)"
+        print(f"[Luani Daemon Test] Self-test PASSED. Local bind port: {daemon_test.local_port} | Advertised public host: {daemon_test.host_ip}{pub_port_str} | Idle Timeout: {timeout_msg}. HTTP SSL fallbacks configured.")
         sys.exit(0)
 
-    daemon = ServerDaemon(backend_url=args.backend, public_host=args.public_host, public_port=args.public_port, local_port=args.local_port)
+    daemon = ServerDaemon(backend_url=args.backend, public_host=args.public_host, public_port=args.public_port, local_port=args.local_port, idle_timeout=args.idle_timeout)
     try:
         daemon.run()
     except KeyboardInterrupt:

@@ -24,6 +24,9 @@ var connection_timer_active: bool = false
 var connection_elapsed: float = 0.0
 const CONNECTION_TIMEOUT_SECONDS: float = 12.0
 
+var backend_status_url: String = "https://www.luani.fyi/api/daemon/update-status"
+var server_request_id: String = ""
+
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
@@ -36,6 +39,18 @@ func _ready() -> void:
 		local_username = parser.latest_session_data.get("username")
 		local_avatar = parser.latest_session_data.get("avatar", "")
 		print("[Luani NetworkManager] Initialized local player identity: ", local_username)
+
+	# Extract --request-id= if passed via command line
+	var all_args := OS.get_cmdline_args() + OS.get_cmdline_user_args()
+	for arg in all_args:
+		var clean := arg.strip_edges().trim_prefix("'").trim_suffix("'").trim_prefix("\"").trim_suffix("\"").strip_edges()
+		if clean.begins_with("--request-id="):
+			server_request_id = clean.trim_prefix("--request-id=")
+		elif clean.begins_with("--request_id="):
+			server_request_id = clean.trim_prefix("--request_id=")
+
+	if server_request_id != "":
+		print("[Luani NetworkManager] Dedicated server bound to request ID: ", server_request_id)
 
 func _process(delta: float) -> void:
 	if connection_timer_active:
@@ -64,6 +79,7 @@ func host_server(port: int = 7777, max_clients: int = 16) -> Error:
 
 	# Spawn local host player avatar (peer id 1)
 	spawn_player_avatar(1)
+	_report_player_count_to_backend()
 	return OK
 
 ## Connects client peer to a Luani server IP or Domain Name (playit.gg) with 12s timeout & loading screen
@@ -147,15 +163,41 @@ func spawn_player_avatar(peer_id: int) -> Node:
 	player_spawned.emit(peer_id, avatar)
 	return avatar
 
+func _report_player_count_to_backend() -> void:
+	if not is_server or server_request_id == "":
+		return
+	
+	var total_players: int = multiplayer.get_peers().size() + 1
+	print("[Luani NetworkManager] Reporting player count (%d) to backend for req_id: %s" % [total_players, server_request_id])
+	
+	var http := HTTPRequest.new()
+	add_child.call_deferred(http)
+	
+	http.request_completed.connect(func(_res: int, _code: int, _headers: PackedStringArray, _body: PackedByteArray):
+		http.queue_free()
+	)
+	
+	var payload := JSON.stringify({
+		"requestId": server_request_id,
+		"status": "RUNNING",
+		"playerCount": total_players
+	})
+	
+	var headers := PackedStringArray(["Content-Type: application/json"])
+	http.request(backend_status_url, headers, HTTPClient.METHOD_POST, payload)
+
 func _on_peer_connected(id: int) -> void:
 	print("[Luani NetworkManager] Peer connected: ", id)
 	if is_server:
 		spawn_player_avatar(id)
+		_report_player_count_to_backend()
 
 func _on_peer_disconnected(id: int) -> void:
 	print("[Luani NetworkManager] Peer disconnected: ", id)
 	if players_container and players_container.has_node(str(id)):
 		players_container.get_node(str(id)).queue_free()
+	if is_server:
+		_report_player_count_to_backend()
 
 func _on_connected_to_server() -> void:
 	connection_timer_active = false
