@@ -6,6 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
 const { createClient } = require('@supabase/supabase-js');
 const ws = require('ws');
 
@@ -162,11 +163,16 @@ app.post('/api/auth/register', async (req, res) => {
 
   if (supabase) {
     try {
-      const { data: existing } = await supabase.from('users').select('id').eq('username', cleanName).single();
+      const { data: existing, error } = await supabase.from('users').select('id').eq('username', cleanName).single();
+      if (error && error.code !== 'PGRST116') {
+        console.error('[Supabase Auth Error]:', error.message);
+      }
       if (existing) {
         return res.status(400).json({ success: false, error: 'Username is already taken.' });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('[Supabase Auth Error]:', e.message || e);
+    }
   } else {
     const existing = users.find(u => u.username.toLowerCase() === cleanName.toLowerCase());
     if (existing) {
@@ -174,23 +180,37 @@ app.post('/api/auth/register', async (req, res) => {
     }
   }
 
+  const hashedPassword = bcrypt.hashSync(password, 10);
   const newUser = {
     id: `usr_${Date.now()}`,
     username: cleanName,
-    password: password,
+    password: hashedPassword,
     bio: `Hello! I am ${cleanName} on Luani.`,
     createdAt: new Date().toISOString()
   };
 
   if (supabase) {
     try {
-      const { error } = await supabase.from('users').insert([
-        { id: newUser.id, username: newUser.username, password: newUser.password, bio: newUser.bio }
-      ]);
-      if (error) console.warn('[Supabase Auth] Insert warning:', error.message);
-      else console.log(`[Supabase Auth] Saved new user to Supabase: ${newUser.username}`);
+      const { data, error } = await supabase
+        .from('users')
+        .insert([{
+          username: cleanName,
+          password_hash: hashedPassword, // MUST match the SQL table column name
+          bio: newUser.bio,
+          avatar_url: ''
+        }])
+        .select();
+
+      if (error) {
+        console.error('[Supabase Auth Error]:', error.message);
+      } else {
+        console.log(`[Supabase Auth] Saved new user to Supabase: ${cleanName}`);
+        if (data && data[0] && data[0].id) {
+          newUser.id = data[0].id;
+        }
+      }
     } catch (err) {
-      console.warn('[Supabase Auth] Error inserting user:', err);
+      console.error('[Supabase Auth Error]:', err.message || err);
     }
   } else {
     console.log(`[Local Auth] Registered user: ${newUser.username}`);
@@ -210,18 +230,38 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Username and password are required.' });
   }
 
-  let user = users.find(u => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password);
+  let user = users.find(u => u.username.toLowerCase() === username.trim().toLowerCase() && (bcrypt.compareSync(password, u.password) || u.password === password));
 
   if (!user && supabase) {
     try {
-      const { data, error } = await supabase.from('users').select('*').eq('username', username.trim()).eq('password', password).single();
-      if (data && !error) {
-        user = { id: data.id, username: data.username, password: data.password, bio: data.bio || '', createdAt: data.created_at };
-        users.push(user);
-        console.log(`[Supabase Auth] Fetched user from Supabase: ${user.username}`);
+      const { data: dbUser, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username.trim())
+        .single();
+
+      if (error) {
+        console.error('[Supabase Auth Error]:', error.message);
+      }
+
+      if (dbUser && dbUser.password_hash) {
+        const matches = bcrypt.compareSync(password, dbUser.password_hash) || dbUser.password_hash === password;
+        if (matches) {
+          user = {
+            id: dbUser.id,
+            username: dbUser.username,
+            password: dbUser.password_hash,
+            bio: dbUser.bio || '',
+            createdAt: dbUser.created_at
+          };
+          if (!users.find(u => u.id === user.id)) {
+            users.push(user);
+          }
+          console.log(`[Supabase Auth] Logged in user: ${user.username}`);
+        }
       }
     } catch (err) {
-      console.warn('[Supabase Auth] Query error:', err);
+      console.error('[Supabase Auth Error]:', err.message || err);
     }
   }
 
