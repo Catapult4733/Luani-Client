@@ -1,8 +1,12 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
-const path = require('path');
 const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,19 +17,35 @@ app.use(express.json());
 // Serve static web portal frontend
 app.use(express.static(path.join(__dirname, '../public')));
 
-// User Database (Starts clean - NO dummy / mock seed profiles)
+// Initialize Supabase Client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+const isUnconfigured = !supabaseUrl || !supabaseKey || 
+  supabaseUrl.includes('YOUR-PROJECT-ID') || 
+  supabaseUrl.includes('YOUR-PROJECT-REF') || 
+  supabaseKey.includes('YOUR_SECRET_KEY');
+
+const supabase = !isUnconfigured ? createClient(supabaseUrl, supabaseKey) : null;
+
+if (!supabase) {
+  console.log('[Supabase] ⚠️ Credentials unconfigured in .env. Operating in Local Memory Mode.');
+} else {
+  console.log('[Supabase] Initializing connection to:', supabaseUrl);
+  supabase.from('users').select('id').limit(1).then(({ data, error }) => {
+    if (error) {
+      console.log('[Supabase] ❌ Connection failed:', error.message);
+    } else {
+      console.log('[Supabase] ✅ Connected to Supabase PostgreSQL successfully!');
+    }
+  });
+}
+
+// Memory stores
 const users = [];
-
-// Session Store (token -> user profile)
 const sessions = new Map();
-
-// Friends Requests Store (id, fromUserId, fromUsername, toUserId, toUsername, status: 'PENDING' | 'ACCEPTED' | 'DECLINED', createdAt)
 const friendRequests = [];
-
-// User Friendships (pair string: "id1_id2")
 const friendships = new Set();
-
-// User Blocked List (pair string: "blockerId_blockedId")
 const blockList = new Set();
 
 // Default Places Catalog
@@ -82,21 +102,8 @@ const places = [
   }
 ];
 
-// Active Game Servers List
-const activeServers = [
-  {
-    requestId: 'req_system_main',
-    name: 'Luani Main Official Server',
-    placeId: 'place_default_01',
-    serverIp: '127.0.0.1',
-    serverPort: 7777,
-    playerCount: 3,
-    maxPlayers: 16,
-    ping: 12,
-    isUserHosted: false,
-    status: 'RUNNING'
-  }
-];
+// Active Game Servers List (STRICTLY live servers reported by daemon - purged dummy servers)
+const activeServers = [];
 
 // Storage for uploaded place PCK / JSON files
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -128,11 +135,17 @@ function getAuthUser(req) {
 
 // Healthcheck
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'luani-web-backend', domain: 'luani.fyi', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    service: 'luani-web-backend', 
+    domain: 'luani.fyi', 
+    supabaseConfigured: !!supabase,
+    timestamp: new Date().toISOString() 
+  });
 });
 
 // AUTH SYSTEM (Username + Password only, no email)
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -140,9 +153,19 @@ app.post('/api/auth/register', (req, res) => {
   }
 
   const cleanName = username.trim();
-  const existing = users.find(u => u.username.toLowerCase() === cleanName.toLowerCase());
-  if (existing) {
-    return res.status(400).json({ success: false, error: 'Username is already taken.' });
+
+  if (supabase) {
+    try {
+      const { data: existing } = await supabase.from('users').select('id').eq('username', cleanName).single();
+      if (existing) {
+        return res.status(400).json({ success: false, error: 'Username is already taken.' });
+      }
+    } catch (e) {}
+  } else {
+    const existing = users.find(u => u.username.toLowerCase() === cleanName.toLowerCase());
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'Username is already taken.' });
+    }
   }
 
   const newUser = {
@@ -153,22 +176,49 @@ app.post('/api/auth/register', (req, res) => {
     createdAt: new Date().toISOString()
   };
 
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('users').insert([
+        { id: newUser.id, username: newUser.username, password: newUser.password, bio: newUser.bio }
+      ]);
+      if (error) console.warn('[Supabase Auth] Insert warning:', error.message);
+      else console.log(`[Supabase Auth] Saved new user to Supabase: ${newUser.username}`);
+    } catch (err) {
+      console.warn('[Supabase Auth] Error inserting user:', err);
+    }
+  } else {
+    console.log(`[Local Auth] Registered user: ${newUser.username}`);
+  }
+
   users.push(newUser);
   const token = `luani_token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   sessions.set(token, { id: newUser.id, username: newUser.username });
 
-  console.log(`[Luani Auth] Registered user: ${newUser.username}`);
   res.json({ success: true, token, user: { id: newUser.id, username: newUser.username, bio: newUser.bio } });
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
     return res.status(400).json({ success: false, error: 'Username and password are required.' });
   }
 
-  const user = users.find(u => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password);
+  let user = users.find(u => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password);
+
+  if (!user && supabase) {
+    try {
+      const { data, error } = await supabase.from('users').select('*').eq('username', username.trim()).eq('password', password).single();
+      if (data && !error) {
+        user = { id: data.id, username: data.username, password: data.password, bio: data.bio || '', createdAt: data.created_at };
+        users.push(user);
+        console.log(`[Supabase Auth] Fetched user from Supabase: ${user.username}`);
+      }
+    } catch (err) {
+      console.warn('[Supabase Auth] Query error:', err);
+    }
+  }
+
   if (!user) {
     return res.status(401).json({ success: false, error: 'Invalid username or password.' });
   }
@@ -176,7 +226,12 @@ app.post('/api/auth/login', (req, res) => {
   const token = `luani_token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   sessions.set(token, { id: user.id, username: user.username });
 
-  console.log(`[Luani Auth] Logged in user: ${user.username}`);
+  if (supabase) {
+    console.log(`[Supabase Auth] Logged in user: ${user.username}`);
+  } else {
+    console.log(`[Local Auth] Logged in user: ${user.username}`);
+  }
+
   res.json({ success: true, token, user: { id: user.id, username: user.username, bio: user.bio } });
 });
 
@@ -189,9 +244,21 @@ app.get('/api/auth/me', (req, res) => {
 });
 
 // USER PROFILE & DESCRIPTION BIO EDITING
-app.get('/api/user/:username', (req, res) => {
+app.get('/api/user/:username', async (req, res) => {
   const targetUsername = req.params.username;
-  const targetUser = users.find(u => u.username.toLowerCase() === targetUsername.toLowerCase());
+  let targetUser = users.find(u => u.username.toLowerCase() === targetUsername.toLowerCase());
+
+  if (!targetUser && supabase) {
+    try {
+      const { data } = await supabase.from('users').select('*').eq('username', targetUsername).single();
+      if (data) {
+        targetUser = { id: data.id, username: data.username, bio: data.bio || '', createdAt: data.created_at };
+        users.push(targetUser);
+      }
+    } catch (err) {
+      console.warn('[Supabase] Fetch user error:', err);
+    }
+  }
 
   if (!targetUser) {
     return res.status(404).json({ success: false, error: 'User not found.' });
@@ -229,7 +296,7 @@ app.get('/api/user/:username', (req, res) => {
   });
 });
 
-app.post('/api/user/description', (req, res) => {
+app.post('/api/user/description', async (req, res) => {
   const user = getAuthUser(req);
   if (!user) {
     return res.status(401).json({ success: false, error: 'Must be logged in to update profile bio.' });
@@ -237,8 +304,16 @@ app.post('/api/user/description', (req, res) => {
 
   const { bio } = req.body;
   user.bio = (bio || '').trim();
-  console.log(`[Luani User] Updated bio for ${user.username}`);
 
+  if (supabase) {
+    try {
+      await supabase.from('users').update({ bio: user.bio }).eq('id', user.id);
+    } catch (err) {
+      console.warn('[Supabase] Update bio error:', err);
+    }
+  }
+
+  console.log(`[Luani User] Updated bio for ${user.username}`);
   res.json({ success: true, message: 'Profile description updated.', bio: user.bio });
 });
 
@@ -274,7 +349,7 @@ app.get('/api/notifications', (req, res) => {
   res.json({ success: true, pendingRequests: pending });
 });
 
-app.post('/api/friends/request', (req, res) => {
+app.post('/api/friends/request', async (req, res) => {
   const user = getAuthUser(req);
   if (!user) {
     return res.status(401).json({ success: false, error: 'Must be logged in.' });
@@ -300,6 +375,16 @@ app.post('/api/friends/request', (req, res) => {
     status: 'PENDING',
     createdAt: new Date().toISOString()
   };
+
+  if (supabase) {
+    try {
+      await supabase.from('friend_requests').insert([
+        { id: reqId, from_user_id: user.id, to_user_id: targetUser.id, status: 'PENDING' }
+      ]);
+    } catch (err) {
+      console.warn('[Supabase] Friend request insert failed:', err);
+    }
+  }
 
   friendRequests.push(newReq);
   res.json({ success: true, message: `Friend request sent to ${targetUser.username}.` });
@@ -371,7 +456,7 @@ app.get('/api/search', (req, res) => {
   res.json({ success: true, query, places: matchedPlaces, users: matchedUsers });
 });
 
-// ACTIVE MULTIPLAYER SERVERS LIST
+// ACTIVE MULTIPLAYER SERVERS LIST (Purged dummy servers - returns live active servers)
 app.get('/api/servers/active', (req, res) => {
   const placeId = req.query.placeId;
   let running = activeServers.filter(s => s.status === 'RUNNING' || s.status === 'SPAWNING');
