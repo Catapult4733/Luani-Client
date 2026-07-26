@@ -504,6 +504,15 @@ app.post('/api/user/block', (req, res) => {
   res.json({ success: true, message: 'Blocked user.' });
 });
 
+const PUBLIC_DOMAIN = process.env.PUBLIC_DOMAIN || 'luani.fyi';
+
+function getPublicServerIp(rawIp) {
+  if (!rawIp || rawIp === '127.0.0.1' || rawIp === 'localhost' || rawIp === '0.0.0.0' || rawIp === '::1') {
+    return PUBLIC_DOMAIN;
+  }
+  return rawIp;
+}
+
 // GLOBAL SEARCH SYSTEM (Places + Users)
 app.get('/api/search', (req, res) => {
   const query = (req.query.q || '').trim().toLowerCase();
@@ -518,14 +527,20 @@ app.get('/api/search', (req, res) => {
   res.json({ success: true, query, places: matchedPlaces, users: matchedUsers });
 });
 
-// ACTIVE MULTIPLAYER SERVERS LIST (Returns non-empty or spawning live active servers)
+// ACTIVE MULTIPLAYER SERVERS LIST (Returns non-empty or spawning live active servers with public serverIp fallback)
 app.get('/api/servers/active', (req, res) => {
   const placeId = req.query.placeId;
   let running = activeServers.filter(s => (s.status === 'RUNNING' || s.status === 'SPAWNING') && (s.playerCount > 0 || s.status === 'SPAWNING'));
   if (placeId) {
     running = running.filter(s => s.placeId === placeId);
   }
-  res.json({ success: true, count: running.length, servers: running });
+
+  const mapped = running.map(s => ({
+    ...s,
+    serverIp: getPublicServerIp(s.serverIp)
+  }));
+
+  res.json({ success: true, count: mapped.length, servers: mapped });
 });
 
 // Game / Place Listings
@@ -624,15 +639,16 @@ app.post('/api/servers/request', (req, res) => {
   if (existingServer) {
     existingServer.playerCount += 1;
     existingServer.lastHeartbeat = Date.now();
-    console.log(`[Luani Matchmaker] Reusing open ${targetType} server instance: ${existingServer.name} (${existingServer.playerCount}/${existingServer.maxPlayers} players)`);
+    const publicIp = getPublicServerIp(existingServer.serverIp);
+    console.log(`[Luani Matchmaker] Reusing open ${targetType} server instance: ${existingServer.name} (${existingServer.playerCount}/${existingServer.maxPlayers} players) on ${publicIp}`);
 
-    const joinUri = `luani://join?server=${existingServer.serverIp}:${existingServer.serverPort}&auth=${existingServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
+    const joinUri = `luani://join?server=${publicIp}:${existingServer.serverPort}&auth=${existingServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
 
     return res.json({
       success: true,
       reused: true,
       requestId: existingServer.requestId,
-      server: existingServer,
+      server: { ...existingServer, serverIp: publicIp },
       joinUri
     });
   }
@@ -651,7 +667,7 @@ app.post('/api/servers/request', (req, res) => {
     name: serverName,
     placeId,
     serverType: targetType,
-    serverIp: '127.0.0.1',
+    serverIp: PUBLIC_DOMAIN,
     serverPort: port,
     playerCount: 1,
     maxPlayers: 10,
@@ -664,9 +680,9 @@ app.post('/api/servers/request', (req, res) => {
   };
 
   activeServers.push(newServer);
-  console.log(`[Luani Matchmaker] Created new ${targetType} server instance: ${newServer.name} on port ${newServer.serverPort}`);
+  console.log(`[Luani Matchmaker] Created new ${targetType} server instance: ${newServer.name} on host ${PUBLIC_DOMAIN}:${newServer.serverPort}`);
 
-  const joinUri = `luani://join?server=${newServer.serverIp}:${newServer.serverPort}&auth=${newServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
+  const joinUri = `luani://join?server=${PUBLIC_DOMAIN}:${newServer.serverPort}&auth=${newServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
 
   res.json({
     success: true,
@@ -685,8 +701,8 @@ app.post('/api/daemon/heartbeat', (req, res) => {
     srv.lastHeartbeat = Date.now();
     if (playerCount !== undefined) srv.playerCount = parseInt(playerCount);
     if (status) srv.status = status;
-    if (serverIp && serverIp !== '127.0.0.1') srv.serverIp = serverIp;
-    return res.json({ success: true, server: srv });
+    if (serverIp) srv.serverIp = getPublicServerIp(serverIp);
+    return res.json({ success: true, server: { ...srv, serverIp: getPublicServerIp(srv.serverIp) } });
   }
   res.status(404).json({ success: false, error: 'Server instance not found.' });
 });
@@ -703,13 +719,13 @@ app.post('/api/daemon/update-status', (req, res) => {
     srv.status = status;
     srv.lastHeartbeat = Date.now();
     if (playerCount !== undefined) srv.playerCount = parseInt(playerCount);
-    if (serverIp && serverIp !== '127.0.0.1') srv.serverIp = serverIp;
-    console.log(`[Luani Web Backend] Daemon updated server ${requestId} status to: ${status} (Host IP: ${srv.serverIp})`);
+    if (serverIp) srv.serverIp = getPublicServerIp(serverIp);
+    console.log(`[Luani Web Backend] Daemon updated server ${requestId} status to: ${status} (Public Host: ${getPublicServerIp(srv.serverIp)})`);
     return res.json({ success: true });
   }
   res.status(404).json({ success: false, error: 'Server instance request not found.' });
 });
 
 app.listen(PORT, () => {
-  console.log(`[Luani Web Backend] Running on http://localhost:${PORT} (Domain target: luani.fyi)`);
+  console.log(`[Luani Web Backend] Running on http://localhost:${PORT} (Domain target: ${PUBLIC_DOMAIN})`);
 });

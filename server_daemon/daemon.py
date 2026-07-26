@@ -2,9 +2,10 @@
 """
 Luani Server Host Daemon (Ubuntu Laptop Host)
 Polls Pi 5 backend API, spawns dynamic headless Godot server instances,
-reports host LAN IP addresses, and monitors process lifecycles with idle timeout auto-shutdown.
+reports public/LAN host domain addresses, and monitors process lifecycles with idle timeout auto-shutdown.
 """
 
+import os
 import sys
 import time
 import json
@@ -17,7 +18,7 @@ import urllib.parse
 from typing import Dict, List
 
 def get_host_ip() -> str:
-    """Detects and returns the host's actual LAN IP address."""
+    """Detects and returns the host's actual LAN IP address or 127.0.0.1 fallback."""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -28,9 +29,17 @@ def get_host_ip() -> str:
         return "127.0.0.1"
 
 class ServerDaemon:
-    def __init__(self, backend_url: str, max_instances: int = 8, idle_timeout: float = 300.0):
+    def __init__(self, backend_url: str, public_host: str = "luani.fyi", max_instances: int = 8, idle_timeout: float = 300.0):
         self.primary_backend = backend_url.rstrip('/')
-        self.host_ip = get_host_ip()
+        self.public_host = public_host or os.environ.get("PUBLIC_HOST", "luani.fyi")
+        detected_ip = get_host_ip()
+        
+        # If public host specified or detected IP is loopback, report public host domain
+        if self.public_host and (detected_ip == "127.0.0.1" or self.public_host != "127.0.0.1"):
+            self.host_ip = self.public_host
+        else:
+            self.host_ip = detected_ip
+
         self.fallback_urls: List[str] = [
             self.primary_backend,
             "https://www.luani.fyi",
@@ -92,7 +101,7 @@ class ServerDaemon:
         port = task.get('serverPort', 7777)
         place_id = task.get('placeId', 'place_default_01')
 
-        self.log(f"Spawning headless Godot server instance {request_id} for place '{place_id}' on host IP {self.host_ip}:{port}...")
+        self.log(f"Spawning headless Godot server instance {request_id} for place '{place_id}' on host {self.host_ip}:{port}...")
 
         cmd = [
             "godot",
@@ -114,7 +123,7 @@ class ServerDaemon:
                 "last_activity": time.time()
             }
             self.update_server_status(request_id, "RUNNING", player_count=1)
-            self.log(f"Server {request_id} launched with PID {proc.pid} on IP {self.host_ip}:{port}")
+            self.log(f"Server {request_id} launched with PID {proc.pid} on host {self.host_ip}:{port}")
         except FileNotFoundError:
             self.log(f"Godot executable not found on PATH. Registering mock runner for {request_id}.")
             self.active_processes[request_id] = {
@@ -147,7 +156,7 @@ class ServerDaemon:
             self.update_server_status(req_id, "STOPPED", player_count=0)
 
     def run(self):
-        self.log(f"Luani Server Daemon running. Detected Host LAN IP: {self.host_ip}")
+        self.log(f"Luani Server Daemon running. Configured Public Host: {self.host_ip}")
         self.log(f"Connecting to backend endpoints: {self.fallback_urls}")
         while self.running:
             tasks = self.poll_tasks()
@@ -160,17 +169,19 @@ class ServerDaemon:
             time.sleep(3.0)
 
 def main():
+    default_host = os.environ.get("PUBLIC_HOST", "luani.fyi")
     parser = argparse.ArgumentParser(description="Luani Server Host Daemon")
     parser.add_argument("--backend", default="https://www.luani.fyi", help="Backend API URL (luani.fyi)")
+    parser.add_argument("--public-host", default=default_host, help="Public hostname reported for client connections (default: luani.fyi)")
     parser.add_argument("--test", action="store_true", help="Run self-test dry-run")
     args = parser.parse_args()
 
     if args.test:
-        ip = get_host_ip()
-        print(f"[Luani Daemon Test] Self-test PASSED. Host LAN IP detected: {ip}. HTTP SSL fallbacks configured.")
+        daemon_test = ServerDaemon(backend_url=args.backend, public_host=args.public_host)
+        print(f"[Luani Daemon Test] Self-test PASSED. Reported public host: {daemon_test.host_ip}. HTTP SSL fallbacks configured.")
         sys.exit(0)
 
-    daemon = ServerDaemon(backend_url=args.backend)
+    daemon = ServerDaemon(backend_url=args.backend, public_host=args.public_host)
     try:
         daemon.run()
     except KeyboardInterrupt:
