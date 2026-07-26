@@ -82,6 +82,17 @@ class ServerDaemon:
                 continue
         return (False, {})
 
+    def send_daemon_heartbeat(self):
+        """Sends daemon config heartbeat with publicHost and publicPort to backend."""
+        payload_dict = {
+            'daemonId': 'default_daemon',
+            'publicHost': self.public_host or self.host_ip,
+            'publicPort': self.public_port,
+            'serverIp': self.host_ip
+        }
+        payload = json.dumps(payload_dict).encode('utf-8')
+        self._http_request("/api/daemon/heartbeat", data=payload)
+
     def poll_tasks(self) -> list:
         success, data = self._http_request("/api/daemon/pending-tasks")
         if success:
@@ -93,7 +104,9 @@ class ServerDaemon:
         payload_dict = {
             'requestId': request_id, 
             'status': status,
-            'serverIp': self.host_ip
+            'serverIp': self.host_ip,
+            'publicHost': self.public_host or self.host_ip,
+            'publicPort': effective_port
         }
         if effective_port is not None:
             payload_dict['serverPort'] = effective_port
@@ -177,6 +190,7 @@ class ServerDaemon:
         self.log(f"Luani Server Daemon running. Configured Public Host: {self.host_ip}{port_msg}")
         self.log(f"Connecting to backend endpoints: {self.fallback_urls}")
         while self.running:
+            self.send_daemon_heartbeat()
             tasks = self.poll_tasks()
             for task in tasks:
                 req_id = task.get('requestId')

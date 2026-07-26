@@ -506,9 +506,14 @@ app.post('/api/user/block', (req, res) => {
 
 const PUBLIC_DOMAIN = process.env.PUBLIC_DOMAIN || 'luani.fyi';
 
+let lastDaemonConfig = {
+  publicHost: PUBLIC_DOMAIN,
+  publicPort: null
+};
+
 function getPublicServerIp(rawIp) {
   if (!rawIp || rawIp === '127.0.0.1' || rawIp === 'localhost' || rawIp === '0.0.0.0' || rawIp === '::1') {
-    return PUBLIC_DOMAIN;
+    return lastDaemonConfig.publicHost || PUBLIC_DOMAIN;
   }
   return rawIp;
 }
@@ -640,15 +645,16 @@ app.post('/api/servers/request', (req, res) => {
     existingServer.playerCount += 1;
     existingServer.lastHeartbeat = Date.now();
     const publicIp = getPublicServerIp(existingServer.serverIp);
-    console.log(`[Luani Matchmaker] Reusing open ${targetType} server instance: ${existingServer.name} (${existingServer.playerCount}/${existingServer.maxPlayers} players) on ${publicIp}`);
+    const activePort = existingServer.serverPort;
+    console.log(`[Luani Matchmaker] Reusing open ${targetType} server instance: ${existingServer.name} (${existingServer.playerCount}/${existingServer.maxPlayers} players) on ${publicIp}:${activePort}`);
 
-    const joinUri = `luani://join?server=${publicIp}:${existingServer.serverPort}&auth=${existingServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
+    const joinUri = `luani://join?server=${publicIp}:${activePort}&auth=${existingServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
 
     return res.json({
       success: true,
       reused: true,
       requestId: existingServer.requestId,
-      server: { ...existingServer, serverIp: publicIp },
+      server: { ...existingServer, serverIp: publicIp, serverPort: activePort },
       joinUri
     });
   }
@@ -660,15 +666,17 @@ app.post('/api/servers/request', (req, res) => {
   const serverName = isOfficial ? `${playerUsername}@server${Date.now()}q` : `${playerUsername}'s Hosted Server`;
 
   const requestId = `req_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-  const port = 7700 + (activeServers.length % 100);
+  const basePort = 7700 + (activeServers.length % 100);
+  const assignedHost = lastDaemonConfig.publicHost || PUBLIC_DOMAIN;
+  const assignedPort = lastDaemonConfig.publicPort || basePort;
 
   const newServer = {
     requestId,
     name: serverName,
     placeId,
     serverType: targetType,
-    serverIp: PUBLIC_DOMAIN,
-    serverPort: port,
+    serverIp: assignedHost,
+    serverPort: assignedPort,
     playerCount: 1,
     maxPlayers: 10,
     ping: 15,
@@ -680,9 +688,9 @@ app.post('/api/servers/request', (req, res) => {
   };
 
   activeServers.push(newServer);
-  console.log(`[Luani Matchmaker] Created new ${targetType} server instance: ${newServer.name} on host ${PUBLIC_DOMAIN}:${newServer.serverPort}`);
+  console.log(`[Luani Matchmaker] Created new ${targetType} server instance: ${newServer.name} on host ${assignedHost}:${assignedPort}`);
 
-  const joinUri = `luani://join?server=${PUBLIC_DOMAIN}:${newServer.serverPort}&auth=${newServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
+  const joinUri = `luani://join?server=${assignedHost}:${assignedPort}&auth=${newServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
 
   res.json({
     success: true,
@@ -695,17 +703,25 @@ app.post('/api/servers/request', (req, res) => {
 
 // Daemon / Server Heartbeat & Status Signaling
 app.post('/api/daemon/heartbeat', (req, res) => {
-  const { requestId, playerCount, status, serverIp, serverPort } = req.body;
+  const { requestId, playerCount, status, serverIp, serverPort, publicHost, publicPort } = req.body;
+  
+  if (publicHost || serverIp) {
+    lastDaemonConfig.publicHost = getPublicServerIp(publicHost || serverIp);
+  }
+  if (publicPort !== undefined && publicPort !== null && !isNaN(parseInt(publicPort))) {
+    lastDaemonConfig.publicPort = parseInt(publicPort);
+  }
+
   const srv = activeServers.find(s => s.requestId === requestId);
   if (srv) {
     srv.lastHeartbeat = Date.now();
     if (playerCount !== undefined) srv.playerCount = parseInt(playerCount);
     if (status) srv.status = status;
-    if (serverIp) srv.serverIp = getPublicServerIp(serverIp);
+    if (serverIp || publicHost) srv.serverIp = getPublicServerIp(publicHost || serverIp);
     if (serverPort !== undefined && !isNaN(parseInt(serverPort))) srv.serverPort = parseInt(serverPort);
     return res.json({ success: true, server: { ...srv, serverIp: getPublicServerIp(srv.serverIp) } });
   }
-  res.status(404).json({ success: false, error: 'Server instance not found.' });
+  res.json({ success: true, message: 'Daemon config heartbeat recorded.', daemonConfig: lastDaemonConfig });
 });
 
 app.get('/api/daemon/pending-tasks', (req, res) => {
@@ -714,13 +730,21 @@ app.get('/api/daemon/pending-tasks', (req, res) => {
 });
 
 app.post('/api/daemon/update-status', (req, res) => {
-  const { requestId, status, playerCount, serverIp, serverPort } = req.body;
+  const { requestId, status, playerCount, serverIp, serverPort, publicHost, publicPort } = req.body;
+
+  if (publicHost || serverIp) {
+    lastDaemonConfig.publicHost = getPublicServerIp(publicHost || serverIp);
+  }
+  if (publicPort !== undefined && publicPort !== null && !isNaN(parseInt(publicPort))) {
+    lastDaemonConfig.publicPort = parseInt(publicPort);
+  }
+
   const srv = activeServers.find(s => s.requestId === requestId);
   if (srv) {
     srv.status = status;
     srv.lastHeartbeat = Date.now();
     if (playerCount !== undefined) srv.playerCount = parseInt(playerCount);
-    if (serverIp) srv.serverIp = getPublicServerIp(serverIp);
+    if (serverIp || publicHost) srv.serverIp = getPublicServerIp(publicHost || serverIp);
     if (serverPort !== undefined && !isNaN(parseInt(serverPort))) srv.serverPort = parseInt(serverPort);
     console.log(`[Luani Web Backend] Daemon updated server ${requestId} status to: ${status} (Public Host: ${getPublicServerIp(srv.serverIp)}:${srv.serverPort})`);
     return res.json({ success: true });
