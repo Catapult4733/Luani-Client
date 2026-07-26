@@ -57,8 +57,10 @@ func join_server(ip: String, port: int, auth_token: String = "") -> Error:
 	return OK
 
 func spawn_player_avatar(peer_id: int) -> Node:
-	if not players_container:
-		players_container = get_node_or_null("/root/Main/Players")
+	if not players_container or not is_instance_valid(players_container):
+		players_container = get_node_or_null("/root/GameWorld/Players")
+		if not players_container:
+			players_container = get_node_or_null("/root/Main/Players")
 		if not players_container:
 			players_container = self
 
@@ -71,7 +73,7 @@ func spawn_player_avatar(peer_id: int) -> Node:
 	avatar.position = Vector3(randf_range(-2, 2), 2.0, randf_range(-2, 2))
 	players_container.add_child(avatar)
 
-	print("[Luani NetworkManager] Spawned PlayerAvatar for peer ID: ", peer_id)
+	print("[Luani NetworkManager] Spawned PlayerAvatar for peer ID: ", peer_id, " under container: ", players_container.get_path())
 	player_spawned.emit(peer_id, avatar)
 	return avatar
 

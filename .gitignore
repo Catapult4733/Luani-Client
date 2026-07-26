@@ -3,9 +3,11 @@
 *.import/
 client_and_studio/bin/
 
-# Node.js dependencies & logs
+# Node.js dependencies, environment, & logs
 node_modules/
 npm-debug.log*
+.env
+*.env
 
 # Python cache & environment
 __pycache__/

@@ -45,7 +45,9 @@ func _on_leave_pressed() -> void:
 	var net_mgr := get_node_or_null("/root/NetworkManager")
 	if net_mgr:
 		net_mgr.disconnect_network()
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	multiplayer.multiplayer_peer = null
+	print("[Luani PauseMenu] Disconnected network peer. Quitting client window.")
+	get_tree().quit()
 
 func _on_respawn_pressed() -> void:
 	hide()

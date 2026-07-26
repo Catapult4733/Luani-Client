@@ -210,7 +210,7 @@
     </div>
   </footer>
 
-  <!-- AUTH MODAL (Login / Register - Username & Password only) -->
+  <!-- AUTH MODAL -->
   <div id="authModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
@@ -253,12 +253,12 @@
     </div>
   </div>
 
-  <!-- AD WATCH VERIFICATION MODAL -->
+  <!-- AD WATCH VERIFICATION MODAL FOR SELF-HOSTING -->
   <div id="adModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Launching Luani Managed Server</h3>
-        <span class="modal-badge">Ad-Gated Free Host</span>
+        <h3>Spawning Luani Self-Hosted Instance</h3>
+        <span class="modal-badge">Sponsored Server Host</span>
       </div>
       <div class="modal-body">
         <p>Watching sponsor ad before initializing server daemon...</p>
@@ -273,6 +273,7 @@
           <div id="adProgressBar" class="progress-bar-fill"></div>
         </div>
         <div id="adCountdownText" class="countdown-text">Verification in progress (5s)...</div>
+        <button id="btnSkipAd" class="btn btn-primary btn-block hidden" style="margin-top: 1rem;">▶ Continue to Game</button>
       </div>
     </div>
   </div>

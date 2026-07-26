@@ -7,6 +7,7 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
+const ws = require('ws');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,7 +27,12 @@ const isUnconfigured = !supabaseUrl || !supabaseKey ||
   supabaseUrl.includes('YOUR-PROJECT-REF') || 
   supabaseKey.includes('YOUR_SECRET_KEY');
 
-const supabase = !isUnconfigured ? createClient(supabaseUrl, supabaseKey) : null;
+const supabase = !isUnconfigured ? createClient(supabaseUrl, supabaseKey, {
+  auth: { persistSession: false },
+  realtime: {
+    transport: ws,
+  },
+}) : null;
 
 if (!supabase) {
   console.log('[Supabase] ⚠️ Credentials unconfigured in .env. Operating in Local Memory Mode.');
