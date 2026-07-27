@@ -1,7 +1,7 @@
 # client_and_studio/scenes/game/game_world.gd
 extends Node3D
 
-## Gameplay scene handling multiplayer world loading, 3D environment guarantee, avatar spawning, and pause menu
+## Gameplay scene handling multiplayer world loading, 3D environment guarantee, avatar spawning, pause menu, chat, and leaderboard
 
 @onready var world_root: Node3D = %WorldRoot
 @onready var players_container: Node3D = %Players
@@ -24,6 +24,9 @@ func _ready() -> void:
 	if game_mgr and game_mgr.active_place_id != "":
 		current_place_id = game_mgr.active_place_id
 
+	# Instantiate Chat Overlay and Leaderboard Overlay UI
+	_instantiate_game_ui()
+
 	var loader := get_node_or_null("/root/PlaceLoader")
 
 	# If hosting server, load place into world_root
@@ -42,6 +45,17 @@ func _ready() -> void:
 		if net_mgr:
 			var my_id := multiplayer.get_unique_id()
 			net_mgr.spawn_player_avatar(my_id)
+
+func _instantiate_game_ui() -> void:
+	var chat_scene := load("res://scenes/ui/chat_overlay.tscn")
+	if chat_scene and not has_node("ChatOverlay"):
+		var chat_inst = chat_scene.instantiate()
+		add_child.call_deferred(chat_inst)
+
+	var tab_scene := load("res://scenes/ui/leaderboard_overlay.tscn")
+	if tab_scene and not has_node("LeaderboardOverlay"):
+		var tab_inst = tab_scene.instantiate()
+		add_child.call_deferred(tab_inst)
 
 func _guarantee_default_3d_environment() -> void:
 	if world_root and world_root.get_child_count() == 0:

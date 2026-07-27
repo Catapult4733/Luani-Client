@@ -7,7 +7,7 @@
   <meta name="description" content="Discover, build, host, and play games powered by Luau and Godot on Luani (luani.fyi).">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,13 +20,16 @@
         <span class="brand-domain">luani.fyi</span>
       </div>
 
+      <!-- Mobile Menu Hamburger -->
+      <button id="mobileMenuBtn" class="mobile-menu-btn" title="Toggle Navigation">☰</button>
+
       <!-- Global Search Bar -->
       <div class="search-container">
         <span class="search-icon">🔍</span>
         <input type="text" id="searchInput" placeholder="Search games & people..." autocomplete="off">
       </div>
 
-      <nav class="nav-links">
+      <nav class="nav-links" id="navLinksMenu">
         <a href="#" id="navDiscover" class="active">Discover</a>
         <a href="#studio" id="navStudio">Studio</a>
       </nav>
@@ -61,6 +64,7 @@
             </div>
             <div id="userProfileDropdown" class="dropdown-panel hidden">
               <a href="#" id="menuViewProfile">👤 View Profile</a>
+              <a href="#" id="menuAvatarEditor">🎨 Avatar Editor</a>
               <a href="#" id="menuEditBio">✏ Edit Description</a>
               <div class="dropdown-divider"></div>
               <a href="#" id="menuLogout" class="text-danger">🚪 Log Out</a>
@@ -106,6 +110,20 @@
 
         <div id="placesGrid" class="places-grid">
           <div class="loading-spinner">Loading places catalog from luani.fyi...</div>
+        </div>
+      </section>
+
+      <!-- LUANI STUDIO SUITE PROMO BANNER (Only on Discover / Studio pages) -->
+      <section id="studio" class="section studio-banner">
+        <div class="studio-content">
+          <span class="badge badge-purple">Luani Studio Suite</span>
+          <h2>Build 3D Games in Luau</h2>
+          <p>Construct 3D levels with CSG primitives, write sandboxed scripts, and publish to the global catalog with 1-click.</p>
+          <div class="studio-features">
+            <div class="feat">✨ Built-in Luau Code Editor</div>
+            <div class="feat">📐 Interactive Transform Gizmos</div>
+            <div class="feat">☁ 1-Click Publishing API</div>
+          </div>
         </div>
       </section>
     </div>
@@ -170,10 +188,75 @@
           <button id="btnUnfriend" class="btn btn-secondary text-danger hidden">❌ Unfriend</button>
           <button id="btnBlockUser" class="btn btn-secondary text-danger">⛔ Block User</button>
         </div>
+
+        <!-- OWNER POWER PANEL (Admin Controls) -->
+        <div id="ownerPowerPanel" class="owner-power-panel hidden">
+          <h3>👑 Owner Power Panel (Admin Controls)</h3>
+          <div class="admin-actions-grid">
+            <button id="btnAdminToggleVerified" class="btn btn-secondary">☑️ Toggle Verified Status</button>
+            <button id="btnAdminResetPassword" class="btn btn-secondary">🔑 Reset Password</button>
+            <button id="btnAdminBanUser" class="btn btn-danger">⛔ Issue Ban / Warning</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 4. SEARCH RESULTS VIEW -->
+    <!-- 4. AVATAR EDITOR VIEW -->
+    <div id="avatarEditorView" class="hidden">
+      <button id="btnBackFromAvatar" class="btn-back">← Back to Discover</button>
+
+      <div class="avatar-editor-container">
+        <div class="section-header">
+          <h2>Avatar Editor</h2>
+          <p>Customize your 3D humanoid character body part colors.</p>
+        </div>
+
+        <div class="avatar-editor-grid">
+          <!-- Live 2D SVG Preview -->
+          <div class="avatar-preview-box">
+            <h3>Character Preview</h3>
+            <div id="avatarSvgPreview" class="avatar-svg-preview-wrapper">
+              <!-- Rendered dynamically by JS -->
+            </div>
+          </div>
+
+          <!-- Color Pickers -->
+          <div class="avatar-controls-box">
+            <h3>Body Part Colors</h3>
+            <div class="color-picker-grid">
+              <div class="color-group">
+                <label for="colorHead">Head</label>
+                <input type="color" id="colorHead" value="#e0ac69">
+              </div>
+              <div class="color-group">
+                <label for="colorTorso">Torso</label>
+                <input type="color" id="colorTorso" value="#0000ff">
+              </div>
+              <div class="color-group">
+                <label for="colorLeftArm">Left Arm</label>
+                <input type="color" id="colorLeftArm" value="#e0ac69">
+              </div>
+              <div class="color-group">
+                <label for="colorRightArm">Right Arm</label>
+                <input type="color" id="colorRightArm" value="#e0ac69">
+              </div>
+              <div class="color-group">
+                <label for="colorLeftLeg">Left Leg</label>
+                <input type="color" id="colorLeftLeg" value="#00ff00">
+              </div>
+              <div class="color-group">
+                <label for="colorRightLeg">Right Leg</label>
+                <input type="color" id="colorRightLeg" value="#00ff00">
+              </div>
+            </div>
+            <button id="btnSaveAvatar" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">Save Avatar</button>
+            <div id="avatarSaveSuccess" class="success-msg hidden" style="margin-top: 0.8rem; color: #4ade80; text-align: center;">Avatar colors saved successfully!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. SEARCH RESULTS VIEW -->
     <div id="searchResultsView" class="hidden">
       <div class="section-header">
         <h2>Search Results for "<span id="searchQueryText"></span>"</h2>
@@ -186,29 +269,38 @@
       </div>
     </div>
 
-    <!-- 5. STUDIO SECTION -->
-    <section id="studio" class="section studio-banner">
-      <div class="studio-content">
-        <span class="badge badge-purple">Luani Studio Suite</span>
-         industrial-strength sandbox creation tools for web and desktop.
-        <h2>Build 3D Games in Luau</h2>
-        <p>Construct 3D levels with CSG primitives, write sandboxed scripts, and publish to the global catalog with 1-click.</p>
-        <div class="studio-features">
-          <div class="feat">✨ Built-in Luau Code Editor</div>
-          <div class="feat">📐 Interactive Transform Gizmos</div>
-          <div class="feat">☁ 1-Click Publishing API</div>
-        </div>
-      </div>
-    </section>
-
   </main>
 
   <!-- Footer -->
   <footer class="footer">
     <div class="footer-container">
       <p>&copy; 2026 Luani Platform (luani.fyi). Powered by Godot Engine & Luau MIT open-source technologies.</p>
+      <p class="credits-line">Crown icon by icons8</p>
     </div>
   </footer>
+
+  <!-- INSTALL PROMPT MODAL WITH STYLED TERMINAL BOX -->
+  <div id="installPromptModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Client Installation Required</h3>
+        <button id="installPromptClose" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem; font-size: 0.95rem; color: var(--text-muted);">If you don't have LuaniClient installed, please install it by running this command in your Linux terminal:</p>
+        
+        <div class="styled-terminal-box">
+          <div class="terminal-header">
+            <span class="terminal-lang">bash</span>
+            <button id="btnCopyInstallCmd" class="btn-copy">📋 Copy</button>
+          </div>
+          <pre class="terminal-code"><code>curl -fsSL https://www.luani.fyi/install.sh | bash</code></pre>
+        </div>
+        
+        <button id="btnProceedToLaunch" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">Launch Game / URI Protocol</button>
+      </div>
+    </div>
+  </div>
 
   <!-- GAME JOINING FULL-SCREEN LOADING OVERLAY & RED ERROR CONTAINER -->
   <div id="gameLoadingOverlay" class="modal-overlay hidden" style="z-index: 2000;">
@@ -250,7 +342,7 @@
     </div>
   </div>
 
-  <!-- AUTH MODAL -->
+  <!-- AUTH MODAL WITH HOLD-TO-SHOW PASSWORD EYE ICON -->
   <div id="authModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
@@ -264,7 +356,10 @@
         </div>
         <div class="form-group">
           <label for="authPassword">Password</label>
-          <input type="password" id="authPassword" required placeholder="Enter password" autocomplete="current-password">
+          <div class="password-input-wrapper">
+            <input type="password" id="authPassword" required placeholder="Enter password" autocomplete="current-password">
+            <button type="button" id="btnTogglePassword" class="eye-toggle-btn" title="Hold to view password">👁️</button>
+          </div>
         </div>
         <div id="authErrorMsg" class="error-msg hidden"></div>
         <button type="submit" id="authSubmitBtn" class="btn btn-primary btn-block">Log In</button>

@@ -192,6 +192,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+const DEFAULT_AVATAR_COLORS = {
+  head: "#e0ac69",
+  torso: "#0000ff",
+  left_arm: "#e0ac69",
+  right_arm: "#e0ac69",
+  left_leg: "#00ff00",
+  right_leg: "#00ff00"
+};
+
 // AUTH SYSTEM (Username + Password only, no email)
 app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
@@ -222,11 +231,15 @@ app.post('/api/auth/register', async (req, res) => {
   }
 
   const hashedPassword = bcrypt.hashSync(password, 10);
+  const isOwner = cleanName.toLowerCase() === 'owner' || cleanName.toLowerCase() === 'admin';
   const newUser = {
     id: `usr_${Date.now()}`,
     username: cleanName,
     password: hashedPassword,
     bio: `Hello! I am ${cleanName} on Luani.`,
+    owner: isOwner,
+    verified: isOwner,
+    avatar_colors: { ...DEFAULT_AVATAR_COLORS },
     createdAt: new Date().toISOString()
   };
 
@@ -238,7 +251,10 @@ app.post('/api/auth/register', async (req, res) => {
           username: cleanName,
           password_hash: hashedPassword,
           bio: newUser.bio,
-          avatar_url: ''
+          avatar_url: '',
+          owner: isOwner,
+          verified: isOwner,
+          avatar_colors: newUser.avatar_colors
         }])
         .select();
 
@@ -261,7 +277,18 @@ app.post('/api/auth/register', async (req, res) => {
   const token = `luani_token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   sessions.set(token, { id: newUser.id, username: newUser.username });
 
-  res.json({ success: true, token, user: { id: newUser.id, username: newUser.username, bio: newUser.bio } });
+  res.json({
+    success: true,
+    token,
+    user: {
+      id: newUser.id,
+      username: newUser.username,
+      bio: newUser.bio,
+      owner: newUser.owner,
+      verified: newUser.verified,
+      avatar_colors: newUser.avatar_colors
+    }
+  });
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -293,6 +320,9 @@ app.post('/api/auth/login', async (req, res) => {
             username: dbUser.username,
             password: dbUser.password_hash,
             bio: dbUser.bio || '',
+            owner: !!dbUser.owner,
+            verified: !!dbUser.verified,
+            avatar_colors: dbUser.avatar_colors || { ...DEFAULT_AVATAR_COLORS },
             createdAt: dbUser.created_at
           };
           if (!users.find(u => u.id === user.id)) {
@@ -319,13 +349,34 @@ app.post('/api/auth/login', async (req, res) => {
     console.log(`[Local Auth] Logged in user: ${user.username}`);
   }
 
-  res.json({ success: true, token, user: { id: user.id, username: user.username, bio: user.bio } });
+  res.json({
+    success: true,
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      bio: user.bio,
+      owner: !!user.owner,
+      verified: !!user.verified,
+      avatar_colors: user.avatar_colors || { ...DEFAULT_AVATAR_COLORS }
+    }
+  });
 });
 
 app.get('/api/auth/me', (req, res) => {
   const user = getAuthUser(req);
   if (user) {
-    return res.json({ success: true, user: { id: user.id, username: user.username, bio: user.bio } });
+    return res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        bio: user.bio,
+        owner: !!user.owner,
+        verified: !!user.verified,
+        avatar_colors: user.avatar_colors || { ...DEFAULT_AVATAR_COLORS }
+      }
+    });
   }
   res.status(401).json({ success: false, error: 'Not authenticated.' });
 });
@@ -339,7 +390,15 @@ app.get('/api/user/:username', async (req, res) => {
     try {
       const { data } = await supabase.from('users').select('*').eq('username', targetUsername).single();
       if (data) {
-        targetUser = { id: data.id, username: data.username, bio: data.bio || '', createdAt: data.created_at };
+        targetUser = {
+          id: data.id,
+          username: data.username,
+          bio: data.bio || '',
+          owner: !!data.owner,
+          verified: !!data.verified,
+          avatar_colors: data.avatar_colors || { ...DEFAULT_AVATAR_COLORS },
+          createdAt: data.created_at
+        };
         users.push(targetUser);
       }
     } catch (err) {
@@ -375,12 +434,120 @@ app.get('/api/user/:username', async (req, res) => {
       id: targetUser.id,
       username: targetUser.username,
       bio: targetUser.bio || `Welcome to ${targetUser.username}'s profile.`,
+      owner: !!targetUser.owner,
+      verified: !!targetUser.verified,
+      avatar_colors: targetUser.avatar_colors || { ...DEFAULT_AVATAR_COLORS },
       createdAt: targetUser.createdAt,
       isFriend,
       isPending,
       isBlocked
     }
   });
+});
+
+// AVATAR COLOR CUSTOMIZATION ENDPOINT
+app.post('/api/user/avatar-colors', async (req, res) => {
+  const user = getAuthUser(req);
+  if (!user) {
+    return res.status(401).json({ success: false, error: 'Must be logged in to update avatar colors.' });
+  }
+
+  const { avatar_colors } = req.body;
+  if (!avatar_colors || typeof avatar_colors !== 'object') {
+    return res.status(400).json({ success: false, error: 'Invalid avatar_colors object payload.' });
+  }
+
+  user.avatar_colors = {
+    head: avatar_colors.head || DEFAULT_AVATAR_COLORS.head,
+    torso: avatar_colors.torso || DEFAULT_AVATAR_COLORS.torso,
+    left_arm: avatar_colors.left_arm || DEFAULT_AVATAR_COLORS.left_arm,
+    right_arm: avatar_colors.right_arm || DEFAULT_AVATAR_COLORS.right_arm,
+    left_leg: avatar_colors.left_leg || DEFAULT_AVATAR_COLORS.left_leg,
+    right_leg: avatar_colors.right_leg || DEFAULT_AVATAR_COLORS.right_leg
+  };
+
+  if (supabase) {
+    try {
+      await supabase.from('users').update({ avatar_colors: user.avatar_colors }).eq('id', user.id);
+    } catch (err) {
+      console.warn('[Supabase] Update avatar_colors error:', err);
+    }
+  }
+
+  console.log(`[Luani User] Updated avatar colors for ${user.username}`);
+  res.json({ success: true, message: 'Avatar colors updated.', avatar_colors: user.avatar_colors });
+});
+
+// ADMIN / OWNER POWER PANEL ENDPOINTS
+app.post('/api/admin/toggle-verified', async (req, res) => {
+  const user = getAuthUser(req);
+  if (!user || !user.owner) {
+    return res.status(403).json({ success: false, error: 'Access denied. Owner privileges required.' });
+  }
+
+  const { targetUsername, verified } = req.body;
+  const targetUser = users.find(u => u.username.toLowerCase() === (targetUsername || '').toLowerCase());
+  if (!targetUser) {
+    return res.status(404).json({ success: false, error: 'Target user not found.' });
+  }
+
+  targetUser.verified = typeof verified === 'boolean' ? verified : !targetUser.verified;
+
+  if (supabase) {
+    try {
+      await supabase.from('users').update({ verified: targetUser.verified }).eq('id', targetUser.id);
+    } catch (err) {
+      console.warn('[Supabase] Update verified error:', err);
+    }
+  }
+
+  console.log(`[Luani Admin] Owner ${user.username} toggled verified status for ${targetUser.username} to: ${targetUser.verified}`);
+  res.json({ success: true, message: `Verified status updated for ${targetUser.username}.`, verified: targetUser.verified });
+});
+
+app.post('/api/admin/ban-user', (req, res) => {
+  const user = getAuthUser(req);
+  if (!user || !user.owner) {
+    return res.status(403).json({ success: false, error: 'Access denied. Owner privileges required.' });
+  }
+
+  const { targetUsername, reason } = req.body;
+  const targetUser = users.find(u => u.username.toLowerCase() === (targetUsername || '').toLowerCase());
+  if (!targetUser) {
+    return res.status(404).json({ success: false, error: 'Target user not found.' });
+  }
+
+  targetUser.isBanned = true;
+  targetUser.banReason = reason || 'Violation of platform rules.';
+  console.log(`[Luani Admin] Owner ${user.username} issued ban/warning to ${targetUser.username}: ${targetUser.banReason}`);
+  res.json({ success: true, message: `Action applied to user ${targetUser.username}.` });
+});
+
+app.post('/api/admin/reset-password', async (req, res) => {
+  const user = getAuthUser(req);
+  if (!user || !user.owner) {
+    return res.status(403).json({ success: false, error: 'Access denied. Owner privileges required.' });
+  }
+
+  const { targetUsername, newPassword } = req.body;
+  const targetUser = users.find(u => u.username.toLowerCase() === (targetUsername || '').toLowerCase());
+  if (!targetUser) {
+    return res.status(404).json({ success: false, error: 'Target user not found.' });
+  }
+
+  const passToSet = newPassword || 'LuaniReset123!';
+  targetUser.password = bcrypt.hashSync(passToSet, 10);
+
+  if (supabase) {
+    try {
+      await supabase.from('users').update({ password_hash: targetUser.password }).eq('id', targetUser.id);
+    } catch (err) {
+      console.warn('[Supabase] Reset password error:', err);
+    }
+  }
+
+  console.log(`[Luani Admin] Owner ${user.username} reset password for ${targetUser.username}`);
+  res.json({ success: true, message: `Password reset for ${targetUser.username}. Temporary password: ${passToSet}` });
 });
 
 app.post('/api/user/description', async (req, res) => {
@@ -658,6 +825,12 @@ app.post('/api/servers/request', (req, res) => {
   const playerUsername = (username || 'Player').trim();
   const playerAvatar = avatar || '';
 
+  const user = getAuthUser(req);
+  const playerAvatarColors = (user && user.avatar_colors) ? user.avatar_colors : DEFAULT_AVATAR_COLORS;
+  const isOwner = user ? !!user.owner : false;
+  const isVerified = user ? !!user.verified : false;
+  const colorParam = encodeURIComponent(JSON.stringify(playerAvatarColors));
+
   // 1. Check for existing active server with capacity (current_players < max_players)
   const existingServer = activeServers.find(s => 
     s.placeId === placeId && 
@@ -673,7 +846,7 @@ app.post('/api/servers/request', (req, res) => {
     const activePort = existingServer.serverPort;
     console.log(`[Luani Matchmaker] Reusing open ${targetType} server instance: ${existingServer.name} (${existingServer.playerCount}/${existingServer.maxPlayers} players) on ${publicIp}:${activePort}`);
 
-    const joinUri = `luani://join?server=${publicIp}:${activePort}&auth=${existingServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
+    const joinUri = `luani://join?server=${publicIp}:${activePort}&auth=${existingServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}&avatar_colors=${colorParam}&owner=${isOwner}&verified=${isVerified}`;
 
     return res.json({
       success: true,
@@ -715,7 +888,7 @@ app.post('/api/servers/request', (req, res) => {
   activeServers.push(newServer);
   console.log(`[Luani Matchmaker] Created new ${targetType} server instance: ${newServer.name} on host ${assignedHost}:${assignedPort}`);
 
-  const joinUri = `luani://join?server=${assignedHost}:${assignedPort}&auth=${newServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}`;
+  const joinUri = `luani://join?server=${assignedHost}:${assignedPort}&auth=${newServer.authToken}&username=${encodeURIComponent(playerUsername)}&avatar=${encodeURIComponent(playerAvatar)}&avatar_colors=${colorParam}&owner=${isOwner}&verified=${isVerified}`;
 
   res.json({
     success: true,

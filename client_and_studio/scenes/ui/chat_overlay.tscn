@@ -1,0 +1,45 @@
+[gd_scene load_steps=2 format=3 uid="uid://c8luani00chat"]
+
+[ext_resource type="Script" path="res://scenes/ui/chat_overlay.gd" id="1_chat"]
+
+[node name="ChatOverlay" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1_chat")
+
+[node name="ChatMargin" type="MarginContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -280.0
+offset_right = 420.0
+grow_vertical = 0
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="ChatVBox" type="VBoxContainer" parent="ChatMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ChatPanel" type="PanelContainer" parent="ChatMargin/ChatVBox"]
+custom_minimum_size = Vector2(380, 200)
+layout_mode = 2
+
+[node name="ChatLog" type="RichTextLabel" parent="ChatMargin/ChatVBox/ChatPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 2
+bbcode_enabled = true
+scroll_following = true
+selection_enabled = true
+
+[node name="ChatInputContainer" type="HBoxContainer" parent="ChatMargin/ChatVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ChatInput" type="LineEdit" parent="ChatMargin/ChatVBox/ChatInputContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Press Enter to send message..."
+max_length = 200

@@ -1,7 +1,7 @@
 # client_and_studio/scenes/player/player_avatar.gd
 extends CharacterBody3D
 
-## Multiplayer 3D Humanoid Player Avatar with WASD, Jump, Mouse Look, and Username Label
+## Multiplayer 3D Humanoid Player Avatar with WASD, Jump, Mouse Look, Username Label, and Material Colors
 
 @export var move_speed: float = 8.0
 @export var jump_velocity: float = 6.5
@@ -14,6 +14,7 @@ extends CharacterBody3D
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 var player_username: String = "Player"
+var avatar_colors: Dictionary = {}
 
 func _enter_tree() -> void:
 	# Set multiplayer authority based on node name (peer id)
@@ -28,16 +29,44 @@ func _ready() -> void:
 	var net_mgr := get_node_or_null("/root/NetworkManager")
 	if is_local and net_mgr and net_mgr.local_username != "":
 		player_username = net_mgr.local_username
+		if not net_mgr.local_avatar_colors.is_empty():
+			avatar_colors = net_mgr.local_avatar_colors
 	elif player_username == "Player":
 		player_username = "Player_" + str(name)
 
 	username_label.text = player_username
+	if not avatar_colors.is_empty():
+		apply_avatar_colors(avatar_colors)
 
 func set_player_username(uname: String) -> void:
 	if uname != "":
 		player_username = uname
 		if username_label:
 			username_label.text = uname
+
+func apply_avatar_colors(colors: Dictionary) -> void:
+	if colors.is_empty():
+		return
+	avatar_colors = colors
+
+	var part_map := {
+		"head": "BodyMesh/Head",
+		"torso": "BodyMesh/Torso",
+		"left_arm": "BodyMesh/LeftArm",
+		"right_arm": "BodyMesh/RightArm",
+		"left_leg": "BodyMesh/LeftLeg",
+		"right_leg": "BodyMesh/RightLeg"
+	}
+
+	for key in part_map:
+		if colors.has(key):
+			var node_path: String = part_map[key]
+			var mesh_inst: MeshInstance3D = get_node_or_null(node_path)
+			if mesh_inst:
+				var hex_str: String = str(colors[key])
+				var mat := StandardMaterial3D.new()
+				mat.albedo_color = Color.html(hex_str)
+				mesh_inst.material_override = mat
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():

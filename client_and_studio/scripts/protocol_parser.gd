@@ -11,6 +11,10 @@ var latest_session_data: Dictionary = {
 	"server_ip": "",
 	"server_port": 0,
 	"auth_token": "",
+	"username": "Player",
+	"owner": false,
+	"verified": false,
+	"avatar_colors": {},
 	"raw_uri": ""
 }
 
@@ -38,7 +42,7 @@ func _ready() -> void:
 		else:
 			push_error("[Luani ProtocolParser] Failed to parse URI: " + uri_found)
 
-## Parses a luani:// URI into a Dictionary containing server details and auth token
+## Parses a luani:// URI into a Dictionary containing server details, auth token, and avatar customizations
 func parse_uri(uri_string: String) -> Dictionary:
 	var clean_uri := uri_string.strip_edges().trim_prefix("'").trim_suffix("'").trim_prefix("\"").trim_suffix("\"").strip_edges()
 	print("[Luani ProtocolParser] Cleaned launch URI: ", clean_uri)
@@ -49,6 +53,17 @@ func parse_uri(uri_string: String) -> Dictionary:
 		"server_ip": "127.0.0.1",
 		"server_port": 7777,
 		"auth_token": "",
+		"username": "Player",
+		"owner": false,
+		"verified": false,
+		"avatar_colors": {
+			"head": "#e0ac69",
+			"torso": "#0000ff",
+			"left_arm": "#e0ac69",
+			"right_arm": "#e0ac69",
+			"left_leg": "#00ff00",
+			"right_leg": "#00ff00"
+		},
 		"raw_uri": clean_uri
 	}
 	
@@ -93,6 +108,15 @@ func parse_uri(uri_string: String) -> Dictionary:
 					result["username"] = value.uri_decode()
 				elif key == "avatar":
 					result["avatar"] = value.uri_decode()
+				elif key == "avatar_colors" or key == "colors":
+					var json_str := value.uri_decode()
+					var parsed = JSON.parse_string(json_str)
+					if parsed is Dictionary:
+						result["avatar_colors"] = parsed
+				elif key == "owner":
+					result["owner"] = (value.to_lower() == "true" or value == "1")
+				elif key == "verified":
+					result["verified"] = (value.to_lower() == "true" or value == "1")
 					
 	# Validation rule: 'join' action requires valid IP/domain and non-zero port
 	if action == "join" or action == "":
