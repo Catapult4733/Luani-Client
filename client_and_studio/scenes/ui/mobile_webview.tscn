@@ -1,0 +1,131 @@
+[gd_scene load_steps=5 format=3 uid="uid://c8luani00webview"]
+
+[ext_resource type="Script" path="res://scripts/core/mobile_webview.gd" id="1_webview"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Header"]
+bg_color = Color(0.06, 0.07, 0.1, 0.95)
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.15)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Card"]
+bg_color = Color(0.09, 0.11, 0.16, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.2)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Btn"]
+bg_color = Color(0.15, 0.45, 0.85, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="MobileWebView" type="CanvasLayer"]
+layer = 50
+script = ExtResource("1_webview")
+
+[node name="WebContainer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="WebContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.06, 0.08, 1)
+
+[node name="HeaderBar" type="PanelContainer" parent="WebContainer"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Header")
+
+[node name="Margin" type="MarginContainer" parent="WebContainer/HeaderBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_right = 12
+
+[node name="HBox" type="HBoxContainer" parent="WebContainer/HeaderBar/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="WebContainer/HeaderBar/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "🌐 Luani Web Portal (https://www.luani.fyi)"
+vertical_alignment = 1
+
+[node name="BtnRefreshWeb" type="Button" parent="WebContainer/HeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 34)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 12
+text = "🔄 Refresh"
+
+[node name="BtnQuickPlay" type="Button" parent="WebContainer/HeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 34)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
+text = "🎮 Quick Play"
+
+[node name="BtnCloseWeb" type="Button" parent="WebContainer/HeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 34)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 12
+text = "✖"
+
+[node name="CenterBody" type="CenterContainer" parent="WebContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 50.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PortalCard" type="PanelContainer" parent="WebContainer/CenterBody"]
+custom_minimum_size = Vector2(420, 240)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Card")
+
+[node name="VBox" type="VBoxContainer" parent="WebContainer/CenterBody/PortalCard"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="LogoText" type="Label" parent="WebContainer/CenterBody/PortalCard/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "LUANI WEB PORTAL"
+horizontal_alignment = 1
+
+[node name="SubText" type="Label" parent="WebContainer/CenterBody/PortalCard/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+theme_override_font_sizes/font_size = 13
+text = "Browsing https://www.luani.fyi inside mobile app client.\nClick any place or 'Join Game' to launch instantly."
+horizontal_alignment = 1
+autowrap_mode = 2

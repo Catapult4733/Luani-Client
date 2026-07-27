@@ -1,7 +1,7 @@
 # client_and_studio/scripts/main.gd
 extends Control
 
-## Main Launcher script managing Direct Join, Direct URI Launching, and Server Browser
+## Main Launcher script managing Direct Join, Direct URI Launching, Mobile Web View, and Server Browser
 
 @onready var status_label: Label = %StatusLabel
 @onready var ip_input: LineEdit = %IPInput
@@ -22,6 +22,9 @@ extends Control
 
 var active_servers_list: Array = []
 var is_uri_launched: bool = false
+var mobile_webview_inst: CanvasLayer = null
+
+const MOBILE_WEBVIEW_SCENE := preload("res://scenes/ui/mobile_webview.tscn")
 
 func _ready() -> void:
 	credits_menu.hide()
@@ -66,6 +69,20 @@ func _ready() -> void:
 
 		# 3. Directly trigger connection & skip calling fetch_server_list()
 		call_deferred("_trigger_direct_uri_join", session_data)
+	elif OS.has_feature("mobile") or OS.get_name() in ["Android", "iOS"]:
+		# Mobile launch without URI args: open in-app webview
+		hide()
+		mobile_webview_inst = MOBILE_WEBVIEW_SCENE.instantiate() as CanvasLayer
+		add_child(mobile_webview_inst)
+		if mobile_webview_inst.has_signal("uri_intercepted"):
+			mobile_webview_inst.connect("uri_intercepted", func(url: String):
+				var parser := get_node_or_null("/root/ProtocolParser")
+				var session_data := {}
+				if parser:
+					session_data = parser.parse_uri(url)
+				_trigger_direct_uri_join(session_data)
+			)
+		print("[Luani Launcher] Mobile client launched without URI params. Loaded in-app mobile web view.")
 	else:
 		# Show main menu as normal and fetch active server list
 		show()
