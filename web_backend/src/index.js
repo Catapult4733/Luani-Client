@@ -711,15 +711,50 @@ function getPublicServerIp(rawIp) {
 }
 
 // GLOBAL SEARCH SYSTEM (Places + Users)
-app.get('/api/search', (req, res) => {
-  const query = (req.query.q || '').trim().toLowerCase();
+app.get('/api/search', async (req, res) => {
+  const query = (req.query.q || '').trim();
+  const lowerQuery = query.toLowerCase();
 
-  if (!query) {
-    return res.json({ success: true, places: places.slice(0, 5), users: users.map(u => ({ id: u.id, username: u.username })) });
+  const matchedPlaces = places.filter(p => 
+    p.name.toLowerCase().includes(lowerQuery) || 
+    p.creator.toLowerCase().includes(lowerQuery) || 
+    p.description.toLowerCase().includes(lowerQuery)
+  );
+
+  let matchedUsers = users.filter(u => u.username.toLowerCase().includes(lowerQuery)).map(u => ({
+    id: u.id,
+    username: u.username,
+    bio: u.bio || '',
+    owner: !!u.owner,
+    verified: !!u.verified,
+    avatar_colors: u.avatar_colors || DEFAULT_AVATAR_COLORS
+  }));
+
+  if (supabase && query) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, username, bio, avatar_colors, owner, verified')
+        .ilike('username', `%${query}%`);
+
+      if (!error && data) {
+        data.forEach(dbUser => {
+          if (!matchedUsers.some(u => u.username.toLowerCase() === dbUser.username.toLowerCase())) {
+            matchedUsers.push({
+              id: dbUser.id,
+              username: dbUser.username,
+              bio: dbUser.bio || '',
+              owner: !!dbUser.owner,
+              verified: !!dbUser.verified,
+              avatar_colors: dbUser.avatar_colors || DEFAULT_AVATAR_COLORS
+            });
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('[Supabase Search Error]:', err);
+    }
   }
-
-  const matchedPlaces = places.filter(p => p.name.toLowerCase().includes(query) || p.creator.toLowerCase().includes(query) || p.description.toLowerCase().includes(query));
-  const matchedUsers = users.filter(u => u.username.toLowerCase().includes(query)).map(u => ({ id: u.id, username: u.username }));
 
   res.json({ success: true, query, places: matchedPlaces, users: matchedUsers });
 });

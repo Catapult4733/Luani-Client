@@ -880,21 +880,105 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Search input handler
-  searchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const q = searchInput.value.trim();
-      if (!q) return;
-      searchQueryText.innerText = q;
-      apiFetch(`/api/search?q=${encodeURIComponent(q)}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
-            renderPlacesGrid(data.places);
-            showView(discoverView);
-          }
+  // Search input handler & Results Renderer
+  function performSearch(q) {
+    const query = (q || '').trim();
+    if (!query) return;
+    searchQueryText.innerText = query;
+
+    apiFetch(`/api/search?q=${encodeURIComponent(query)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          renderSearchResults(data.places || [], data.users || []);
+          showView(searchResultsView);
+        }
+      });
+  }
+
+  function renderSearchResults(matchedPlaces, matchedUsers) {
+    if (searchPlacesGrid) {
+      searchPlacesGrid.innerHTML = '';
+      if (matchedPlaces.length === 0) {
+        searchPlacesGrid.innerHTML = '<div class="srv-empty">No matching places found.</div>';
+      } else {
+        matchedPlaces.forEach(place => {
+          const card = document.createElement('div');
+          card.className = 'place-card';
+          card.innerHTML = `
+            <div class="place-thumbnail">🎮</div>
+            <div class="place-info">
+              <div class="place-title">${place.name}</div>
+              <div class="place-creator">by ${place.creator}</div>
+              <div class="place-meta"><span>👥 Max ${place.maxPlayers} Players</span></div>
+            </div>
+          `;
+          card.onclick = () => {
+            window.history.pushState({}, '', `/?game=${encodeURIComponent(place.id)}`);
+            loadGameDetails(place.id);
+          };
+          searchPlacesGrid.appendChild(card);
         });
+      }
     }
-  });
+
+    if (searchUsersGrid) {
+      searchUsersGrid.innerHTML = '';
+      if (matchedUsers.length === 0) {
+        searchUsersGrid.innerHTML = '<div class="srv-empty">No matching users found.</div>';
+      } else {
+        matchedUsers.forEach(u => {
+          const card = document.createElement('div');
+          card.className = 'user-search-card';
+          card.style.background = 'var(--bg-card)';
+          card.style.border = '1px solid var(--border-card)';
+          card.style.borderRadius = 'var(--radius)';
+          card.style.padding = '1rem';
+          card.style.display = 'flex';
+          card.style.alignItems = 'center';
+          card.style.gap = '1rem';
+          card.style.cursor = 'pointer';
+
+          const avatarCircle = document.createElement('div');
+          avatarCircle.className = 'avatar-circle';
+          avatarCircle.style.width = '48px';
+          avatarCircle.style.height = '48px';
+          renderAvatarCircle(avatarCircle, u.avatar_colors, u.username);
+
+          const userInfo = document.createElement('div');
+          userInfo.innerHTML = `
+            <div style="font-weight:700; font-size:1.05rem;">${u.username} ${renderUserBadges(u)}</div>
+            <div style="font-size:0.85rem; color:var(--text-muted);">${u.bio || 'Luani player'}</div>
+          `;
+
+          card.appendChild(avatarCircle);
+          card.appendChild(userInfo);
+          card.onclick = () => {
+            window.history.pushState({}, '', `/?user=${encodeURIComponent(u.username)}`);
+            loadUserProfile(u.username);
+          };
+          searchUsersGrid.appendChild(card);
+        });
+      }
+    }
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        performSearch(searchInput.value);
+      }
+    });
+
+    let searchTimeout = null;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        if (searchInput.value.trim().length >= 2) {
+          performSearch(searchInput.value);
+        }
+      }, 400);
+    });
+  }
 
 });

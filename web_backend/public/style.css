@@ -971,12 +971,13 @@ body {
 }
 
 .badge-verified-img, .verified-badge-img {
-  width: 20px;
-  height: 20px;
-  margin-left: 0.38rem;
+  width: 18px;
+  height: 18px;
+  margin-left: 0.35rem;
   vertical-align: middle;
   display: inline-block;
   object-fit: contain;
+  filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(190deg) brightness(118%) contrast(119%);
 }
 
 /* AVATAR EDITOR STYLES */

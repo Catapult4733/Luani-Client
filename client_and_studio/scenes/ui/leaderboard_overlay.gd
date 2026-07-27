@@ -69,17 +69,19 @@ func _add_player_row(uname: String, ping_str: String, is_owner: bool, is_verifie
 		crown_label.text = "👑"
 		row.add_child(crown_label)
 
-	# Verified Checkmark Icon
+	# Verified Checkmark Icon (Modulated Blue #1DA1F2)
 	if is_verified:
 		if ResourceLoader.exists(VERIFIED_ICON_PATH):
 			var tex_rect := TextureRect.new()
 			tex_rect.texture = load(VERIFIED_ICON_PATH)
 			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tex_rect.custom_minimum_size = Vector2(20, 20)
+			tex_rect.modulate = Color("1DA1F2")
 			row.add_child(tex_rect)
 		else:
 			var check_label := Label.new()
 			check_label.text = "☑️"
+			check_label.modulate = Color("1DA1F2")
 			row.add_child(check_label)
 
 	# Player Username

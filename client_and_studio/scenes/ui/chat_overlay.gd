@@ -53,7 +53,7 @@ func receive_chat_message(sender_name: String, msg_text: String, sender_is_owner
 	if sender_is_owner:
 		prefix += "[color=#a855f7]👑[/color] "
 	if sender_is_verified:
-		prefix += "[color=#38bdf8]☑️[/color] "
+		prefix += "[color=#1DA1F2]☑️[/color] "
 
 	var formatted := "%s[b][color=#818cf8]%s:[/color][/b] %s" % [prefix, sender_name, msg_text]
 	chat_log.append_text(formatted + "\n")
