@@ -822,6 +822,35 @@ app.get('/api/places/:id', (req, res) => {
   });
 });
 
+// DIRECT PLACE JOIN ENDPOINT (Uses daemon publicHost & publicPort)
+app.get('/api/places/join/:placeId', (req, res) => {
+  const placeId = req.params.placeId;
+  const running = activeServers.filter(s => (s.status === 'RUNNING' || s.status === 'SPAWNING') && s.placeId === placeId);
+
+  if (running.length === 0) {
+    return res.status(404).json({ success: false, error: "No active game server instance online for this place." });
+  }
+
+  const srv = running[0];
+  const publicHost = getPublicServerIp(srv.serverIp);
+  const publicPort = srv.serverPort;
+
+  const user = getAuthUser(req);
+  const playerUsername = user ? user.username : 'Player';
+  const isOwner = user ? !!user.owner : false;
+  const isVerified = user ? !!user.verified : false;
+  const colorParam = encodeURIComponent(JSON.stringify(user && user.avatar_colors ? user.avatar_colors : DEFAULT_AVATAR_COLORS));
+
+  const joinUri = `luani://join?server=${publicHost}:${publicPort}&auth=${srv.authToken}&username=${encodeURIComponent(playerUsername)}&owner=${isOwner}&verified=${isVerified}&avatar_colors=${colorParam}`;
+
+  res.json({
+    success: true,
+    server_ip: publicHost,
+    server_port: publicPort,
+    joinUri
+  });
+});
+
 // Publish Place file from Luani Studio
 app.post('/api/places/publish', upload.single('placeFile'), (req, res) => {
   const { name, creator, description, maxPlayers, parts } = req.body;

@@ -407,81 +407,91 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  btnLoginOpen.addEventListener('click', () => openAuthModal(false));
-  btnRegisterOpen.addEventListener('click', () => openAuthModal(true));
-  authModalClose.addEventListener('click', closeAuthModal);
+  if (btnLoginOpen) btnLoginOpen.addEventListener('click', () => openAuthModal(false));
+  if (btnRegisterOpen) btnRegisterOpen.addEventListener('click', () => openAuthModal(true));
+  if (authModalClose) authModalClose.addEventListener('click', closeAuthModal);
 
   function openAuthModal(isRegister) {
     isRegisterMode = isRegister;
-    authModalTitle.innerText = isRegister ? 'Sign Up for Luani' : 'Log In to Luani';
-    authSubmitBtn.innerText = isRegister ? 'Create Account' : 'Log In';
-    authSwitchText.innerText = isRegister ? 'Already have an account?' : "Don't have an account?";
-    authSwitchLink.innerText = isRegister ? 'Log In' : 'Sign Up';
-    authErrorMsg.classList.add('hidden');
-    authUsername.value = '';
-    authPassword.value = '';
-    authModal.classList.remove('hidden');
+    if (authModalTitle) authModalTitle.innerText = isRegister ? 'Sign Up for Luani' : 'Log In to Luani';
+    if (authSubmitBtn) authSubmitBtn.innerText = isRegister ? 'Create Account' : 'Log In';
+    if (authSwitchText) authSwitchText.innerText = isRegister ? 'Already have an account?' : "Don't have an account?";
+    if (authSwitchLink) authSwitchLink.innerText = isRegister ? 'Log In' : 'Sign Up';
+    if (authErrorMsg) authErrorMsg.classList.add('hidden');
+    if (authUsername) authUsername.value = '';
+    if (authPassword) authPassword.value = '';
+    if (authModal) authModal.classList.remove('hidden');
   }
 
   function closeAuthModal() {
-    authModal.classList.add('hidden');
+    if (authModal) authModal.classList.add('hidden');
   }
 
-  authSwitchLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    openAuthModal(!isRegisterMode);
-  });
-
-  authForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
-    authErrorMsg.classList.add('hidden');
-
-    apiFetch(endpoint, {
-      method: 'POST',
-      body: JSON.stringify({
-        username: authUsername.value.trim(),
-        password: authPassword.value
-      })
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        setAuthToken(data.token);
-        currentUser = data.user;
-        window.currentUser = data.user;
-        updateAuthUI(currentUser);
-        closeAuthModal();
-        fetchFriendsList();
-      } else {
-        authErrorMsg.innerText = data.error || 'Authentication failed.';
-        authErrorMsg.classList.remove('hidden');
-      }
-    })
-    .catch(() => {
-      authErrorMsg.innerText = 'Network error. Please try again.';
-      authErrorMsg.classList.remove('hidden');
+  if (authSwitchLink) {
+    authSwitchLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      openAuthModal(!isRegisterMode);
     });
-  });
+  }
 
-  // User Profile Dropdown Toggle
-  userProfileWidget.addEventListener('click', (e) => {
-    e.stopPropagation();
-    userProfileDropdown.classList.toggle('hidden');
-  });
+  if (authForm) {
+    authForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+      if (authErrorMsg) authErrorMsg.classList.add('hidden');
+
+      apiFetch(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          username: authUsername ? authUsername.value.trim() : '',
+          password: authPassword ? authPassword.value : ''
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setAuthToken(data.token);
+          currentUser = data.user;
+          window.currentUser = data.user;
+          updateAuthUI(currentUser);
+          closeAuthModal();
+          fetchFriendsList();
+        } else if (authErrorMsg) {
+          authErrorMsg.innerText = data.error || 'Authentication failed.';
+          authErrorMsg.classList.remove('hidden');
+        }
+      })
+      .catch(() => {
+        if (authErrorMsg) {
+          authErrorMsg.innerText = 'Network error. Please try again.';
+          authErrorMsg.classList.remove('hidden');
+        }
+      });
+    });
+  }
+
+  // User Profile Dropdown Toggle & Actions
+  if (userProfileWidget && userProfileDropdown) {
+    userProfileWidget.addEventListener('click', (e) => {
+      e.stopPropagation();
+      userProfileDropdown.classList.toggle('hidden');
+    });
+  }
 
   document.addEventListener('click', () => {
     if (userProfileDropdown) userProfileDropdown.classList.add('hidden');
     if (notificationDropdown) notificationDropdown.classList.add('hidden');
   });
 
-  menuViewProfile.addEventListener('click', (e) => {
-    e.preventDefault();
-    if (currentUser) {
-      window.history.pushState({}, '', `/?user=${encodeURIComponent(currentUser.username)}`);
-      loadUserProfile(currentUser.username);
-    }
-  });
+  if (menuViewProfile) {
+    menuViewProfile.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (currentUser) {
+        window.history.pushState({}, '', `/?user=${encodeURIComponent(currentUser.username)}`);
+        loadUserProfile(currentUser.username);
+      }
+    });
+  }
 
   if (menuAvatarEditor) {
     menuAvatarEditor.addEventListener('click', (e) => {
@@ -494,40 +504,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  menuEditBio.addEventListener('click', (e) => {
-    e.preventDefault();
-    if (currentUser) {
-      bioInputText.value = currentUser.bio || '';
-      editBioModal.classList.remove('hidden');
-    }
-  });
-
-  menuLogout.addEventListener('click', (e) => {
-    e.preventDefault();
-    setAuthToken(null);
-    currentUser = null;
-    window.currentUser = null;
-    updateAuthUI(null);
-    window.location.href = '/';
-  });
-
-  editBioClose.addEventListener('click', () => editBioModal.classList.add('hidden'));
-
-  editBioForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    apiFetch('/api/user/description', {
-      method: 'POST',
-      body: JSON.stringify({ bio: bioInputText.value })
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        if (currentUser) currentUser.bio = data.bio;
-        profileBioText.innerText = data.bio;
-        editBioModal.classList.add('hidden');
+  if (menuEditBio) {
+    menuEditBio.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (currentUser) {
+        if (bioInputText) bioInputText.value = currentUser.bio || '';
+        if (editBioModal) editBioModal.classList.remove('hidden');
       }
     });
-  });
+  }
+
+  if (menuLogout) {
+    menuLogout.addEventListener('click', (e) => {
+      e.preventDefault();
+      setAuthToken(null);
+      currentUser = null;
+      window.currentUser = null;
+      updateAuthUI(null);
+      window.location.href = '/';
+    });
+  }
+
+  if (editBioClose && editBioModal) {
+    editBioClose.addEventListener('click', () => editBioModal.classList.add('hidden'));
+  }
+
+  if (editBioForm) {
+    editBioForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      apiFetch('/api/user/description', {
+        method: 'POST',
+        body: JSON.stringify({ bio: bioInputText ? bioInputText.value : '' })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          if (currentUser) currentUser.bio = data.bio;
+          if (profileBioText) profileBioText.innerText = data.bio;
+          if (editBioModal) editBioModal.classList.add('hidden');
+        }
+      });
+    });
+  }
 
   // --- AVATAR EDITOR PAGE ---
   function openAvatarEditor() {
@@ -909,13 +927,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const navAvatarLink = document.getElementById('navAvatarLink');
   const navAvatar = document.getElementById('navAvatar');
-  if (navAvatar) {
-    navAvatar.onclick = (e) => {
-      e.preventDefault();
-      showView(avatarEditorView);
-    };
-  }
+  [navAvatarLink, navAvatar].forEach(link => {
+    if (link) {
+      link.onclick = (e) => {
+        e.preventDefault();
+        if (!currentUser) {
+          openAuthModal(false);
+          return;
+        }
+        openAvatarEditor();
+      };
+    }
+  });
 
   const btnBio = document.getElementById('btnEditBioInline');
   if (btnBio) {
