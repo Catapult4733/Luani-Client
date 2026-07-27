@@ -203,9 +203,22 @@ document.addEventListener('DOMContentLoaded', () => {
         <!-- Left Leg -->
         <rect x="52" y="170" width="35" height="60" rx="4" fill="${c.left_leg || '#00ff00'}" stroke="#000" stroke-width="2"/>
         <!-- Right Leg -->
-        <rect x="93" y="170" width="35" height="60" rx="4" fill="${c.right_leg || '#00ff00'}" stroke="#000" stroke-width="2"/>
       </svg>
     `;
+  }
+
+  function renderUserBadges(user) {
+    if (!user) return '';
+    const isOwner = user.owner === true || user.owner === 'true';
+    const isVerified = user.verified === true || user.verified === 'true';
+    let html = '';
+    if (isOwner) {
+      html += ' <span class="badge-crown" title="Luani Owner / Creator">👑</span>';
+    }
+    if (isVerified) {
+      html += ' <img src="/assets/verified_badge.png" class="badge-verified-img" title="Verified Account">';
+    }
+    return html;
   }
 
   function updateAvatarSvgPreview() {

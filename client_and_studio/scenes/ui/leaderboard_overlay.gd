@@ -56,30 +56,41 @@ func _refresh_player_list() -> void:
 
 		_add_player_row(uname, "12 ms", is_owner, is_verified, colors)
 
-func _add_player_row(uname: String, ping_str: String, is_owner: bool, is_verified: bool, colors: Dictionary) -> void:
+func _add_player_row(uname: String, ping_str: String, is_owner: bool, is_verified: bool, _colors: Dictionary) -> void:
 	var row := HBoxContainer.new()
-	row.custom_minimum_size = Vector2(0, 36)
+	row.custom_minimum_size = Vector2(0, 32)
+	row.add_theme_constant_override("separation", 8)
 
-	# Avatar Color Square Indicator
-	var color_rect := ColorRect.new()
-	color_rect.custom_minimum_size = Vector2(24, 24)
-	var torso_color := Color.html(str(colors.get("torso", "#6366f1"))) if not colors.is_empty() else Color(0.39, 0.4, 0.95)
-	color_rect.color = torso_color
-	row.add_child(color_rect)
+	# 1. Ping Label (left-aligned)
+	var ping_label := Label.new()
+	ping_label.text = ping_str
+	ping_label.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75))
+	ping_label.add_theme_font_size_override("font_size", 13)
+	row.add_child(ping_label)
 
-	# Crown icon for owner
+	# 2. Username Label
+	var name_label := Label.new()
+	name_label.text = uname
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.add_theme_font_size_override("font_size", 14)
+	row.add_child(name_label)
+
+	# 3. 👑 Crown Badge (if owner)
 	if is_owner:
 		var crown_label := Label.new()
 		crown_label.text = "👑"
+		crown_label.add_theme_font_size_override("font_size", 14)
 		row.add_child(crown_label)
 
-	# Verified Checkmark Icon (Modulated Blue #1DA1F2)
+	# 4. 🔵 Verified Badge (if verified)
 	if is_verified:
 		if ResourceLoader.exists(VERIFIED_ICON_PATH):
 			var tex_rect := TextureRect.new()
 			tex_rect.texture = load(VERIFIED_ICON_PATH)
 			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tex_rect.custom_minimum_size = Vector2(20, 20)
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tex_rect.custom_minimum_size = Vector2(18, 18)
+			tex_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			tex_rect.modulate = Color("1DA1F2")
 			row.add_child(tex_rect)
 		else:
@@ -87,17 +98,5 @@ func _add_player_row(uname: String, ping_str: String, is_owner: bool, is_verifie
 			check_label.text = "☑️"
 			check_label.modulate = Color("1DA1F2")
 			row.add_child(check_label)
-
-	# Player Username
-	var name_label := Label.new()
-	name_label.text = uname
-	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(name_label)
-
-	# Ping
-	var ping_label := Label.new()
-	ping_label.text = ping_str
-	ping_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(ping_label)
 
 	player_list_vbox.add_child(row)

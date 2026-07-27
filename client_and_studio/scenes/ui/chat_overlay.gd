@@ -1,7 +1,7 @@
 # client_and_studio/scenes/ui/chat_overlay.gd
 extends CanvasLayer
 
-## In-Game Multiplayer Chat System with Badges (👑 Owner, ☑️ Verified) and RPC Broadcast
+## In-Game Multiplayer Chat System with Badges (👑 Owner, 🔵 Verified BBCode Image) after Username
 
 @onready var chat_log: RichTextLabel = %ChatLog
 @onready var chat_input: LineEdit = %ChatInput
@@ -56,13 +56,13 @@ func _on_chat_submitted(new_text: String) -> void:
 
 @rpc("any_peer", "call_local", "reliable")
 func receive_chat_message(sender_name: String, msg_text: String, sender_is_owner: bool, sender_is_verified: bool) -> void:
-	var prefix := ""
+	var badges := ""
 	if sender_is_owner:
-		prefix += "[color=#a855f7]👑[/color] "
+		badges += " 👑"
 	if sender_is_verified:
-		prefix += "[color=#1DA1F2]☑️[/color] "
+		badges += " [img tint=#1DA1F2 width=16 height=16]res://assets/verified_badge.png[/img]"
 
-	var formatted := "%s[b][color=#818cf8]%s:[/color][/b] %s" % [prefix, sender_name, msg_text]
+	var formatted := "[b][color=#818cf8]%s[/color][/b]%s: %s" % [sender_name, badges, msg_text]
 	chat_log.append_text(formatted + "\n")
 
 func add_system_message(text: String) -> void:
