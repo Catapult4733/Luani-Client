@@ -52,6 +52,9 @@ func _ready() -> void:
 			net_mgr.spawn_player_avatar(my_id)
 
 func _instantiate_game_ui() -> void:
+	if DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server"):
+		return
+
 	var ui_node := get_node_or_null("UI")
 	if not ui_node:
 		ui_node = self

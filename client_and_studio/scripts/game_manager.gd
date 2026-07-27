@@ -26,7 +26,7 @@ func _ready() -> void:
 	# Check CLI flags for headless server mode or direct URI protocol launch
 	_parse_cmdline_flags()
 
-	# Forcefully instantiate DirectUILayer onto root so watermark and overlays display immediately
+	# Forcefully instantiate DirectUILayer onto root when running client
 	_force_instantiate_ui_overlays()
 
 	# Connect to protocol parser signal
@@ -37,6 +37,10 @@ func _ready() -> void:
 			_on_protocol_received(parser.latest_session_data)
 
 func _force_instantiate_ui_overlays() -> void:
+	if DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server"):
+		print("[Luani GameManager] Running in Headless/Dedicated Server Mode. Bypassing DirectUILayer.")
+		return
+
 	var root := get_tree().root
 	if root.has_node("DirectUILayer"):
 		return

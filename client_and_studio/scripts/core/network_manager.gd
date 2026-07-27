@@ -163,9 +163,15 @@ func spawn_player_avatar(peer_id: int) -> Node:
 		target_container = players_container if (players_container and is_instance_valid(players_container)) else null
 
 	if not target_container:
-		print("[Luani NetworkManager] Deferring avatar spawn until Players container node is added to active scene tree...")
-		call_deferred("spawn_player_avatar", peer_id)
-		return null
+		if is_server:
+			target_container = get_node_or_null("/root/ServerPlayersContainer")
+			if not target_container:
+				var server_node := Node3D.new()
+				server_node.name = "ServerPlayersContainer"
+				get_tree().root.add_child.call_deferred(server_node)
+				target_container = server_node
+		else:
+			return null
 
 	# Avoid duplicate avatar spawning
 	if target_container.has_node(str(peer_id)):
@@ -180,7 +186,8 @@ func spawn_player_avatar(peer_id: int) -> Node:
 		var uname: String = local_username if peer_id == multiplayer.get_unique_id() else "Player_" + str(peer_id)
 		avatar.call_deferred("set_player_username", uname)
 
-	print("[Luani NetworkManager] Spawned PlayerAvatar for peer ID: ", peer_id, " under container: ", target_container.get_path())
+	var path_str: String = str(target_container.get_path()) if target_container.is_inside_tree() else target_container.name
+	print("[Luani NetworkManager] Spawned PlayerAvatar for peer ID: ", peer_id, " under container: ", path_str)
 	player_spawned.emit(peer_id, avatar)
 	return avatar
 

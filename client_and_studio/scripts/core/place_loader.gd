@@ -15,7 +15,7 @@ func load_place(place_id: String, target_world_root: Node3D) -> void:
 	print("[Luani PlaceLoader] Requesting place ID: ", place_id)
 
 	var http := HTTPRequest.new()
-	add_child.call_deferred(http)
+	add_child(http)
 	
 	http.request_completed.connect(func(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
 		_on_place_download_completed(result, response_code, body, place_id, target_world_root)

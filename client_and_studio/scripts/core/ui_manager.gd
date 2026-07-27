@@ -2,12 +2,16 @@
 extends CanvasLayer
 
 ## Persistent Autoload UI Manager for Luani Client & Game Worlds
-## Manages Chat Overlay and Leaderboard Overlay.
+## Manages Chat Overlay and Leaderboard Overlay. Bypassed in headless/dedicated server mode.
 
 var chat_overlay_inst: Node = null
 var leaderboard_overlay_inst: Node = null
 
 func _ready() -> void:
+	if DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server"):
+		print("[Luani UIManager] Running in Headless/Dedicated Server Mode. Bypassing UI overlays.")
+		return
+
 	layer = 100 # Draw on top of game scenes
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
