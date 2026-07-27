@@ -970,11 +970,13 @@ body {
   vertical-align: middle;
 }
 
-.badge-verified {
-  margin-left: 0.3rem;
-  color: #38bdf8;
-  font-size: 1.1rem;
+.badge-verified-img, .verified-badge-img {
+  width: 20px;
+  height: 20px;
+  margin-left: 0.38rem;
   vertical-align: middle;
+  display: inline-block;
+  object-fit: contain;
 }
 
 /* AVATAR EDITOR STYLES */

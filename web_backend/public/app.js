@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const profileUsernameTitle = document.getElementById('profileUsernameTitle');
   const profileJoinedText = document.getElementById('profileJoinedText');
   const profileBioText = document.getElementById('profileBioText');
+  const profileRelationshipActions = document.getElementById('profileRelationshipActions');
   const btnSendFriendReq = document.getElementById('btnSendFriendReq');
   const btnUnfriend = document.getElementById('btnUnfriend');
   const btnBlockUser = document.getElementById('btnBlockUser');
@@ -137,14 +138,31 @@ document.addEventListener('DOMContentLoaded', () => {
     right_leg: '#00ff00'
   };
 
-  // Helper: Get stored auth token
+  // --- AUTH TOKEN & FETCH WRAPPER ---
   function getAuthToken() {
-    return localStorage.getItem('luani_auth_token');
+    return localStorage.getItem('token') || localStorage.getItem('luani_auth_token') || '';
   }
 
   function setAuthToken(token) {
-    if (token) localStorage.setItem('luani_auth_token', token);
-    else localStorage.removeItem('luani_auth_token');
+    if (token) {
+      localStorage.setItem('token', token);
+      localStorage.setItem('luani_auth_token', token);
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('luani_auth_token');
+    }
+  }
+
+  function apiFetch(url, options = {}) {
+    const token = getAuthToken();
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers
+    };
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
+    }
+    return fetch(url, { ...options, headers });
   }
 
   // --- HOLD-TO-SHOW PASSWORD LOGIC ---
@@ -208,9 +226,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function renderUserBadges(userObj) {
+    if (!userObj) return '';
     let badges = '';
-    if (userObj.owner) badges += '<span class="badge-crown" title="Platform Owner">👑</span>';
-    if (userObj.verified) badges += '<img src="/assets/verified_badge.png" class="badge-verified-img" title="Verified User">';
+    const isOwner = userObj.owner === true || userObj.owner === 'true';
+    const isVerified = userObj.verified === true || userObj.verified === 'true';
+    if (isOwner) badges += '<span class="badge-crown" title="Platform Owner">👑</span>';
+    if (isVerified) badges += '<img src="/assets/verified_badge.png" class="verified-badge-img badge-verified-img" title="Verified User">';
     return badges;
   }
 
@@ -268,7 +289,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   btnLaunchClient.addEventListener('click', () => {
-    const launchUri = `luani://join?server=luani.fyi:7700&username=${encodeURIComponent(currentUser ? currentUser.username : 'Player')}`;
+    const userToPass = currentUser ? currentUser.username : 'Player';
+    const isOwner = currentUser ? (currentUser.owner === true || currentUser.owner === 'true') : false;
+    const isVerified = currentUser ? (currentUser.verified === true || currentUser.verified === 'true') : false;
+    const colorsParam = currentUser && currentUser.avatar_colors ? encodeURIComponent(JSON.stringify(currentUser.avatar_colors)) : '';
+
+    const launchUri = `luani://join?server=luani.fyi:7700&username=${encodeURIComponent(userToPass)}&owner=${isOwner}&verified=${isVerified}&avatar_colors=${colorsParam}`;
     promptInstallOrLaunch(launchUri);
   });
 
@@ -326,26 +352,33 @@ document.addEventListener('DOMContentLoaded', () => {
   function checkAuthStatus() {
     const token = getAuthToken();
     if (!token) {
+      currentUser = null;
+      window.currentUser = null;
       updateAuthUI(null);
       return;
     }
 
-    fetch('/api/auth/me', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    apiFetch('/api/auth/me')
     .then(r => r.json())
     .then(data => {
-      if (data.success) {
+      if (data.success && data.user) {
         currentUser = data.user;
+        window.currentUser = data.user;
         updateAuthUI(currentUser);
         fetchFriendsList();
         fetchNotifications();
       } else {
         setAuthToken(null);
+        currentUser = null;
+        window.currentUser = null;
         updateAuthUI(null);
       }
     })
-    .catch(() => updateAuthUI(null));
+    .catch(() => {
+      currentUser = null;
+      window.currentUser = null;
+      updateAuthUI(null);
+    });
   }
 
   function updateAuthUI(user) {
@@ -391,9 +424,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
     authErrorMsg.classList.add('hidden');
 
-    fetch(endpoint, {
+    apiFetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: authUsername.value.trim(),
         password: authPassword.value
@@ -404,6 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         setAuthToken(data.token);
         currentUser = data.user;
+        window.currentUser = data.user;
         updateAuthUI(currentUser);
         closeAuthModal();
         fetchFriendsList();
@@ -460,6 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     setAuthToken(null);
     currentUser = null;
+    window.currentUser = null;
     updateAuthUI(null);
     window.location.href = '/';
   });
@@ -468,13 +502,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   editBioForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const token = getAuthToken();
-    fetch('/api/user/description', {
+    apiFetch('/api/user/description', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
       body: JSON.stringify({ bio: bioInputText.value })
     })
     .then(r => r.json())
@@ -505,7 +534,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnSaveAvatar.addEventListener('click', () => {
     if (!currentUser) return;
-    const token = getAuthToken();
     const updatedColors = {
       head: colorHead.value,
       torso: colorTorso.value,
@@ -515,18 +543,15 @@ document.addEventListener('DOMContentLoaded', () => {
       right_leg: colorRightLeg.value
     };
 
-    fetch('/api/user/avatar-colors', {
+    apiFetch('/api/user/avatar-colors', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
       body: JSON.stringify({ avatar_colors: updatedColors })
     })
     .then(r => r.json())
     .then(data => {
       if (data.success) {
         currentUser.avatar_colors = data.avatar_colors;
+        if (window.currentUser) window.currentUser.avatar_colors = data.avatar_colors;
         renderAvatarCircle(userAvatar, currentUser.avatar_colors, currentUser.username);
         avatarSaveSuccess.classList.remove('hidden');
         setTimeout(() => avatarSaveSuccess.classList.add('hidden'), 3000);
@@ -536,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- PLACES CATALOG & GAME DETAILS ---
   function fetchPlacesCatalog() {
-    fetch('/api/places')
+    apiFetch('/api/places')
       .then(r => r.json())
       .then(data => {
         if (data.success) {
@@ -569,7 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loadGameDetails(gameId) {
-    fetch(`/api/places/${gameId}`)
+    apiFetch(`/api/places/${gameId}`)
       .then(r => r.json())
       .then(data => {
         if (data.success && data.place) {
@@ -636,7 +661,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function requestAndLaunchServer(type) {
     if (!currentGame) return;
-    const token = getAuthToken();
 
     // Show Game Loading Overlay
     gameLoadingOverlay.classList.remove('hidden');
@@ -645,12 +669,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingTitleText.innerText = 'Connecting to Server...';
     loadingStatusText.innerText = 'Requesting dynamic server instance from daemon...';
 
-    fetch('/api/servers/request', {
+    apiFetch('/api/servers/request', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
       body: JSON.stringify({
         placeId: currentGame.id,
         serverType: type,
@@ -686,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function fetchActiveServersForGame(placeId) {
     detailActiveServersList.innerHTML = '<div class="loading-spinner">Fetching running servers...</div>';
-    fetch(`/api/servers/active?placeId=${placeId}`)
+    apiFetch(`/api/servers/active?placeId=${placeId}`)
       .then(r => r.json())
       .then(data => {
         if (data.success && data.servers.length > 0) {
@@ -703,7 +723,10 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             item.querySelector('button').onclick = () => {
               if (!currentUser) { openAuthModal(false); return; }
-              const joinUri = `luani://join?server=${srv.serverIp}:${srv.serverPort}&auth=${srv.authToken}&username=${encodeURIComponent(currentUser.username)}`;
+              const isOwner = currentUser ? (currentUser.owner === true || currentUser.owner === 'true') : false;
+              const isVerified = currentUser ? (currentUser.verified === true || currentUser.verified === 'true') : false;
+              const colorsParam = currentUser && currentUser.avatar_colors ? encodeURIComponent(JSON.stringify(currentUser.avatar_colors)) : '';
+              const joinUri = `luani://join?server=${srv.serverIp}:${srv.serverPort}&auth=${srv.authToken}&username=${encodeURIComponent(currentUser.username)}&owner=${isOwner}&verified=${isVerified}&avatar_colors=${colorsParam}`;
               promptInstallOrLaunch(joinUri);
             };
             detailActiveServersList.appendChild(item);
@@ -716,10 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- USER PROFILES & OWNER POWER PANEL ---
   function loadUserProfile(username) {
-    const token = getAuthToken();
-    fetch(`/api/user/${encodeURIComponent(username)}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    apiFetch(`/api/user/${encodeURIComponent(username)}`)
     .then(r => r.json())
     .then(data => {
       if (data.success && data.user) {
@@ -728,8 +748,18 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAvatarCircle(profileAvatarLarge, currentProfileUser.avatar_colors, currentProfileUser.username);
         profileBioText.innerText = currentProfileUser.bio;
 
-        // Render Owner Power Panel if currentUser is owner
-        if (currentUser && currentUser.owner) {
+        const isSelf = currentUser && currentUser.username.toLowerCase() === currentProfileUser.username.toLowerCase();
+        if (isSelf) {
+          if (profileRelationshipActions) profileRelationshipActions.classList.add('hidden');
+        } else {
+          if (profileRelationshipActions) profileRelationshipActions.classList.remove('hidden');
+        }
+
+        // Render Owner Power Panel if logged-in user is an owner (to moderate ANY user profile)
+        const isUserOwner = (currentUser && (currentUser.owner === true || currentUser.owner === 'true')) ||
+                            (window.currentUser && (window.currentUser.owner === true || window.currentUser.owner === 'true'));
+
+        if (isUserOwner) {
           ownerPowerPanel.classList.remove('hidden');
           setupOwnerPowerPanel(currentProfileUser);
         } else {
@@ -743,13 +773,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setupOwnerPowerPanel(targetUser) {
     btnAdminToggleVerified.onclick = () => {
-      const token = getAuthToken();
-      fetch('/api/admin/toggle-verified', {
+      apiFetch('/api/admin/toggle-verified', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ targetUsername: targetUser.username })
       })
       .then(r => r.json())
@@ -764,13 +789,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnAdminResetPassword.onclick = () => {
       const newPass = prompt(`Set new password for ${targetUser.username} (leave blank for default temporary password):`);
-      const token = getAuthToken();
-      fetch('/api/admin/reset-password', {
+      apiFetch('/api/admin/reset-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ targetUsername: targetUser.username, newPassword: newPass || undefined })
       })
       .then(r => r.json())
@@ -780,13 +800,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAdminBanUser.onclick = () => {
       const reason = prompt(`Issue warning / ban for ${targetUser.username}:`, 'Violation of platform rules.');
       if (!reason) return;
-      const token = getAuthToken();
-      fetch('/api/admin/ban-user', {
+      apiFetch('/api/admin/ban-user', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ targetUsername: targetUser.username, reason })
       })
       .then(r => r.json())
@@ -797,7 +812,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminServerMonitorList = document.getElementById('adminServerMonitorList');
     if (adminServerMonitorList) {
       adminServerMonitorList.innerHTML = '<div class="loading-spinner">Fetching live server list...</div>';
-      fetch('/api/servers/active')
+      apiFetch('/api/servers/active')
         .then(r => r.json())
         .then(data => {
           if (data.success && data.servers.length > 0) {
@@ -817,7 +832,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="btn btn-sm btn-primary" style="margin-top:0.4rem;">⚡ Force Join</button>
               `;
               card.querySelector('button').onclick = () => {
-                const joinUri = `luani://join?server=${srv.serverIp}:${srv.serverPort}&auth=${srv.authToken}&username=${encodeURIComponent(currentUser ? currentUser.username : 'Owner')}&owner=true&verified=true`;
+                const isOwner = currentUser ? (currentUser.owner === true || currentUser.owner === 'true') : false;
+                const isVerified = currentUser ? (currentUser.verified === true || currentUser.verified === 'true') : false;
+                const joinUri = `luani://join?server=${srv.serverIp}:${srv.serverPort}&auth=${srv.authToken}&username=${encodeURIComponent(currentUser ? currentUser.username : 'Owner')}&owner=${isOwner}&verified=${isVerified}`;
                 promptInstallOrLaunch(joinUri);
               };
               adminServerMonitorList.appendChild(card);
@@ -831,10 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- FRIENDS & NOTIFICATIONS ---
   function fetchFriendsList() {
-    const token = getAuthToken();
-    fetch('/api/friends', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    apiFetch('/api/friends')
     .then(r => r.json())
     .then(data => {
       if (data.success && data.friends) {
@@ -854,10 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function fetchNotifications() {
-    const token = getAuthToken();
-    fetch('/api/notifications', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
+    apiFetch('/api/notifications')
     .then(r => r.json())
     .then(data => {
       if (data.success && data.pendingRequests.length > 0) {
@@ -875,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const q = searchInput.value.trim();
       if (!q) return;
       searchQueryText.innerText = q;
-      fetch(`/api/search?q=${encodeURIComponent(q)}`)
+      apiFetch(`/api/search?q=${encodeURIComponent(q)}`)
         .then(r => r.json())
         .then(data => {
           if (data.success) {
