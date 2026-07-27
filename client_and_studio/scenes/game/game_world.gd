@@ -24,7 +24,7 @@ func _ready() -> void:
 	if game_mgr and game_mgr.active_place_id != "":
 		current_place_id = game_mgr.active_place_id
 
-	# Instantiate Chat Overlay and Leaderboard Overlay UI
+	# Instantiate Chat Overlay and Leaderboard Overlay into UI CanvasLayer
 	_instantiate_game_ui()
 
 	var loader := get_node_or_null("/root/PlaceLoader")
@@ -47,15 +47,19 @@ func _ready() -> void:
 			net_mgr.spawn_player_avatar(my_id)
 
 func _instantiate_game_ui() -> void:
+	var ui_node := get_node_or_null("UI")
+	if not ui_node:
+		ui_node = self
+
 	var chat_scene := load("res://scenes/ui/chat_overlay.tscn")
-	if chat_scene and not has_node("ChatOverlay"):
+	if chat_scene and not ui_node.has_node("ChatOverlay"):
 		var chat_inst = chat_scene.instantiate()
-		add_child.call_deferred(chat_inst)
+		ui_node.add_child.call_deferred(chat_inst)
 
 	var tab_scene := load("res://scenes/ui/leaderboard_overlay.tscn")
-	if tab_scene and not has_node("LeaderboardOverlay"):
+	if tab_scene and not ui_node.has_node("LeaderboardOverlay"):
 		var tab_inst = tab_scene.instantiate()
-		add_child.call_deferred(tab_inst)
+		ui_node.add_child.call_deferred(tab_inst)
 
 func _guarantee_default_3d_environment() -> void:
 	if world_root and world_root.get_child_count() == 0:

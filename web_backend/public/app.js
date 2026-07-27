@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderUserBadges(userObj) {
     let badges = '';
     if (userObj.owner) badges += '<span class="badge-crown" title="Platform Owner">👑</span>';
-    if (userObj.verified) badges += '<span class="badge-verified" title="Verified User">☑️</span>';
+    if (userObj.verified) badges += '<img src="/assets/verified_badge.png" class="badge-verified-img" title="Verified User">';
     return badges;
   }
 
@@ -763,6 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     btnAdminResetPassword.onclick = () => {
+      const newPass = prompt(`Set new password for ${targetUser.username} (leave blank for default temporary password):`);
       const token = getAuthToken();
       fetch('/api/admin/reset-password', {
         method: 'POST',
@@ -770,7 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ targetUsername: targetUser.username })
+        body: JSON.stringify({ targetUsername: targetUser.username, newPassword: newPass || undefined })
       })
       .then(r => r.json())
       .then(data => alert(data.message));
@@ -791,6 +792,41 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(r => r.json())
       .then(data => alert(data.message));
     };
+
+    // Active Server Monitor for Admin Power Panel
+    const adminServerMonitorList = document.getElementById('adminServerMonitorList');
+    if (adminServerMonitorList) {
+      adminServerMonitorList.innerHTML = '<div class="loading-spinner">Fetching live server list...</div>';
+      fetch('/api/servers/active')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.servers.length > 0) {
+            adminServerMonitorList.innerHTML = '';
+            data.servers.forEach(srv => {
+              const card = document.createElement('div');
+              card.className = 'active-server-card';
+              card.style.background = 'rgba(0,0,0,0.3)';
+              card.style.padding = '0.8rem';
+              card.style.borderRadius = '8px';
+              card.style.border = '1px solid var(--border-card)';
+              card.innerHTML = `
+                <div class="srv-info">
+                  <strong>${srv.name}</strong> (${srv.playerCount}/${srv.maxPlayers} players)
+                  <div class="srv-sub" style="font-size:0.82rem; color:var(--text-muted);">${srv.serverIp}:${srv.serverPort} - RequestID: ${srv.requestId}</div>
+                </div>
+                <button class="btn btn-sm btn-primary" style="margin-top:0.4rem;">⚡ Force Join</button>
+              `;
+              card.querySelector('button').onclick = () => {
+                const joinUri = `luani://join?server=${srv.serverIp}:${srv.serverPort}&auth=${srv.authToken}&username=${encodeURIComponent(currentUser ? currentUser.username : 'Owner')}&owner=true&verified=true`;
+                promptInstallOrLaunch(joinUri);
+              };
+              adminServerMonitorList.appendChild(card);
+            });
+          } else {
+            adminServerMonitorList.innerHTML = '<div class="srv-empty" style="font-size:0.9rem; color:var(--text-muted);">No active server instances running across the network.</div>';
+          }
+        });
+    }
   }
 
   // --- FRIENDS & NOTIFICATIONS ---
