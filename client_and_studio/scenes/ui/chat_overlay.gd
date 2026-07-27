@@ -27,13 +27,20 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.is_pressed() and not event.is_echo():
 		if (event.keycode == KEY_T or event.keycode == KEY_ENTER) and not chat_input.has_focus():
-			chat_input_container.show()
-			chat_input.grab_focus()
+			toggle_chat()
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_ESCAPE and chat_input.has_focus():
 			chat_input.release_focus()
 			chat_input_container.hide()
 			get_viewport().set_input_as_handled()
+
+func toggle_chat() -> void:
+	if chat_input_container.visible:
+		chat_input.release_focus()
+		chat_input_container.hide()
+	else:
+		chat_input_container.show()
+		chat_input.grab_focus()
 
 func _on_chat_submitted(new_text: String) -> void:
 	var msg := new_text.strip_edges()

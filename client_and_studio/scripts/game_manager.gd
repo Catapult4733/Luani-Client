@@ -26,12 +26,38 @@ func _ready() -> void:
 	# Check CLI flags for headless server mode or direct URI protocol launch
 	_parse_cmdline_flags()
 
+	# Forcefully instantiate DirectUILayer onto root so watermark and overlays display immediately
+	_force_instantiate_ui_overlays()
+
 	# Connect to protocol parser signal
 	var parser := get_node_or_null("/root/ProtocolParser")
 	if parser:
 		parser.protocol_received.connect(_on_protocol_received)
 		if parser.latest_session_data.get("valid", false):
 			_on_protocol_received(parser.latest_session_data)
+
+func _force_instantiate_ui_overlays() -> void:
+	var root := get_tree().root
+	if root.has_node("DirectUILayer"):
+		return
+
+	var ui_layer := CanvasLayer.new()
+	ui_layer.name = "DirectUILayer"
+	ui_layer.layer = 100
+	ui_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+
+	# Chat Overlay
+	var chat_scene := load("res://scenes/ui/chat_overlay.tscn")
+	if chat_scene:
+		ui_layer.add_child(chat_scene.instantiate())
+
+	# Leaderboard Overlay
+	var tab_scene := load("res://scenes/ui/leaderboard_overlay.tscn")
+	if tab_scene:
+		ui_layer.add_child(tab_scene.instantiate())
+
+	root.add_child.call_deferred(ui_layer)
+	print("[Luani GameManager] Forcefully instantiated DirectUILayer directly on root.")
 
 func _parse_cmdline_flags() -> void:
 	var args := OS.get_cmdline_args()
@@ -72,7 +98,7 @@ func connect_to_server(ip: String, port: int, token: String) -> void:
 	if net_mgr:
 		net_mgr.join_server(ip, port, token)
 
-	get_tree().change_scene_to_file("res://scenes/game/game_world.tscn")
+	get_tree().call_deferred("change_scene_to_file", "res://scenes/game/game_world.tscn")
 
 func host_local_server(port: int = 7777, place_id: String = "place_default_01") -> void:
 	active_server_port = port
@@ -85,10 +111,10 @@ func host_local_server(port: int = 7777, place_id: String = "place_default_01") 
 	if net_mgr:
 		net_mgr.host_server(port)
 
-	get_tree().change_scene_to_file("res://scenes/game/game_world.tscn")
+	get_tree().call_deferred("change_scene_to_file", "res://scenes/game/game_world.tscn")
 
 func launch_studio() -> void:
 	current_state = AppState.STUDIO_MODE
 	session_state_changed.emit("STUDIO_MODE")
 	print("[Luani GameManager] Launching Luani Studio environment...")
-	get_tree().change_scene_to_file("res://studio/studio_main.tscn")
+	get_tree().call_deferred("change_scene_to_file", "res://studio/studio_main.tscn")

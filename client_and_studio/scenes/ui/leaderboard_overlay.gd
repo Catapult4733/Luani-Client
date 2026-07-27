@@ -1,7 +1,7 @@
 # client_and_studio/scenes/ui/leaderboard_overlay.gd
 extends CanvasLayer
 
-## In-Game Player Leaderboard Overlay (Toggled via TAB Key)
+## In-Game Player Leaderboard Overlay (Toggled via TAB Key or HUD Button)
 
 @onready var leaderboard_panel: PanelContainer = %LeaderboardPanel
 @onready var player_list_vbox: VBoxContainer = %PlayerListVBox
@@ -12,12 +12,16 @@ func _ready() -> void:
 	leaderboard_panel.hide()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.keycode == KEY_TAB:
-		if event.is_pressed() and not event.is_echo():
-			_refresh_player_list()
-			leaderboard_panel.show()
-		elif not event.is_pressed():
-			leaderboard_panel.hide()
+	if event is InputEventKey and event.keycode == KEY_TAB and event.is_pressed() and not event.is_echo():
+		toggle_leaderboard()
+		get_viewport().set_input_as_handled()
+
+func toggle_leaderboard() -> void:
+	if leaderboard_panel.visible:
+		leaderboard_panel.hide()
+	else:
+		_refresh_player_list()
+		leaderboard_panel.show()
 
 func _refresh_player_list() -> void:
 	for child in player_list_vbox.get_children():

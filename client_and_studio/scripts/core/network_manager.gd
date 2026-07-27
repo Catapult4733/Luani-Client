@@ -1,21 +1,25 @@
 # client_and_studio/scripts/core/network_manager.gd
 extends Node
 
-## Singleton managing ENet Multiplayer Peers for Player Self-Hosting, Client Connections, Domain Resolution, and Loading/Error UI
+## Manages ENet multiplayer server hosting, client joins, DNS resolution, and player avatar synchronization
 
 signal server_started(port: int)
-signal client_connected_to_server(ip: String, port: int)
+signal client_connected_to_server(server_ip: String, server_port: int)
 signal connection_failed(reason: String)
-signal player_spawned(peer_id: int, player_node: Node)
+signal player_spawned(peer_id: int, avatar_node: Node)
 
 const PLAYER_AVATAR_SCENE := preload("res://scenes/player/player_avatar.tscn")
 const LOADING_OVERLAY_SCENE := preload("res://scenes/ui/loading_overlay.tscn")
 
-var active_peer: ENetMultiplayerPeer
+var active_peer: ENetMultiplayerPeer = null
 var is_server: bool = false
-var players_container: Node
+var players_container: Node = null
+
 var local_username: String = "Player"
 var local_avatar: String = ""
+var local_avatar_colors: Dictionary = {}
+var is_owner: bool = false
+var is_verified: bool = false
 
 var loading_overlay_node: CanvasLayer = null
 var target_server_ip: String = "127.0.0.1"
@@ -35,10 +39,15 @@ func _ready() -> void:
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
 	var parser := get_node_or_null("/root/ProtocolParser")
-	if parser and parser.latest_session_data.get("username", "") != "":
-		local_username = parser.latest_session_data.get("username")
-		local_avatar = parser.latest_session_data.get("avatar", "")
-		print("[Luani NetworkManager] Initialized local player identity: ", local_username)
+	if parser and parser.latest_session_data.get("valid", false):
+		var data: Dictionary = parser.latest_session_data
+		if data.get("username", "") != "":
+			local_username = data.get("username")
+		if data.has("avatar_colors") and data.get("avatar_colors") is Dictionary:
+			local_avatar_colors = data.get("avatar_colors")
+		is_owner = data.get("owner", false)
+		is_verified = data.get("verified", false)
+		print("[Luani NetworkManager] Initialized identity: ", local_username, " (Owner: ", is_owner, ", Verified: ", is_verified, ")")
 
 	# Extract --request-id= if passed via command line
 	var all_args := OS.get_cmdline_args() + OS.get_cmdline_user_args()
@@ -58,108 +67,120 @@ func _process(delta: float) -> void:
 		if connection_elapsed >= CONNECTION_TIMEOUT_SECONDS:
 			connection_timer_active = false
 			print("[Luani NetworkManager] 12-second connection handshake timeout reached.")
-			_handle_connection_failure("[Connection Timeout] Server at " + target_server_ip + ":" + str(target_server_port) + " failed to respond within 12 seconds.")
+			_handle_connection_failure("[Connection Timeout] Could not reach server at " + target_server_ip + ":" + str(target_server_port) + ". Server failed to respond in time.")
 
-func setup_players_container(container: Node) -> void:
-	players_container = container
+func _handle_connection_failure(reason_text: String) -> void:
+	connection_timer_active = false
+	if active_peer:
+		active_peer.close()
+		multiplayer.multiplayer_peer = null
 
-## Starts an ENet server instance for self-hosting or headless server mode
-func host_server(port: int = 7777, max_clients: int = 16) -> Error:
+	print("[Luani NetworkManager] Connection Error: ", reason_text)
+	connection_failed.emit(reason_text)
+
+	if loading_overlay_node and is_instance_valid(loading_overlay_node):
+		if loading_overlay_node.has_method("show_error"):
+			loading_overlay_node.call("show_error", reason_text)
+	else:
+		_show_fullscreen_error_overlay(reason_text)
+
+func _show_fullscreen_error_overlay(reason_text: String) -> void:
+	if loading_overlay_node and is_instance_valid(loading_overlay_node):
+		loading_overlay_node.queue_free()
+
+	loading_overlay_node = LOADING_OVERLAY_SCENE.instantiate() as CanvasLayer
+	get_tree().root.add_child.call_deferred(loading_overlay_node)
+	if loading_overlay_node.has_method("show_error"):
+		loading_overlay_node.call_deferred("show_error", reason_text)
+
+func setup_players_container(node: Node) -> void:
+	players_container = node
+
+func host_server(port: int = 7777, max_clients: int = 32) -> Error:
 	active_peer = ENetMultiplayerPeer.new()
 	var err := active_peer.create_server(port, max_clients)
-	if err != OK:
-		push_error("[Luani NetworkManager] Failed to start ENet server on port %d: %s" % [port, str(err)])
-		connection_failed.emit("Failed to bind port " + str(port))
-		return err
+	if err == OK:
+		multiplayer.multiplayer_peer = active_peer
+		is_server = true
+		print("[Luani NetworkManager] Server successfully started on port: ", port)
+		server_started.emit(port)
+		spawn_player_avatar(1)
+	else:
+		push_error("[Luani NetworkManager] Failed to create server on port " + str(port) + ". Error code: " + str(err))
+	return err
 
-	multiplayer.multiplayer_peer = active_peer
-	is_server = true
-	print("[Luani NetworkManager] ENet Server running on port: ", port)
-	server_started.emit(port)
-
-	# Spawn local host player avatar (peer id 1)
-	spawn_player_avatar(1)
-	_report_player_count_to_backend()
-	return OK
-
-## Connects client peer to a Luani server IP or Domain Name (playit.gg) with 12s timeout & loading screen
-func join_server(ip: String, port: int, auth_token: String = "") -> Error:
-	target_server_ip = ip
+func join_server(host: String = "127.0.0.1", port: int = 7777, _auth_token: String = "") -> Error:
+	var connect_host := host.strip_edges()
+	target_server_ip = connect_host
 	target_server_port = port
+
+	print("[NetworkManager] Connecting to host:", connect_host, "port:", port)
+
+	if not connect_host.is_valid_ip_address():
+		print("[Luani NetworkManager] Resolving hostname: ", connect_host)
+		var resolved_ip := IP.resolve_hostname(connect_host, IP.TYPE_IPV4)
+		if resolved_ip != "":
+			print("[Luani NetworkManager] Resolved domain ", connect_host, " to IPv4: ", resolved_ip)
+			connect_host = resolved_ip
+		else:
+			push_error("[Luani NetworkManager] Could not resolve hostname: " + connect_host)
+
+	# Show Game Loading Overlay with 12s timeout
+	if loading_overlay_node and is_instance_valid(loading_overlay_node):
+		loading_overlay_node.queue_free()
+
+	loading_overlay_node = LOADING_OVERLAY_SCENE.instantiate() as CanvasLayer
+	get_tree().root.add_child.call_deferred(loading_overlay_node)
+
 	connection_elapsed = 0.0
 	connection_timer_active = true
 
-	var connect_host := ip.strip_edges()
-	var resolved_ip := connect_host
-
-	if not connect_host.is_valid_ip_address():
-		print("[Luani NetworkManager] Target host '%s' is a domain name. Resolving IPv4..." % connect_host)
-		var dns_result := IP.resolve_hostname(connect_host, IP.TYPE_IPV4)
-		if dns_result != "" and dns_result.is_valid_ip_address():
-			print("[Luani NetworkManager] Resolved domain '%s' -> IP: %s" % [connect_host, dns_result])
-			resolved_ip = dns_result
-		else:
-			print("[Luani NetworkManager] Warning: IP.resolve_hostname returned '%s' for domain '%s'. Passing hostname directly." % [dns_result, connect_host])
-
-	print("[Luani NetworkManager] Connecting to host: %s (resolved IP: %s) port: %d..." % [connect_host, resolved_ip, port])
-
-	# Show Loading Overlay UI (Safely deferred to prevent scene tree lock)
-	call_deferred("_show_loading_screen", ip, port)
-
 	active_peer = ENetMultiplayerPeer.new()
-	var err := active_peer.create_client(resolved_ip, port)
-	if err != OK:
-		push_error("[Luani NetworkManager] Failed to create client connection to %s (%s):%d: %s" % [ip, resolved_ip, port, str(err)])
-		_handle_connection_failure("[Connection Refused] Could not establish connection to " + ip + ":" + str(port) + ". Server may be offline or port blocked.")
-		return err
-
-	multiplayer.multiplayer_peer = active_peer
-	is_server = false
-	print("[Luani NetworkManager] Client connection initialized for %s (%s):%d (12s timeout active)..." % [ip, resolved_ip, port])
-	return OK
-
-func _show_loading_screen(ip: String, port: int) -> void:
-	if not loading_overlay_node or not is_instance_valid(loading_overlay_node):
-		loading_overlay_node = LOADING_OVERLAY_SCENE.instantiate() as CanvasLayer
-		get_tree().root.add_child.call_deferred(loading_overlay_node)
-	
-	if loading_overlay_node.has_method("start_loading"):
-		loading_overlay_node.call_deferred("start_loading", ip, port)
-
-func _handle_connection_failure(reason: String) -> void:
-	connection_timer_active = false
-	print("[Luani NetworkManager] Connection failure: ", reason)
-	connection_failed.emit(reason)
-
-	if not loading_overlay_node or not is_instance_valid(loading_overlay_node):
-		loading_overlay_node = LOADING_OVERLAY_SCENE.instantiate() as CanvasLayer
-		get_tree().root.add_child.call_deferred(loading_overlay_node)
-
-	if loading_overlay_node.has_method("show_error"):
-		loading_overlay_node.call_deferred("show_error", reason)
+	var err := active_peer.create_client(connect_host, port)
+	if err == OK:
+		multiplayer.multiplayer_peer = active_peer
+		is_server = false
+		print("[Luani NetworkManager] Initiated client connection to ", connect_host, ":", port)
+	else:
+		_handle_connection_failure("Failed to create ENet client peer to " + connect_host + ":" + str(port))
+	return err
 
 func spawn_player_avatar(peer_id: int) -> Node:
-	if not players_container or not is_instance_valid(players_container):
-		players_container = get_node_or_null("/root/GameWorld/Players")
-		if not players_container:
-			players_container = get_node_or_null("/root/Main/Players")
-		if not players_container:
-			players_container = self
+	var target_container: Node = null
+	
+	var game_world := get_node_or_null("/root/GameWorld")
+	if game_world:
+		target_container = game_world.get_node_or_null("Players")
+		if not target_container:
+			target_container = game_world.get_node_or_null("%Players")
+
+	if not target_container:
+		var main_node := get_node_or_null("/root/Main")
+		if main_node:
+			target_container = main_node.get_node_or_null("Players")
+
+	if not target_container:
+		target_container = players_container if (players_container and is_instance_valid(players_container)) else null
+
+	if not target_container:
+		print("[Luani NetworkManager] Deferring avatar spawn until Players container node is added to active scene tree...")
+		call_deferred("spawn_player_avatar", peer_id)
+		return null
 
 	# Avoid duplicate avatar spawning
-	if players_container.has_node(str(peer_id)):
-		return players_container.get_node(str(peer_id)) as Node
+	if target_container.has_node(str(peer_id)):
+		return target_container.get_node(str(peer_id)) as Node
 
 	var avatar := PLAYER_AVATAR_SCENE.instantiate() as CharacterBody3D
 	avatar.name = str(peer_id)
 	avatar.position = Vector3(randf_range(-2, 2), 2.0, randf_range(-2, 2))
-	players_container.add_child.call_deferred(avatar)
+	target_container.add_child.call_deferred(avatar)
 
 	if avatar.has_method("set_player_username"):
 		var uname: String = local_username if peer_id == multiplayer.get_unique_id() else "Player_" + str(peer_id)
 		avatar.call_deferred("set_player_username", uname)
 
-	print("[Luani NetworkManager] Spawned PlayerAvatar for peer ID: ", peer_id, " under container: ", players_container.get_path())
+	print("[Luani NetworkManager] Spawned PlayerAvatar for peer ID: ", peer_id, " under container: ", target_container.get_path())
 	player_spawned.emit(peer_id, avatar)
 	return avatar
 

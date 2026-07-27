@@ -5,14 +5,21 @@ extends Node3D
 
 @onready var world_root: Node3D = %WorldRoot
 @onready var players_container: Node3D = %Players
-@onready var status_label: Label = %StatusLabel
-@onready var menu_button: Button = %MenuButton
 @onready var pause_menu: Control = %PauseMenu
+
+@onready var settings_button: Button = %SettingsButton
+@onready var chat_toggle_button: Button = %ChatToggleButton
+@onready var leaderboard_toggle_button: Button = %LeaderboardToggleButton
 
 var current_place_id: String = "place_default_01"
 
 func _ready() -> void:
-	menu_button.pressed.connect(_on_menu_button_pressed)
+	if settings_button:
+		settings_button.pressed.connect(_on_menu_button_pressed)
+	if chat_toggle_button:
+		chat_toggle_button.pressed.connect(_on_chat_toggle_pressed)
+	if leaderboard_toggle_button:
+		leaderboard_toggle_button.pressed.connect(_on_leaderboard_toggle_pressed)
 
 	var net_mgr := get_node_or_null("/root/NetworkManager")
 	if net_mgr:
@@ -31,13 +38,11 @@ func _ready() -> void:
 
 	# If hosting server, load place into world_root
 	if net_mgr and net_mgr.is_server:
-		status_label.text = "Hosting Server (Place: " + current_place_id + ")"
 		if loader:
 			loader.load_place(current_place_id, world_root)
 		else:
 			_guarantee_default_3d_environment()
 	else:
-		status_label.text = "Connected to Server (Place: " + current_place_id + ")"
 		# Guarantee 3D floor baseplate and lighting exist on client join
 		_guarantee_default_3d_environment()
 
@@ -78,8 +83,25 @@ func _on_menu_button_pressed() -> void:
 	if pause_menu:
 		pause_menu.toggle_menu()
 
+func _on_chat_toggle_pressed() -> void:
+	var ui_mgr := get_node_or_null("/root/UIManager")
+	if ui_mgr and ui_mgr.has_method("toggle_chat"):
+		ui_mgr.call("toggle_chat")
+	else:
+		var chat := get_node_or_null("UI/ChatOverlay")
+		if chat and chat.has_method("toggle_chat"):
+			chat.call("toggle_chat")
+
+func _on_leaderboard_toggle_pressed() -> void:
+	var ui_mgr := get_node_or_null("/root/UIManager")
+	if ui_mgr and ui_mgr.has_method("toggle_leaderboard"):
+		ui_mgr.call("toggle_leaderboard")
+	else:
+		var tab := get_node_or_null("UI/LeaderboardOverlay")
+		if tab and tab.has_method("toggle_leaderboard"):
+			tab.call("toggle_leaderboard")
+
 func _on_connected(_ip: String, _port: int) -> void:
-	status_label.text = "Connected to Luani Game Server!"
 	_guarantee_default_3d_environment()
 
 	var net_mgr := get_node_or_null("/root/NetworkManager")
@@ -87,5 +109,5 @@ func _on_connected(_ip: String, _port: int) -> void:
 		var my_id := multiplayer.get_unique_id()
 		net_mgr.spawn_player_avatar(my_id)
 
-func _on_connection_failed(reason: String) -> void:
-	status_label.text = "Connection Error: " + reason
+func _on_connection_failed(_reason: String) -> void:
+	pass
