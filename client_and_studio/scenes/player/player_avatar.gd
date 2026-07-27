@@ -1,7 +1,7 @@
 # client_and_studio/scenes/player/player_avatar.gd
 extends CharacterBody3D
 
-## Multiplayer 3D Humanoid Player Avatar with WASD, Jump, Mouse Orbit, Shiftlock, Health/Combat, and Sword Equipment
+## Multiplayer 3D Humanoid Player Avatar with WASD, Jump, Mouse Orbit, Shiftlock, Mobile Touch Controls, Health/Combat, and Sword Equipment
 
 @export var move_speed: float = 8.0
 @export var jump_velocity: float = 6.5
@@ -28,9 +28,13 @@ var equipped_sword: Node3D = null
 var hotbar_overlay_inst: CanvasLayer = null
 var crosshair_overlay_inst: CanvasLayer = null
 var respawn_overlay_inst: CanvasLayer = null
+var touch_overlay_inst: CanvasLayer = null
+
+var touch_move_dir: Vector2 = Vector2.ZERO
 
 const SWORD_SCENE := preload("res://scenes/weapons/sword.tscn")
 const HOTBAR_SCENE := preload("res://scenes/ui/hotbar_overlay.tscn")
+const TOUCH_SCENE := preload("res://scenes/ui/touch_controls_overlay.tscn")
 
 func _enter_tree() -> void:
 	var peer_id := name.to_int()
@@ -104,6 +108,22 @@ func _setup_local_ui() -> void:
 	crosshair_overlay_inst.hide()
 	add_child(crosshair_overlay_inst)
 
+	# Mobile Touch Controls UI
+	if OS.has_feature("mobile") or OS.get_name() in ["Android", "iOS"]:
+		touch_overlay_inst = TOUCH_SCENE.instantiate() as CanvasLayer
+		add_child(touch_overlay_inst)
+		if touch_overlay_inst.has_signal("move_vector_changed"):
+			touch_overlay_inst.connect("move_vector_changed", func(vec: Vector2): touch_move_dir = vec)
+		if touch_overlay_inst.has_signal("jump_pressed"):
+			touch_overlay_inst.connect("jump_pressed", func(): if is_on_floor(): velocity.y = jump_velocity)
+		if touch_overlay_inst.has_signal("attack_pressed"):
+			touch_overlay_inst.connect("attack_pressed", func():
+				if not equipped_sword:
+					_on_sword_equip_toggled(true)
+				elif equipped_sword.has_method("swing"):
+					equipped_sword.call("swing")
+			)
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():
 		return
@@ -123,11 +143,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
-	# Camera Mouse Orbit Motion
+	# Camera Mouse & Touch Orbit Motion
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * mouse_sensitivity)
 		camera_pivot.rotate_x(-event.relative.y * mouse_sensitivity)
 		camera_pivot.rotation.x = clamp(camera_pivot.rotation.x, deg_to_rad(-80), deg_to_rad(80))
+
+	elif event is InputEventScreenDrag:
+		# Touch Camera Drag on right side of screen
+		if event.position.x > get_viewport().get_visible_rect().size.x * 0.4:
+			rotate_y(-event.relative.x * mouse_sensitivity * 0.75)
+			camera_pivot.rotate_x(-event.relative.y * mouse_sensitivity * 0.75)
+			camera_pivot.rotation.x = clamp(camera_pivot.rotation.x, deg_to_rad(-80), deg_to_rad(80))
 
 	# Left-Click Sword Swing
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.is_pressed():
@@ -258,6 +285,9 @@ func _physics_process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_S): input_dir.y += 1.0
 	if Input.is_key_pressed(KEY_A): input_dir.x -= 1.0
 	if Input.is_key_pressed(KEY_D): input_dir.x += 1.0
+
+	if touch_move_dir != Vector2.ZERO:
+		input_dir = touch_move_dir
 
 	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 	if direction != Vector3.ZERO:

@@ -1,0 +1,115 @@
+[gd_scene load_steps=5 format=3 uid="uid://c8luani00touch"]
+
+[ext_resource type="Script" path="res://scenes/ui/touch_controls_overlay.gd" id="1_touch"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_JoyBase"]
+bg_color = Color(0.1, 0.12, 0.18, 0.5)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.3)
+corner_radius_top_left = 60
+corner_radius_top_right = 60
+corner_radius_bottom_right = 60
+corner_radius_bottom_left = 60
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_JoyKnob"]
+bg_color = Color(0.2, 0.6, 1, 0.8)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Btn"]
+bg_color = Color(0.08, 0.1, 0.15, 0.75)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.3)
+corner_radius_top_left = 30
+corner_radius_top_right = 30
+corner_radius_bottom_right = 30
+corner_radius_bottom_left = 30
+
+[node name="TouchControlsOverlay" type="CanvasLayer"]
+layer = 12
+script = ExtResource("1_touch")
+
+[node name="HUDTouchControl" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="JoystickBase" type="Panel" parent="HUDTouchControl"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 120)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = -160.0
+offset_right = 160.0
+offset_bottom = -40.0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_JoyBase")
+
+[node name="JoystickKnob" type="Panel" parent="HUDTouchControl/JoystickBase"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 0
+offset_left = 35.0
+offset_top = 35.0
+offset_right = 85.0
+offset_bottom = 85.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_JoyKnob")
+
+[node name="ActionButtonsVBox" type="VBoxContainer" parent="HUDTouchControl"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -160.0
+offset_top = -180.0
+offset_right = -30.0
+offset_bottom = -30.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_constants/separation = 12
+
+[node name="BtnJump" type="Button" parent="HUDTouchControl/ActionButtonsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
+text = "⬆️ JUMP"
+
+[node name="BtnAttack" type="Button" parent="HUDTouchControl/ActionButtonsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
+text = "⚔️ ATTACK"
+
+[node name="TouchCameraArea" type="Control" parent="HUDTouchControl"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_bottom = -200.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 1
