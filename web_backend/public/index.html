@@ -31,6 +31,7 @@
 
       <nav class="nav-links" id="navLinksMenu">
         <a href="#" id="navDiscover" class="active">Discover</a>
+        <a href="#avatar" id="navAvatar">Avatar</a>
         <a href="#studio" id="navStudio">Studio</a>
       </nav>
 
@@ -64,8 +65,6 @@
             </div>
             <div id="userProfileDropdown" class="dropdown-panel hidden">
               <a href="#" id="menuViewProfile">👤 View Profile</a>
-              <a href="#" id="menuAvatarEditor">🎨 Avatar Editor</a>
-              <a href="#" id="menuEditBio">✏ Edit Description</a>
               <div class="dropdown-divider"></div>
               <a href="#" id="menuLogout" class="text-danger">🚪 Log Out</a>
             </div>
@@ -179,7 +178,10 @@
         </div>
 
         <div class="profile-bio-box">
-          <h3>Description / Bio</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h3 style="margin: 0;">Description / Bio</h3>
+            <button id="btnEditBioInline" class="btn btn-sm btn-secondary hidden">✏ Edit Description</button>
+          </div>
           <p id="profileBioText">User bio description text.</p>
         </div>
 

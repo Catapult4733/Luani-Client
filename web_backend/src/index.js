@@ -83,6 +83,16 @@ const blockList = new Set();
 // Default Places Catalog
 const places = [
   {
+    id: 'place_sword_arena',
+    name: 'Sword Fighting Arena',
+    creator: 'Luani Team',
+    description: 'Engage in fast-paced sword combat! Equip your sword (Key 1), swing with Left-Click, and fight for victory.',
+    maxPlayers: 16,
+    version: 1,
+    format_version: 1,
+    parts: []
+  },
+  {
     id: 'place_default_01',
     name: 'Luani Starter World',
     creator: 'Luani Team',

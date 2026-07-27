@@ -761,11 +761,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAvatarCircle(profileAvatarLarge, currentProfileUser.avatar_colors, currentProfileUser.username);
         profileBioText.innerText = currentProfileUser.bio;
 
+        const btnEditBioInline = document.getElementById('btnEditBioInline');
         const isSelf = currentUser && currentUser.username.toLowerCase() === currentProfileUser.username.toLowerCase();
         if (isSelf) {
           if (profileRelationshipActions) profileRelationshipActions.classList.add('hidden');
+          if (btnEditBioInline) btnEditBioInline.classList.remove('hidden');
         } else {
           if (profileRelationshipActions) profileRelationshipActions.classList.remove('hidden');
+          if (btnEditBioInline) btnEditBioInline.classList.add('hidden');
         }
 
         // Render Owner Power Panel if logged-in user is an owner (to moderate ANY user profile)
@@ -891,6 +894,49 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationBadge.classList.add('hidden');
       }
     });
+  }
+
+  // --- NOTIFICATION BELL & NAV CLICK LISTENERS ---
+  if (notificationBellBtn && notificationDropdown) {
+    notificationBellBtn.onclick = (e) => {
+      e.stopPropagation();
+      notificationDropdown.classList.toggle('hidden');
+    };
+    document.addEventListener('click', (e) => {
+      if (!notificationDropdown.contains(e.target) && e.target !== notificationBellBtn) {
+        notificationDropdown.classList.add('hidden');
+      }
+    });
+  }
+
+  const navAvatar = document.getElementById('navAvatar');
+  if (navAvatar) {
+    navAvatar.onclick = (e) => {
+      e.preventDefault();
+      showView(avatarEditorView);
+    };
+  }
+
+  const btnBio = document.getElementById('btnEditBioInline');
+  if (btnBio) {
+    btnBio.onclick = () => {
+      const currentBio = profileBioText ? profileBioText.innerText : '';
+      const newBio = prompt('Enter your new profile description / bio:', currentBio);
+      if (newBio !== null) {
+        apiFetch('/api/user/profile', {
+          method: 'POST',
+          body: JSON.stringify({ bio: newBio })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            if (profileBioText) profileBioText.innerText = newBio;
+            if (currentUser) currentUser.bio = newBio;
+            alert('Profile description updated successfully!');
+          }
+        });
+      }
+    };
   }
 
   // Search input handler & Results Renderer

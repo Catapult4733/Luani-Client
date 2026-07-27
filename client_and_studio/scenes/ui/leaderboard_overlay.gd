@@ -59,7 +59,7 @@ func _refresh_player_list() -> void:
 func _add_player_row(uname: String, ping_str: String, is_owner: bool, is_verified: bool, _colors: Dictionary) -> void:
 	var row := HBoxContainer.new()
 	row.custom_minimum_size = Vector2(0, 32)
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", 6)
 
 	# 1. Ping Label (left-aligned)
 	var ping_label := Label.new()
@@ -68,21 +68,20 @@ func _add_player_row(uname: String, ping_str: String, is_owner: bool, is_verifie
 	ping_label.add_theme_font_size_override("font_size", 13)
 	row.add_child(ping_label)
 
-	# 2. Username Label
+	# 2. Username Label (auto-fit width)
 	var name_label := Label.new()
 	name_label.text = uname
-	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.add_theme_font_size_override("font_size", 14)
 	row.add_child(name_label)
 
-	# 3. 👑 Crown Badge (if owner)
+	# 3. 👑 Crown Badge (immediately after username)
 	if is_owner:
 		var crown_label := Label.new()
 		crown_label.text = "👑"
 		crown_label.add_theme_font_size_override("font_size", 14)
 		row.add_child(crown_label)
 
-	# 4. 🔵 Verified Badge (if verified)
+	# 4. 🔵 Verified Badge (immediately after username / crown)
 	if is_verified:
 		if ResourceLoader.exists(VERIFIED_ICON_PATH):
 			var tex_rect := TextureRect.new()
@@ -98,5 +97,10 @@ func _add_player_row(uname: String, ping_str: String, is_owner: bool, is_verifie
 			check_label.text = "☑️"
 			check_label.modulate = Color("1DA1F2")
 			row.add_child(check_label)
+
+	# 5. Right-side Spacer
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer)
 
 	player_list_vbox.add_child(row)

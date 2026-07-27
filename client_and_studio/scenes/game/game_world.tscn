@@ -68,6 +68,7 @@ custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_CircleBtn")
 text = "🌌"
+alignment = 1
 
 [node name="ChatToggleButton" type="Button" parent="UI/HUD/TopLeftBar"]
 unique_name_in_owner = true
@@ -75,6 +76,7 @@ custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_CircleBtn")
 text = "💬"
+alignment = 1
 
 [node name="TopRightBar" type="HBoxContainer" parent="UI/HUD"]
 layout_mode = 1
@@ -93,6 +95,7 @@ custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_CircleBtn")
 text = "📊"
+alignment = 1
 
 [node name="PauseMenu" parent="UI" instance=ExtResource("2_pause")]
 unique_name_in_owner = true

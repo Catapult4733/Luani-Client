@@ -1,0 +1,59 @@
+[gd_scene load_steps=10 format=3 uid="uid://c8luani00sword"]
+
+[ext_resource type="Script" path="res://scenes/weapons/sword.gd" id="1_sword"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_Handle"]
+top_radius = 0.04
+bottom_radius = 0.04
+height = 0.35
+
+[sub_resource type="StandardMaterial3D" id="Mat_Handle"]
+albedo_color = Color(0.35, 0.22, 0.15, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_Guard"]
+size = Vector3(0.35, 0.05, 0.08)
+
+[sub_resource type="StandardMaterial3D" id="Mat_Gold"]
+albedo_color = Color(0.9, 0.75, 0.2, 1)
+metallic = 0.8
+roughness = 0.3
+
+[sub_resource type="BoxMesh" id="BoxMesh_Blade"]
+size = Vector3(0.07, 1.1, 0.03)
+
+[sub_resource type="StandardMaterial3D" id="Mat_Silver"]
+albedo_color = Color(0.85, 0.9, 0.95, 1)
+metallic = 0.95
+roughness = 0.15
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_BladeArea"]
+size = Vector3(0.2, 1.2, 0.2)
+
+[node name="Sword" type="Node3D"]
+script = ExtResource("1_sword")
+
+[node name="MeshHolder" type="Node3D" parent="."]
+
+[node name="Handle" type="MeshInstance3D" parent="MeshHolder"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.175, 0)
+mesh = SubResource("CylinderMesh_Handle")
+surface_material_override/0 = SubResource("Mat_Handle")
+
+[node name="Crossguard" type="MeshInstance3D" parent="MeshHolder"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, 0)
+mesh = SubResource("BoxMesh_Guard")
+surface_material_override/0 = SubResource("Mat_Gold")
+
+[node name="Blade" type="MeshInstance3D" parent="MeshHolder"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+mesh = SubResource("BoxMesh_Blade")
+surface_material_override/0 = SubResource("Mat_Silver")
+
+[node name="BladeArea" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+collision_layer = 0
+collision_mask = 2
+monitoring = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BladeArea"]
+shape = SubResource("BoxShape3D_BladeArea")

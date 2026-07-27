@@ -9,10 +9,17 @@ signal place_load_failed(place_id: String, error_msg: String)
 
 @export var backend_api_url: String = "https://www.luani.fyi/api/places"
 
+const SWORD_ARENA_SCENE := preload("res://scenes/places/place_sword_arena.tscn")
+
 ## Loads a place by ID into target_world_root (downloads from backend or falls back to starter place)
 func load_place(place_id: String, target_world_root: Node3D) -> void:
 	place_loading_started.emit(place_id)
 	print("[Luani PlaceLoader] Requesting place ID: ", place_id)
+
+	# Local packed scene check for sword arena
+	if place_id == "place_sword_arena" or place_id == "sword_arena":
+		_instantiate_sword_arena(place_id, target_world_root)
+		return
 
 	var http := HTTPRequest.new()
 	add_child(http)
@@ -54,6 +61,15 @@ func _populate_world_from_dict(data: Dictionary, target_world_root: Node3D) -> v
 				if code != "":
 					luau_mgr.execute_luau_script(code, child)
 
+func _instantiate_sword_arena(place_id: String, target_world_root: Node3D) -> void:
+	for child in target_world_root.get_children():
+		child.queue_free()
+
+	var arena := SWORD_ARENA_SCENE.instantiate()
+	target_world_root.add_child(arena)
+	print("[Luani PlaceLoader] Instantiated Sword Arena place: ", place_id)
+	place_loaded.emit(place_id, target_world_root)
+
 func _instantiate_default_starter_world(place_id: String, target_world_root: Node3D) -> void:
 	# Clear existing children
 	for child in target_world_root.get_children():
@@ -75,5 +91,32 @@ func _instantiate_default_starter_world(place_id: String, target_world_root: Nod
 	mat.albedo_color = Color(0.2, 0.9, 0.4)
 	mesh_inst.material_override = mat
 
-	print("[Luani PlaceLoader] Instantiated default starter world for place: ", place_id)
+	# Spawn Physics Baseplate Ball (RigidBody3D, 5.0 kg mass, glossy sphere)
+	var ball := RigidBody3D.new()
+	ball.name = "BaseplateBall"
+	ball.mass = 5.0
+	ball.position = Vector3(4.0, 2.5, 4.0)
+
+	var ball_col := CollisionShape3D.new()
+	var sphere_shape := SphereShape3D.new()
+	sphere_shape.radius = 1.2
+	ball_col.shape = sphere_shape
+	ball.add_child(ball_col)
+
+	var ball_mesh := MeshInstance3D.new()
+	var sphere_mesh := SphereMesh.new()
+	sphere_mesh.radius = 1.2
+	sphere_mesh.height = 2.4
+	ball_mesh.mesh = sphere_mesh
+
+	var ball_mat := StandardMaterial3D.new()
+	ball_mat.albedo_color = Color(0.95, 0.35, 0.25)
+	ball_mat.roughness = 0.2
+	ball_mat.metallic = 0.5
+	ball_mesh.material_override = ball_mat
+	ball.add_child(ball_mesh)
+
+	target_world_root.add_child(ball)
+
+	print("[Luani PlaceLoader] Instantiated default starter world & physics baseplate ball for place: ", place_id)
 	place_loaded.emit(place_id, target_world_root)
