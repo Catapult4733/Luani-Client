@@ -18,3 +18,11 @@ __pycache__/
 .DS_Store
 .vscode/
 .idea/
+
+# Android build templates & binaries
+*.aar
+*.apk
+bin/
+client_and_studio/android/build/libs/
+client_and_studio/android/build/build/
+client_and_studio/android/build/.gradle/
