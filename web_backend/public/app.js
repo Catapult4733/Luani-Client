@@ -311,8 +311,13 @@ document.addEventListener('DOMContentLoaded', () => {
     promptInstallOrLaunch(launchUri);
   });
 
-  // --- INSTALL PROMPT TERMINAL MODAL ---
+  // --- INSTALL PROMPT TERMINAL MODAL & INTENT PROTOCOL BUILDER ---
   function promptInstallOrLaunch(joinUri) {
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    if (isAndroid && joinUri.startsWith('luani://join')) {
+      const queryPart = joinUri.substring('luani://join'.length);
+      joinUri = `intent://join${queryPart}#Intent;scheme=luani;package=com.luani.client;end;`;
+    }
     pendingLaunchUri = joinUri;
     if (installPromptModal) installPromptModal.classList.remove('hidden');
   }
