@@ -398,6 +398,19 @@ body {
   text-decoration: none;
 }
 
+.btn-download-app {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+  transition: all 0.25s ease !important;
+}
+
+.btn-download-app:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6);
+}
+
 .btn-lg {
   padding: 0.9rem 2rem;
   font-size: 1.05rem;
