@@ -16,6 +16,18 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Serve static APK downloads with strict no-cache headers
+app.use('/downloads', express.static(path.join(__dirname, '../public/downloads'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.apk')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    }
+  }
+}));
+
 // Serve static web portal frontend
 app.use(express.static(path.join(__dirname, '../public')));
 
