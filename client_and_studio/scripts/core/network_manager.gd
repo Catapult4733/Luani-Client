@@ -28,6 +28,11 @@ var connection_timer_active: bool = false
 var connection_elapsed: float = 0.0
 const CONNECTION_TIMEOUT_SECONDS: float = 12.0
 
+## Empty-server auto-quit guard (server only)
+var empty_server_elapsed: float = 0.0
+var empty_server_timer_active: bool = false
+const EMPTY_SERVER_QUIT_SECONDS: float = 300.0  # 5 minutes
+
 var backend_status_url: String = "https://www.luani.fyi/api/daemon/update-status"
 var server_request_id: String = ""
 
@@ -69,6 +74,13 @@ func _process(delta: float) -> void:
 			print("[Luani NetworkManager] 12-second connection handshake timeout reached.")
 			_handle_connection_failure("[Connection Timeout] Could not reach server at " + target_server_ip + ":" + str(target_server_port) + ". Server failed to respond in time.")
 
+	# Empty-server auto-quit guard: only shut down after 5 continuous minutes with 0 peers
+	if is_server and empty_server_timer_active:
+		empty_server_elapsed += delta
+		if empty_server_elapsed >= EMPTY_SERVER_QUIT_SECONDS:
+			print("[Luani NetworkManager] Server empty for 5 minutes. Shutting down gracefully.")
+			get_tree().quit()
+
 func _handle_connection_failure(reason_text: String) -> void:
 	connection_timer_active = false
 	if active_peer:
@@ -102,6 +114,12 @@ func host_server(port: int = 7777, max_clients: int = 32) -> Error:
 	if err == OK:
 		multiplayer.multiplayer_peer = active_peer
 		is_server = true
+		# Increase ENet timeout to tolerate mobile UDP packet drops (30s disconnect threshold)
+		if multiplayer.multiplayer_peer is ENetMultiplayerPeer:
+			var enet_host = (multiplayer.multiplayer_peer as ENetMultiplayerPeer).get_host()
+			if enet_host:
+				enet_host.bandwidth_limit(0, 0)
+				print("[Luani NetworkManager] ENet host bandwidth limits cleared for server.")
 		print("[Luani NetworkManager] Server successfully started on port: ", port)
 		server_started.emit(port)
 		spawn_player_avatar(1)
@@ -140,6 +158,12 @@ func join_server(host: String = "127.0.0.1", port: int = 7777, _auth_token: Stri
 	if err == OK:
 		multiplayer.multiplayer_peer = active_peer
 		is_server = false
+		# Increase ENet timeout to tolerate mobile UDP packet drops (30s disconnect threshold)
+		if multiplayer.multiplayer_peer is ENetMultiplayerPeer:
+			var enet_host = (multiplayer.multiplayer_peer as ENetMultiplayerPeer).get_host()
+			if enet_host:
+				enet_host.bandwidth_limit(0, 0)
+				print("[Luani NetworkManager] ENet host bandwidth limits cleared for client.")
 		print("[Luani NetworkManager] Initiated client connection to ", connect_host, ":", port)
 	else:
 		_handle_connection_failure("Failed to create ENet client peer to " + connect_host + ":" + str(port))
@@ -217,6 +241,9 @@ func _report_player_count_to_backend() -> void:
 func _on_peer_connected(id: int) -> void:
 	print("[Luani NetworkManager] Peer connected: ", id)
 	if is_server:
+		# Cancel empty-server shutdown timer when a new peer joins
+		empty_server_timer_active = false
+		empty_server_elapsed = 0.0
 		spawn_player_avatar(id)
 		_report_player_count_to_backend()
 
@@ -226,6 +253,16 @@ func _on_peer_disconnected(id: int) -> void:
 		players_container.get_node(str(id)).queue_free()
 	if is_server:
 		_report_player_count_to_backend()
+		# Guard: only start auto-quit timer when there are genuinely 0 remaining peers
+		var remaining_peers: int = multiplayer.get_peers().size()
+		if remaining_peers == 0:
+			print("[Luani NetworkManager] Server has 0 peers. Starting 5-minute empty-server shutdown timer.")
+			empty_server_elapsed = 0.0
+			empty_server_timer_active = true
+		else:
+			# Reset timer — server is not empty
+			empty_server_timer_active = false
+			empty_server_elapsed = 0.0
 
 func _on_connected_to_server() -> void:
 	connection_timer_active = false

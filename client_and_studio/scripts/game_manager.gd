@@ -36,6 +36,9 @@ func _ready() -> void:
 		if parser.latest_session_data.get("valid", false):
 			_on_protocol_received(parser.latest_session_data)
 
+func _process(_delta: float) -> void:
+	check_pending_uri()
+
 func _force_instantiate_ui_overlays() -> void:
 	if DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server"):
 		print("[Luani GameManager] Running in Headless/Dedicated Server Mode. Bypassing DirectUILayer.")
@@ -98,6 +101,10 @@ func connect_to_server(ip: String, port: int, token: String) -> void:
 	session_state_changed.emit("JOINING_SERVER")
 	connection_started.emit(ip, port)
 
+	var ui_mgr := get_node_or_null("/root/UIManager")
+	if ui_mgr and ui_mgr.has_method("set_game_ui_visible"):
+		ui_mgr.set_game_ui_visible(true)
+
 	var net_mgr := get_node_or_null("/root/NetworkManager")
 	if net_mgr:
 		net_mgr.join_server(ip, port, token)
@@ -122,3 +129,46 @@ func launch_studio() -> void:
 	session_state_changed.emit("STUDIO_MODE")
 	print("[Luani GameManager] Launching Luani Studio environment...")
 	get_tree().call_deferred("change_scene_to_file", "res://studio/studio_main.tscn")
+
+func connect_via_uri(uri_str: String) -> void:
+	print("[Luani Bridge] Successfully received join URI: ", uri_str)
+	print("[Luani GameManager] Received native URI from Java bridge: ", uri_str)
+	hide_web_portal()
+	var parser := get_node_or_null("/root/ProtocolParser")
+	var session_data := {}
+	if parser and parser.has_method("parse_uri"):
+		session_data = parser.parse_uri(uri_str)
+	var ip: String = session_data.get("server_ip", "127.0.0.1")
+	var port: int = session_data.get("server_port", 7777)
+	var auth: String = session_data.get("auth_token", "")
+
+	var ui_mgr := get_node_or_null("/root/UIManager")
+	if ui_mgr and ui_mgr.has_method("set_game_ui_visible"):
+		ui_mgr.set_game_ui_visible(true)
+
+	connect_to_server(ip, port, auth)
+
+func show_web_portal() -> void:
+	if OS.get_name() == "Android":
+		var godot_app = JavaClassWrapper.wrap("com.godot.game.GodotApp")
+		if godot_app:
+			godot_app.showWebPortalStatic()
+			print("[Luani GameManager] Triggered native Java showWebPortalStatic overlay.")
+
+func hide_web_portal() -> void:
+	if OS.get_name() == "Android":
+		var godot_app = JavaClassWrapper.wrap("com.godot.game.GodotApp")
+		if godot_app:
+			godot_app.hideWebPortalStatic()
+			print("[Luani GameManager] Triggered native Java hideWebPortalStatic overlay.")
+
+func check_pending_uri() -> void:
+	if OS.has_feature("android"):
+		var java_app = JavaClassWrapper.wrap("com.godot.game.GodotApp")
+		if java_app:
+			var uri = java_app.getPendingUri()
+			if uri != "":
+				print("[Luani Bridge] Pulled URI from Java: ", uri)
+				connect_via_uri(uri)
+
+
