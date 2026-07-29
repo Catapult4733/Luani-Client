@@ -6,11 +6,15 @@ extends CanvasLayer
 signal move_vector_changed(vector: Vector2)
 signal jump_pressed
 signal attack_pressed
+signal zoom_in_pressed
+signal zoom_out_pressed
 
 @onready var joystick_base: Control = %JoystickBase
 @onready var joystick_knob: Control = %JoystickKnob
 @onready var btn_jump: Button = %BtnJump
 @onready var btn_attack: Button = %BtnAttack
+@onready var btn_zoom_in: Button = %BtnZoomIn
+@onready var btn_zoom_out: Button = %BtnZoomOut
 
 var is_joystick_active: bool = false
 var joystick_touch_index: int = -1
@@ -34,6 +38,10 @@ func _ready() -> void:
 		btn_jump.pressed.connect(func(): jump_pressed.emit())
 	if btn_attack:
 		btn_attack.pressed.connect(func(): attack_pressed.emit())
+	if btn_zoom_in:
+		btn_zoom_in.pressed.connect(func(): zoom_in_pressed.emit())
+	if btn_zoom_out:
+		btn_zoom_out.pressed.connect(func(): zoom_out_pressed.emit())
 
 func _input(event: InputEvent) -> void:
 	if not visible or not joystick_base:
@@ -41,13 +49,13 @@ func _input(event: InputEvent) -> void:
 
 	var screen_width := get_viewport().get_visible_rect().size.x
 
-	# 1. Screen Touch / Mouse Click Press on Left 50% of screen
+	# 1. Screen Touch / Mouse Click Press on Left 50% of screen (excluding Top Bar UI region y < 90)
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		var is_press: bool = event.is_pressed()
 		var pos: Vector2 = event.position
 		var idx: int = event.index if event is InputEventScreenTouch else 0
 
-		if is_press and pos.x < (screen_width * 0.5):
+		if is_press and pos.x < (screen_width * 0.5) and pos.y > 90.0:
 			# Start floating joystick at touch point
 			is_joystick_active = true
 			joystick_touch_index = idx

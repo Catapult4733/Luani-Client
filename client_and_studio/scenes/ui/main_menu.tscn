@@ -1,0 +1,306 @@
+[gd_scene load_steps=3 format=3 uid="uid://c8luani00mainmenu"]
+
+[ext_resource type="Script" path="res://scenes/ui/main_menu.gd" id="1_menu"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Card"]
+bg_color = Color(0.08, 0.1, 0.16, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.5, 0.9, 0.5)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[node name="MainMenu" type="CanvasLayer"]
+layer = 50
+script = ExtResource("1_menu")
+
+[node name="RootControl" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BGColor" type="ColorRect" parent="RootControl"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.06, 0.07, 0.1, 0.95)
+
+[node name="MainVBox" type="VBoxContainer" parent="RootControl"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="HeaderLabel" type="Label" parent="RootControl/MainVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.3, 0.75, 1, 1)
+text = "LUANI SANDBOX GAMING PLATFORM"
+horizontal_alignment = 1
+
+[node name="TabsHBox" type="HBoxContainer" parent="RootControl/MainVBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="TabServersBtn" type="Button" parent="RootControl/MainVBox/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 45)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🌐 Servers"
+
+[node name="TabProfileBtn" type="Button" parent="RootControl/MainVBox/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 45)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "👤 Profile"
+
+[node name="TabSettingsBtn" type="Button" parent="RootControl/MainVBox/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 45)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "⚙️ Settings"
+
+[node name="ContentPanel" type="PanelContainer" parent="RootControl/MainVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_Card")
+
+[node name="PanelServers" type="Control" parent="RootControl/MainVBox/ContentPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ServersMargin" type="MarginContainer" parent="RootControl/MainVBox/ContentPanel/PanelServers"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="ServersVBox" type="VBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BrowserTitle" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Official Live Servers"
+
+[node name="OfficialServerList" type="VBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HSeparator" type="HSeparator" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox"]
+layout_mode = 2
+
+[node name="CustomTitle" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Join Custom IP / Domain"
+
+[node name="CustomHBox" type="HBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ServerIPEdit" type="LineEdit" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox/CustomHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "IP Address / Host (e.g. 127.0.0.1)"
+text = "127.0.0.1"
+
+[node name="ServerPortEdit" type="LineEdit" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox/CustomHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+placeholder_text = "Port"
+text = "7777"
+
+[node name="JoinCustomBtn" type="Button" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox/CustomHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "🚀 Join Server"
+
+[node name="PanelProfile" type="Control" parent="RootControl/MainVBox/ContentPanel"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="ProfileMargin" type="MarginContainer" parent="RootControl/MainVBox/ContentPanel/PanelProfile"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="ProfileVBox" type="VBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="ProfileTitle" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Character Profile & Customizer"
+
+[node name="UserHBox" type="HBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="UserLabel" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/UserHBox"]
+layout_mode = 2
+text = "Username Handle:"
+
+[node name="UsernameEdit" type="LineEdit" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/UserHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Enter handle..."
+text = "LuaniPlayer"
+
+[node name="SaveProfileBtn" type="Button" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/UserHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "💾 Save Profile"
+
+[node name="ColorsGrid" type="GridContainer" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 12
+
+[node name="HeadLabel" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/ColorsGrid"]
+layout_mode = 2
+text = "Head & Arms Skin Color:"
+
+[node name="ColorHeadBtn" type="ColorPickerButton" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/ColorsGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 35)
+layout_mode = 2
+color = Color(0.878431, 0.67451, 0.411765, 1)
+
+[node name="TorsoLabel" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/ColorsGrid"]
+layout_mode = 2
+text = "Torso Shirt Color:"
+
+[node name="ColorTorsoBtn" type="ColorPickerButton" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/ColorsGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 35)
+layout_mode = 2
+color = Color(0, 0, 1, 1)
+
+[node name="LegsLabel" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/ColorsGrid"]
+layout_mode = 2
+text = "Pants Leg Color:"
+
+[node name="ColorLegsBtn" type="ColorPickerButton" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/ColorsGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 35)
+layout_mode = 2
+color = Color(0, 1, 0, 1)
+
+[node name="PanelSettings" type="Control" parent="RootControl/MainVBox/ContentPanel"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="SettingsMargin" type="MarginContainer" parent="RootControl/MainVBox/ContentPanel/PanelSettings"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="SettingsVBox" type="VBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="SettingsTitle" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Game Settings"
+
+[node name="VolHBox" type="HBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox"]
+layout_mode = 2
+
+[node name="VolLabel" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox/VolHBox"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Master Audio Volume:"
+
+[node name="VolumeSlider" type="HSlider" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox/VolHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.05
+value = 0.8
+
+[node name="GfxHBox" type="HBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox"]
+layout_mode = 2
+
+[node name="GfxLabel" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox/GfxHBox"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Graphics Quality:"
+
+[node name="GraphicsOption" type="OptionButton" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox/GfxHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SensHBox" type="HBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox"]
+layout_mode = 2
+
+[node name="SensLabel" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox/SensHBox"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Mouse/Touch Sensitivity:"
+
+[node name="SensitivitySlider" type="HSlider" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox/SensHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+min_value = 0.2
+max_value = 3.0
+step = 0.1
+value = 1.0

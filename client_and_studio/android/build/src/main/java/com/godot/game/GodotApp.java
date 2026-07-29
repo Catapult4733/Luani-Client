@@ -94,6 +94,35 @@ public class GodotApp extends GodotActivity {
 		if (godot != null && godot.getDisableGodotSplash()) {
 			splashScreen.setKeepOnScreenCondition(() -> godot.getRunStatus() != Godot.RunStatus.STARTED);
 		}
+
+		// Automatic APK Cache Clearing on Version Code Bump
+		try {
+			android.content.SharedPreferences prefs = getSharedPreferences("luani_app_prefs", MODE_PRIVATE);
+			int lastVersionCode = prefs.getInt("version_code", -1);
+			int currentVersionCode = BuildConfig.VERSION_CODE;
+			if (lastVersionCode != currentVersionCode) {
+				Log.i("GODOT_APP", "[Luani Cache] New version detected (" + currentVersionCode + "). Purging stale app cache...");
+				clearAppCache(getCacheDir());
+				clearAppCache(getExternalCacheDir());
+				prefs.edit().putInt("version_code", currentVersionCode).apply();
+			}
+		} catch (Exception e) {
+			Log.e("GODOT_APP", "Error executing cache clear check: " + e.getMessage());
+		}
+	}
+
+	private void clearAppCache(java.io.File dir) {
+		if (dir != null && dir.isDirectory()) {
+			java.io.File[] files = dir.listFiles();
+			if (files != null) {
+				for (java.io.File f : files) {
+					if (f.isDirectory()) {
+						clearAppCache(f);
+					}
+					f.delete();
+				}
+			}
+		}
 	}
 
 	@Override
@@ -117,7 +146,8 @@ public class GodotApp extends GodotActivity {
 	public void onGodotMainLoopStarted() {
 		super.onGodotMainLoopStarted();
 		runOnUiThread(updateWindowAppearance);
-		showWebPortal();
+		// Native Godot UI renders on launch — web portal dialog bypassed
+		Log.i("GODOT_APP", "[Luani Native UI] Native Godot UI active on launch.");
 	}
 
 	public void showWebPortal() {

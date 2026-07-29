@@ -58,6 +58,7 @@ offset_top = -160.0
 offset_right = 160.0
 offset_bottom = -40.0
 grow_vertical = 0
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_JoyBase")
 
 [node name="JoystickKnob" type="Panel" parent="HUDTouchControl/JoystickBase"]
@@ -68,6 +69,7 @@ offset_left = 35.0
 offset_top = 35.0
 offset_right = 85.0
 offset_bottom = 85.0
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_JoyKnob")
 
 [node name="ActionButtonsVBox" type="VBoxContainer" parent="HUDTouchControl"]
@@ -78,38 +80,45 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -160.0
-offset_top = -180.0
+offset_top = -240.0
 offset_right = -30.0
 offset_bottom = -30.0
 grow_horizontal = 0
 grow_vertical = 0
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
 [node name="BtnJump" type="Button" parent="HUDTouchControl/ActionButtonsVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 60)
+custom_minimum_size = Vector2(130, 50)
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
 text = "⬆️ JUMP"
 
 [node name="BtnAttack" type="Button" parent="HUDTouchControl/ActionButtonsVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 60)
+custom_minimum_size = Vector2(130, 50)
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
 text = "⚔️ ATTACK"
 
-[node name="TouchCameraArea" type="Control" parent="HUDTouchControl"]
+[node name="ZoomHBox" type="HBoxContainer" parent="HUDTouchControl/ActionButtonsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BtnZoomIn" type="Button" parent="HUDTouchControl/ActionButtonsVBox/ZoomHBox"]
 unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 11
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -400.0
-offset_bottom = -200.0
-grow_horizontal = 0
-grow_vertical = 2
-mouse_filter = 1
+custom_minimum_size = Vector2(60, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
+text = "🔍 +"
+
+[node name="BtnZoomOut" type="Button" parent="HUDTouchControl/ActionButtonsVBox/ZoomHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
+text = "🔍 -"

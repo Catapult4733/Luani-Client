@@ -52,7 +52,19 @@ func _ready() -> void:
 			local_avatar_colors = data.get("avatar_colors")
 		is_owner = data.get("owner", false)
 		is_verified = data.get("verified", false)
-		print("[Luani NetworkManager] Initialized identity: ", local_username, " (Owner: ", is_owner, ", Verified: ", is_verified, ")")
+
+	# Read user_profile.json if username is default
+	if local_username == "Player" and FileAccess.file_exists("user://user_profile.json"):
+		var profile_file := FileAccess.open("user://user_profile.json", FileAccess.READ)
+		if profile_file:
+			var parsed = JSON.parse_string(profile_file.get_as_text())
+			if parsed is Dictionary:
+				if parsed.get("username", "") != "":
+					local_username = parsed.get("username")
+				if parsed.get("colors") is Dictionary:
+					local_avatar_colors = parsed.get("colors")
+
+	print("[Luani NetworkManager] Initialized identity: ", local_username, " (Owner: ", is_owner, ", Verified: ", is_verified, ")")
 
 	# Extract --request-id= if passed via command line
 	var all_args := OS.get_cmdline_args() + OS.get_cmdline_user_args()

@@ -1,13 +1,17 @@
 # client_and_studio/scenes/player/player_avatar.gd
 extends CharacterBody3D
 
-## Multiplayer 3D Modular R6 Humanoid Player Avatar with WASD, Jump, Orbit Camera, Floating Touch Joystick, Customization Sync, Inventory & Limb Animations
+## Multiplayer 3D Modular R6 Humanoid Player Avatar with WASD, Jump, Orbit Camera, Camera Zoom (PC/Mobile), Customization Sync, Inventory & Limb Animations
 
 @export var move_speed: float = 8.0
 @export var jump_velocity: float = 6.5
 @export var mouse_sensitivity: float = 0.003
 @export var max_health: float = 100.0
 @export var current_health: float = 100.0
+
+@export var min_camera_distance: float = 2.0
+@export var max_camera_distance: float = 12.0
+var camera_distance: float = 3.5
 
 @onready var camera: Camera3D = %Camera3D
 @onready var camera_pivot: Node3D = %CameraPivot
@@ -22,7 +26,7 @@ extends CharacterBody3D
 @onready var right_leg_pivot: Node3D = $BodyMesh/RightLegPivot
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
-var player_username: String = "Player"
+var player_username: String = "LuaniPlayer"
 var avatar_colors: Dictionary = {
 	"head": "#e0ac69",
 	"torso": "#0000ff",
@@ -50,6 +54,10 @@ var touch_move_dir: Vector2 = Vector2.ZERO
 var walk_anim_time: float = 0.0
 var attack_anim_time: float = -1.0
 
+# Mobile Pinch-to-Zoom Tracking
+var active_touches: Dictionary = {}
+var initial_pinch_dist: float = -1.0
+
 const SWORD_SCENE := preload("res://scenes/weapons/sword.tscn")
 const PICKABLE_SCENE := preload("res://scenes/items/pickable_item.tscn")
 const HOTBAR_SCENE := preload("res://scenes/ui/hotbar_overlay.tscn")
@@ -65,14 +73,7 @@ func _ready() -> void:
 	var is_local := is_multiplayer_authority()
 	camera.current = is_local
 
-	var net_mgr := get_node_or_null("/root/NetworkManager")
-	if is_local and net_mgr:
-		if net_mgr.local_username != "":
-			player_username = net_mgr.local_username
-		if not net_mgr.local_avatar_colors.is_empty():
-			avatar_colors = net_mgr.local_avatar_colors
-	elif player_username == "Player":
-		player_username = "Player_" + str(name)
+	_load_profile_identity()
 
 	username_label.text = player_username
 	apply_avatar_colors(avatar_colors)
@@ -80,8 +81,26 @@ func _ready() -> void:
 
 	if is_local and not DisplayServer.get_name() == "headless":
 		_setup_local_ui()
-		# Broadcast RPC customization data to all peers
+		# Broadcast RPC username & customization data to all connected peers
 		rpc("rpc_sync_player_data", multiplayer.get_unique_id(), player_username, avatar_colors)
+
+func _load_profile_identity() -> void:
+	var net_mgr := get_node_or_null("/root/NetworkManager")
+	if is_multiplayer_authority() and net_mgr:
+		if net_mgr.local_username != "" and net_mgr.local_username != "Player":
+			player_username = net_mgr.local_username
+		if not net_mgr.local_avatar_colors.is_empty():
+			avatar_colors = net_mgr.local_avatar_colors
+
+	# Also check local user_profile.json
+	if is_multiplayer_authority() and FileAccess.file_exists("user://user_profile.json"):
+		var file := FileAccess.open("user://user_profile.json", FileAccess.READ)
+		if file:
+			var parsed = JSON.parse_string(file.get_as_text())
+			if parsed is Dictionary and parsed.get("username", "") != "":
+				player_username = parsed.get("username")
+				if parsed.get("colors") is Dictionary:
+					avatar_colors = parsed.get("colors")
 
 func _setup_health_bar() -> void:
 	if not health_bar_label:
@@ -139,6 +158,10 @@ func _setup_local_ui() -> void:
 		touch_overlay_inst.connect("jump_pressed", func(): if is_on_floor(): velocity.y = jump_velocity)
 	if touch_overlay_inst.has_signal("attack_pressed"):
 		touch_overlay_inst.connect("attack_pressed", func(): perform_attack())
+	if touch_overlay_inst.has_signal("zoom_in_pressed"):
+		touch_overlay_inst.connect("zoom_in_pressed", func(): camera_distance = clamp(camera_distance - 0.75, min_camera_distance, max_camera_distance))
+	if touch_overlay_inst.has_signal("zoom_out_pressed"):
+		touch_overlay_inst.connect("zoom_out_pressed", func(): camera_distance = clamp(camera_distance + 0.75, min_camera_distance, max_camera_distance))
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():
@@ -150,6 +173,22 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.keycode == KEY_CTRL and event.is_pressed() and not event.is_echo():
 		_toggle_shiftlock()
 		get_viewport().set_input_as_handled()
+
+	# PC Camera Zoom Keybinds (Key I: Zoom In, Key O: Zoom Out)
+	if event is InputEventKey and event.is_pressed() and not event.is_echo():
+		if event.keycode == KEY_I:
+			camera_distance = clamp(camera_distance - 0.5, min_camera_distance, max_camera_distance)
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_O:
+			camera_distance = clamp(camera_distance + 0.5, min_camera_distance, max_camera_distance)
+			get_viewport().set_input_as_handled()
+
+	# Mouse Wheel Camera Zoom
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.is_pressed():
+			camera_distance = clamp(camera_distance - 0.4, min_camera_distance, max_camera_distance)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.is_pressed():
+			camera_distance = clamp(camera_distance + 0.4, min_camera_distance, max_camera_distance)
 
 	# RMB Camera Orbit Toggle
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
@@ -165,9 +204,30 @@ func _unhandled_input(event: InputEvent) -> void:
 		camera_pivot.rotate_x(-event.relative.y * mouse_sensitivity)
 		camera_pivot.rotation.x = clamp(camera_pivot.rotation.x, deg_to_rad(-80), deg_to_rad(80))
 
+	# Mobile Touch Camera Orbit & Pinch-to-Zoom
+	elif event is InputEventScreenTouch:
+		if event.is_pressed():
+			active_touches[event.index] = event.position
+		else:
+			active_touches.erase(event.index)
+		if active_touches.size() < 2:
+			initial_pinch_dist = -1.0
+
 	elif event is InputEventScreenDrag:
-		# Touch Camera Drag on right side of screen
-		if event.position.x > get_viewport().get_visible_rect().size.x * 0.4:
+		active_touches[event.index] = event.position
+		if active_touches.size() == 2:
+			var touch_keys: Array = active_touches.keys()
+			var pos1: Vector2 = active_touches[touch_keys[0]]
+			var pos2: Vector2 = active_touches[touch_keys[1]]
+			var current_dist: float = pos1.distance_to(pos2)
+			if initial_pinch_dist < 0:
+				initial_pinch_dist = current_dist
+			else:
+				var delta_dist: float = current_dist - initial_pinch_dist
+				if abs(delta_dist) > 8.0:
+					camera_distance = clamp(camera_distance - (delta_dist * 0.01), min_camera_distance, max_camera_distance)
+					initial_pinch_dist = current_dist
+		elif event.position.x > get_viewport().get_visible_rect().size.x * 0.4:
 			rotate_y(-event.relative.x * mouse_sensitivity * 0.75)
 			camera_pivot.rotate_x(-event.relative.y * mouse_sensitivity * 0.75)
 			camera_pivot.rotation.x = clamp(camera_pivot.rotation.x, deg_to_rad(-80), deg_to_rad(80))
@@ -307,6 +367,7 @@ func _show_respawning_overlay() -> void:
 	add_child(respawn_overlay_inst)
 
 func _physics_process(delta: float) -> void:
+	_update_camera_zoom(delta)
 	_update_limb_animations(delta)
 
 	if not is_multiplayer_authority() or is_dead:
@@ -347,6 +408,10 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0, move_speed)
 
 	move_and_slide()
+
+func _update_camera_zoom(delta: float) -> void:
+	if camera:
+		camera.position.z = lerp(camera.position.z, camera_distance, delta * 10.0)
 
 ## Updates R6 Limb Swing & Action Animations (Idle, Walk, Jump/Fall, Attack)
 func _update_limb_animations(delta: float) -> void:
