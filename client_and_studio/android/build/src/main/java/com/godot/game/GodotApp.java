@@ -5,45 +5,63 @@
 /*                             GODOT ENGINE                               */
 /*                        https://godotengine.org                         */
 /**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
 
 package com.godot.game;
 
 import org.godotengine.godot.Godot;
 import org.godotengine.godot.GodotActivity;
+import org.godotengine.godot.GodotLib;
 
+import android.app.Dialog;
+import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
+import android.net.http.SslError;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.webkit.SslErrorHandler;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 import androidx.activity.EdgeToEdge;
 import androidx.core.splashscreen.SplashScreen;
 
 /**
- * Template activity for Godot Android builds.
- * Feel free to extend and modify this class for your custom logic.
+ * Custom Godot Activity with Native In-App WebView Overlay via Dialog for Luani.
  */
 public class GodotApp extends GodotActivity {
+	private static GodotApp instance;
+	private static Dialog webDialog;
+	public static String pendingUri = "";
+
+	public static String getPendingUri() {
+		String uri = pendingUri;
+		pendingUri = ""; // clear after reading
+		return uri;
+	}
+
+	public static GodotApp getInstance() {
+		return instance;
+	}
+
+	public static void showWebPortalStatic() {
+		if (instance != null) {
+			instance.showWebPortal();
+		}
+	}
+
+	public static void hideWebPortalStatic() {
+		hideWebPortal();
+	}
+
 	static {
 		// .NET libraries.
 		if (BuildConfig.FLAVOR.equals("mono")) {
@@ -67,6 +85,7 @@ public class GodotApp extends GodotActivity {
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
+		instance = this;
 		SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
 		EdgeToEdge.enable(this);
 		super.onCreate(savedInstanceState);
@@ -74,6 +93,17 @@ public class GodotApp extends GodotActivity {
 		Godot godot = getGodot();
 		if (godot != null && godot.getDisableGodotSplash()) {
 			splashScreen.setKeepOnScreenCondition(() -> godot.getRunStatus() != Godot.RunStatus.STARTED);
+		}
+	}
+
+	@Override
+	public void onNewIntent(Intent intent) {
+		super.onNewIntent(intent);
+		if (intent != null && intent.getData() != null) {
+			String url = intent.getData().toString();
+			Log.d("LuaniBridge", "Captured URI: " + url);
+			pendingUri = url;
+			hideWebPortal();
 		}
 	}
 
@@ -87,13 +117,135 @@ public class GodotApp extends GodotActivity {
 	public void onGodotMainLoopStarted() {
 		super.onGodotMainLoopStarted();
 		runOnUiThread(updateWindowAppearance);
+		showWebPortal();
+	}
+
+	public void showWebPortal() {
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Log.i("GODOT_WEBVIEW", "showWebPortal() invoked on UI Thread.");
+					if (webDialog == null) {
+						webDialog = new Dialog(GodotApp.this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+						webDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+						Window window = webDialog.getWindow();
+						if (window != null) {
+							window.setBackgroundDrawable(new ColorDrawable(Color.BLACK));
+							window.setFlags(
+								WindowManager.LayoutParams.FLAG_FULLSCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+								WindowManager.LayoutParams.FLAG_FULLSCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+							);
+							window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+						}
+
+						WebView.setWebContentsDebuggingEnabled(true);
+						WebView webView = new WebView(GodotApp.this);
+						webView.setBackgroundColor(Color.BLACK);
+						webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+						webView.setWebChromeClient(new WebChromeClient());
+
+						WebSettings settings = webView.getSettings();
+						settings.setJavaScriptEnabled(true);
+						settings.setDomStorageEnabled(true);
+						settings.setDatabaseEnabled(true);
+						settings.setAllowFileAccess(true);
+						settings.setAllowContentAccess(true);
+						settings.setMediaPlaybackRequiresUserGesture(false);
+						settings.setUseWideViewPort(true);
+						settings.setLoadWithOverviewMode(true);
+						settings.setJavaScriptCanOpenWindowsAutomatically(true);
+						settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+
+						webView.setWebViewClient(new WebViewClient() {
+							@Override
+							public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+								if (request != null && request.getUrl() != null) {
+									String url = request.getUrl().toString();
+									if (url.startsWith("luani://") || url.contains("join?server=")) {
+										Log.d("LuaniBridge", "Captured URI: " + url);
+										pendingUri = url;
+										hideWebPortal();
+										return true;
+									}
+								}
+								return false;
+							}
+
+							@Override
+							public boolean shouldOverrideUrlLoading(WebView view, String url) {
+								if (url != null && (url.startsWith("luani://") || url.contains("join?server="))) {
+									Log.d("LuaniBridge", "Captured URI: " + url);
+									pendingUri = url;
+									hideWebPortal();
+									return true;
+								}
+								return false;
+							}
+
+							@Override
+							public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+								if (handler != null) {
+									handler.proceed();
+								}
+							}
+
+							@Override
+							public void onPageFinished(WebView view, String url) {
+								super.onPageFinished(view, url);
+								Log.i("GODOT_WEBVIEW", "onPageFinished loaded URL: " + url);
+								String js = "if (!localStorage.getItem('luani_token')) {" +
+									"  fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'LuaniAlt', password: 'ygs6j&R6^pOfDZ' }) })" +
+									"  .then(r => r.json())" +
+									"  .then(data => {" +
+									"    if (data.success && data.token) {" +
+									"      localStorage.setItem('luani_token', data.token);" +
+									"      console.log('Automated login succeeded for LuaniAlt.');" +
+									"      location.reload();" +
+									"    }" +
+									"  });" +
+									"}";
+								view.evaluateJavascript(js, null);
+							}
+						});
+
+						webDialog.setContentView(webView, new ViewGroup.LayoutParams(
+							ViewGroup.LayoutParams.MATCH_PARENT,
+							ViewGroup.LayoutParams.MATCH_PARENT
+						));
+						if (window != null) {
+							window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+						}
+						webView.loadUrl("https://www.luani.fyi");
+						Log.i("GODOT_WEBVIEW", "Native Android WebView Dialog initialized loading https://www.luani.fyi");
+					}
+					webDialog.show();
+					Log.i("GODOT_WEBVIEW", "webDialog.show() executed successfully.");
+				} catch (Exception e) {
+					Log.e("GODOT_WEBVIEW", "Error showing WebView Dialog: " + e.getMessage(), e);
+				}
+			}
+		});
+	}
+
+	public static void hideWebPortal() {
+		if (instance != null) {
+			instance.runOnUiThread(() -> {
+				try {
+					if (webDialog != null && webDialog.isShowing()) {
+						webDialog.dismiss();
+						Log.i("GODOT_WEBVIEW", "Native Android WebView Dialog dismissed.");
+					}
+				} catch (Exception e) {
+					Log.e("GODOT_WEBVIEW", "Error dismissing WebView Dialog: " + e.getMessage(), e);
+				}
+			});
+		}
 	}
 
 	@Override
 	public void onGodotForceQuit(Godot instance) {
 		if (!BuildConfig.FLAVOR.equals("instrumented")) {
-			// For instrumented builds, we disable force-quitting to allow the instrumented tests to complete
-			// successfully, otherwise they fail when the process crashes.
 			super.onGodotForceQuit(instance);
 		}
 	}

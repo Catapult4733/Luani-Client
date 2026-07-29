@@ -67,6 +67,11 @@ func parse_uri(uri_string: String) -> Dictionary:
 		"raw_uri": clean_uri
 	}
 	
+	if clean_uri.begins_with("intent://"):
+		clean_uri = clean_uri.replace("intent://", "luani://")
+		if "#Intent;" in clean_uri:
+			clean_uri = clean_uri.split("#Intent;")[0]
+
 	if not clean_uri.begins_with("luani://"):
 		return result
 

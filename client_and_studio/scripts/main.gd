@@ -72,6 +72,8 @@ func _ready() -> void:
 	elif OS.has_feature("mobile") or OS.get_name() in ["Android", "iOS"]:
 		# Mobile launch without URI args: open in-app webview
 		hide()
+		if game_mgr and game_mgr.has_method("show_web_portal"):
+			game_mgr.show_web_portal()
 		mobile_webview_inst = MOBILE_WEBVIEW_SCENE.instantiate() as CanvasLayer
 		add_child(mobile_webview_inst)
 		if mobile_webview_inst.has_signal("uri_intercepted"):

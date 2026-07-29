@@ -19,10 +19,13 @@ __pycache__/
 .vscode/
 .idea/
 
-# Android build templates & binaries
+# Android & Linux build templates & binaries (>100MB GitHub limit)
 *.aar
 *.apk
+*.x86_64
 bin/
 client_and_studio/android/build/libs/
 client_and_studio/android/build/build/
 client_and_studio/android/build/.gradle/
+web_backend/public/downloads/*.apk
+web_backend/public/downloads/*.x86_64

@@ -105,25 +105,19 @@ text = "Auth Token:"
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-placeholder_text = "Optional session token"
+placeholder_text = "Optional Auth Session Token"
 
-[node name="ActionButtons" type="HBoxContainer" parent="CenterContainer/MainCard/Margin/VBox/TabContainer/Direct Connect"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="ConnectButton" type="Button" parent="CenterContainer/MainCard/Margin/VBox/TabContainer/Direct Connect/ActionButtons"]
+[node name="ConnectButton" type="Button" parent="CenterContainer/MainCard/Margin/VBox/TabContainer/Direct Connect"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 40)
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-size_flags_horizontal = 3
-text = "Connect to Server"
+text = "Connect to Game Server"
 
-[node name="HostButton" type="Button" parent="CenterContainer/MainCard/Margin/VBox/TabContainer/Direct Connect/ActionButtons"]
+[node name="HostButton" type="Button" parent="CenterContainer/MainCard/Margin/VBox/TabContainer/Direct Connect"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 40)
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-size_flags_horizontal = 3
-text = "Host Local Server (No Ads)"
+text = "Host Local Dedicated Server"
 
 [node name="Server Browser" type="VBoxContainer" parent="CenterContainer/MainCard/Margin/VBox/TabContainer"]
 visible = false
@@ -137,12 +131,12 @@ layout_mode = 2
 [node name="BrowserLabel" type="Label" parent="CenterContainer/MainCard/Margin/VBox/TabContainer/Server Browser/BrowserHeader"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Active Public Multiplayer Servers"
+text = "Active Public Servers:"
 
 [node name="RefreshServersBtn" type="Button" parent="CenterContainer/MainCard/Margin/VBox/TabContainer/Server Browser/BrowserHeader"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "🔄 Refresh"
+text = "Refresh"
 
 [node name="ServerTree" type="Tree" parent="CenterContainer/MainCard/Margin/VBox/TabContainer/Server Browser"]
 unique_name_in_owner = true
@@ -177,3 +171,22 @@ text = "Licenses & Credits"
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
+
+[node name="BuildVersionLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -280.0
+offset_top = -32.0
+offset_right = -16.0
+offset_bottom = -10.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.6, 0.7, 0.85, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "v1.1 - Galaxy Build (Android 16)"
+horizontal_alignment = 2

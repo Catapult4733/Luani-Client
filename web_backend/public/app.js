@@ -319,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
       joinUri = `intent://join${queryPart}#Intent;scheme=luani;package=com.luani.client;end;`;
     }
     pendingLaunchUri = joinUri;
-    if (installPromptModal) installPromptModal.classList.remove('hidden');
+    window.location.href = joinUri;
   }
 
   if (installPromptClose) {
@@ -340,9 +340,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnProceedToLaunch) {
     btnProceedToLaunch.addEventListener('click', () => {
-      installPromptModal.classList.add('hidden');
+      if (installPromptModal) installPromptModal.classList.add('hidden');
       if (pendingLaunchUri) {
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const originalCustomUri = pendingLaunchUri.includes('#Intent;') 
+          ? 'luani://join' + pendingLaunchUri.substring(pendingLaunchUri.indexOf('?'), pendingLaunchUri.indexOf('#Intent;')) 
+          : pendingLaunchUri;
+
         window.location.href = pendingLaunchUri;
+
+        if (isAndroid && pendingLaunchUri.startsWith('intent://')) {
+          setTimeout(() => {
+            console.log('[Luani Portal] Intent launch fallback trigger to custom scheme:', originalCustomUri);
+            window.location.href = originalCustomUri;
+          }, 1200);
+        }
       }
     });
   }

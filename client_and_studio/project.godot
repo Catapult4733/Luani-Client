@@ -32,6 +32,7 @@ LuauManager="*res://scripts/core/luau_manager.gd"
 NetworkManager="*res://scripts/core/network_manager.gd"
 PlaceLoader="*res://scripts/core/place_loader.gd"
 UIManager="*res://scripts/core/ui_manager.gd"
+InventoryManager="*res://scripts/core/inventory_manager.gd"
 
 [display]
 

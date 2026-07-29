@@ -18,6 +18,15 @@ func _ready() -> void:
 		hide()
 		return
 
+	if OS.get_name() == "Android":
+		hide()
+		var game_mgr := get_node_or_null("/root/GameManager")
+		if game_mgr and game_mgr.has_method("show_web_portal"):
+			game_mgr.show_web_portal()
+		return
+
+	show()
+	layer = 150
 	if btn_refresh_web:
 		btn_refresh_web.pressed.connect(_on_refresh_pressed)
 	if btn_quick_play:

@@ -1,7 +1,7 @@
 # client_and_studio/scenes/player/player_avatar.gd
 extends CharacterBody3D
 
-## Multiplayer 3D Humanoid Player Avatar with WASD, Jump, Mouse Orbit, Shiftlock, Mobile Touch Controls, Health/Combat, and Sword Equipment
+## Multiplayer 3D Modular R6 Humanoid Player Avatar with WASD, Jump, Orbit Camera, Floating Touch Joystick, Customization Sync, Inventory & Limb Animations
 
 @export var move_speed: float = 8.0
 @export var jump_velocity: float = 6.5
@@ -14,9 +14,23 @@ extends CharacterBody3D
 @onready var synchronizer: MultiplayerSynchronizer = %MultiplayerSynchronizer
 @onready var username_label: Label3D = %UsernameLabel
 
+# Body & Limb Pivot Nodes (R6 Rig)
+@onready var body_mesh: Node3D = $BodyMesh
+@onready var left_arm_pivot: Node3D = $BodyMesh/LeftArmPivot
+@onready var right_arm_pivot: Node3D = $BodyMesh/RightArmPivot
+@onready var left_leg_pivot: Node3D = $BodyMesh/LeftLegPivot
+@onready var right_leg_pivot: Node3D = $BodyMesh/RightLegPivot
+
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 var player_username: String = "Player"
-var avatar_colors: Dictionary = {}
+var avatar_colors: Dictionary = {
+	"head": "#e0ac69",
+	"torso": "#0000ff",
+	"left_arm": "#e0ac69",
+	"right_arm": "#e0ac69",
+	"left_leg": "#00ff00",
+	"right_leg": "#00ff00"
+}
 
 var is_shiftlock_active: bool = false
 var is_rmb_down: bool = false
@@ -24,15 +38,20 @@ var is_dead: bool = false
 var last_input_time: float = 0.0
 
 var health_bar_label: Label3D = null
-var equipped_sword: Node3D = null
+var equipped_item_node: Node3D = null
+var equipped_item_id: String = ""
+
 var hotbar_overlay_inst: CanvasLayer = null
 var crosshair_overlay_inst: CanvasLayer = null
 var respawn_overlay_inst: CanvasLayer = null
 var touch_overlay_inst: CanvasLayer = null
 
 var touch_move_dir: Vector2 = Vector2.ZERO
+var walk_anim_time: float = 0.0
+var attack_anim_time: float = -1.0
 
 const SWORD_SCENE := preload("res://scenes/weapons/sword.tscn")
+const PICKABLE_SCENE := preload("res://scenes/items/pickable_item.tscn")
 const HOTBAR_SCENE := preload("res://scenes/ui/hotbar_overlay.tscn")
 const TOUCH_SCENE := preload("res://scenes/ui/touch_controls_overlay.tscn")
 
@@ -47,26 +66,27 @@ func _ready() -> void:
 	camera.current = is_local
 
 	var net_mgr := get_node_or_null("/root/NetworkManager")
-	if is_local and net_mgr and net_mgr.local_username != "":
-		player_username = net_mgr.local_username
+	if is_local and net_mgr:
+		if net_mgr.local_username != "":
+			player_username = net_mgr.local_username
 		if not net_mgr.local_avatar_colors.is_empty():
 			avatar_colors = net_mgr.local_avatar_colors
 	elif player_username == "Player":
 		player_username = "Player_" + str(name)
 
 	username_label.text = player_username
-	if not avatar_colors.is_empty():
-		apply_avatar_colors(avatar_colors)
-
+	apply_avatar_colors(avatar_colors)
 	_setup_health_bar()
 
 	if is_local and not DisplayServer.get_name() == "headless":
 		_setup_local_ui()
+		# Broadcast RPC customization data to all peers
+		rpc("rpc_sync_player_data", multiplayer.get_unique_id(), player_username, avatar_colors)
 
 func _setup_health_bar() -> void:
 	if not health_bar_label:
 		health_bar_label = Label3D.new()
-		health_bar_label.position = Vector3(0, 2.4, 0)
+		health_bar_label.position = Vector3(0, 2.5, 0)
 		health_bar_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		health_bar_label.font_size = 22
 		health_bar_label.modulate = Color(0.2, 0.95, 0.4)
@@ -88,8 +108,10 @@ func _setup_local_ui() -> void:
 	# Hotbar UI
 	hotbar_overlay_inst = HOTBAR_SCENE.instantiate() as CanvasLayer
 	add_child(hotbar_overlay_inst)
-	if hotbar_overlay_inst.has_signal("sword_equip_toggled"):
-		hotbar_overlay_inst.connect("sword_equip_toggled", _on_sword_equip_toggled)
+	if hotbar_overlay_inst.has_signal("slot_changed"):
+		hotbar_overlay_inst.connect("slot_changed", _on_hotbar_slot_changed)
+	if hotbar_overlay_inst.has_signal("drop_pressed"):
+		hotbar_overlay_inst.connect("drop_pressed", _on_drop_pressed)
 
 	# Crosshair UI for Shiftlock
 	crosshair_overlay_inst = CanvasLayer.new()
@@ -108,21 +130,15 @@ func _setup_local_ui() -> void:
 	crosshair_overlay_inst.hide()
 	add_child(crosshair_overlay_inst)
 
-	# Mobile Touch Controls UI
-	if OS.has_feature("mobile") or OS.get_name() in ["Android", "iOS"]:
-		touch_overlay_inst = TOUCH_SCENE.instantiate() as CanvasLayer
-		add_child(touch_overlay_inst)
-		if touch_overlay_inst.has_signal("move_vector_changed"):
-			touch_overlay_inst.connect("move_vector_changed", func(vec: Vector2): touch_move_dir = vec)
-		if touch_overlay_inst.has_signal("jump_pressed"):
-			touch_overlay_inst.connect("jump_pressed", func(): if is_on_floor(): velocity.y = jump_velocity)
-		if touch_overlay_inst.has_signal("attack_pressed"):
-			touch_overlay_inst.connect("attack_pressed", func():
-				if not equipped_sword:
-					_on_sword_equip_toggled(true)
-				elif equipped_sword.has_method("swing"):
-					equipped_sword.call("swing")
-			)
+	# Dynamic Floating Virtual Joystick Overlay
+	touch_overlay_inst = TOUCH_SCENE.instantiate() as CanvasLayer
+	add_child(touch_overlay_inst)
+	if touch_overlay_inst.has_signal("move_vector_changed"):
+		touch_overlay_inst.connect("move_vector_changed", func(vec: Vector2): touch_move_dir = vec)
+	if touch_overlay_inst.has_signal("jump_pressed"):
+		touch_overlay_inst.connect("jump_pressed", func(): if is_on_floor(): velocity.y = jump_velocity)
+	if touch_overlay_inst.has_signal("attack_pressed"):
+		touch_overlay_inst.connect("attack_pressed", func(): perform_attack())
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():
@@ -143,7 +159,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
-	# Camera Mouse & Touch Orbit Motion
+	# Camera Mouse Motion
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * mouse_sensitivity)
 		camera_pivot.rotate_x(-event.relative.y * mouse_sensitivity)
@@ -156,10 +172,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			camera_pivot.rotate_x(-event.relative.y * mouse_sensitivity * 0.75)
 			camera_pivot.rotation.x = clamp(camera_pivot.rotation.x, deg_to_rad(-80), deg_to_rad(80))
 
-	# Left-Click Sword Swing
+	# Left-Click Attack / Use Item
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.is_pressed():
-		if equipped_sword and equipped_sword.has_method("swing"):
-			equipped_sword.call("swing")
+		perform_attack()
 
 func _toggle_shiftlock() -> void:
 	is_shiftlock_active = not is_shiftlock_active
@@ -171,34 +186,69 @@ func _toggle_shiftlock() -> void:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		if crosshair_overlay_inst: crosshair_overlay_inst.hide()
 
-func _on_sword_equip_toggled(equipped: bool) -> void:
-	rpc("set_sword_equipped", equipped)
+func perform_attack() -> void:
+	attack_anim_time = 0.0
+	if equipped_item_node and equipped_item_node.has_method("swing"):
+		equipped_item_node.call("swing")
+
+func _on_hotbar_slot_changed(slot_idx: int) -> void:
+	var inv := get_node_or_null("/root/InventoryManager")
+	if inv:
+		var item: Dictionary = inv.get_active_item()
+		var item_id: String = item.get("id", "")
+		rpc("rpc_equip_item_slot", item_id)
+
+func _on_drop_pressed() -> void:
+	var inv := get_node_or_null("/root/InventoryManager")
+	if inv:
+		var drop_pos := global_position + (transform.basis * Vector3(0, 1.0, 1.5))
+		var dropped: Dictionary = inv.drop_active_item(drop_pos)
+		if not dropped.is_empty():
+			rpc("rpc_spawn_world_item", dropped, drop_pos)
 
 @rpc("any_peer", "call_local", "reliable")
-func set_sword_equipped(equipped: bool) -> void:
-	if equipped:
-		if not equipped_sword:
-			var right_arm := get_node_or_null("BodyMesh/RightArm")
-			if right_arm:
-				equipped_sword = SWORD_SCENE.instantiate()
-				equipped_sword.position = Vector3(0, -0.4, 0.2)
-				equipped_sword.rotation_degrees = Vector3(-90, 0, 0)
-				right_arm.add_child(equipped_sword)
-				if equipped_sword.has_method("set_owner_player"):
-					equipped_sword.call("set_owner_player", self)
-	else:
-		if equipped_sword:
-			equipped_sword.queue_free()
-			equipped_sword = null
+func rpc_sync_player_data(peer_id: int, uname: String, colors: Dictionary) -> void:
+	set_player_username(uname)
+	apply_avatar_colors(colors)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_equip_item_slot(item_id: String) -> void:
+	equipped_item_id = item_id
+	if equipped_item_node:
+		equipped_item_node.queue_free()
+		equipped_item_node = null
+
+	if item_id in ["sword", "axe", "pickaxe"]:
+		if right_arm_pivot:
+			equipped_item_node = SWORD_SCENE.instantiate()
+			equipped_item_node.position = Vector3(0, -0.4, 0.2)
+			equipped_item_node.rotation_degrees = Vector3(-90, 0, 0)
+			right_arm_pivot.add_child(equipped_item_node)
+			if equipped_item_node.has_method("set_owner_player"):
+				equipped_item_node.call("set_owner_player", self)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_spawn_world_item(item_data: Dictionary, spawn_pos: Vector3) -> void:
+	var pickable := PICKABLE_SCENE.instantiate() as Area3D
+	pickable.position = spawn_pos
+	if "item_data" in pickable:
+		pickable.item_data = item_data
+	get_tree().root.add_child(pickable)
+
+func pickup_item(item_data: Dictionary) -> void:
+	if not is_multiplayer_authority():
+		return
+	var inv := get_node_or_null("/root/InventoryManager")
+	if inv:
+		inv.add_item(item_data)
+		print("[Luani Player] Picked up item: ", item_data.get("name", ""))
 
 @rpc("any_peer", "call_local", "reliable")
 func take_damage(amount: float) -> void:
 	if is_dead:
 		return
-
 	current_health = max(0.0, current_health - amount)
 	_update_health_bar_text()
-
 	if current_health <= 0:
 		_die_and_respawn()
 
@@ -219,7 +269,6 @@ func _die_and_respawn() -> void:
 			respawn_overlay_inst.queue_free()
 			respawn_overlay_inst = null
 
-		# Pick random spawn location
 		_teleport_to_random_spawn()
 	)
 
@@ -230,7 +279,6 @@ func _teleport_to_random_spawn() -> void:
 		var spawns_group := game_world.get_node_or_null("SpawnLocations")
 		if not spawns_group:
 			spawns_group = game_world.get_node_or_null("WorldRoot/SpawnLocations")
-
 		if spawns_group:
 			spawn_nodes = spawns_group.get_children()
 
@@ -259,6 +307,8 @@ func _show_respawning_overlay() -> void:
 	add_child(respawn_overlay_inst)
 
 func _physics_process(delta: float) -> void:
+	_update_limb_animations(delta)
+
 	if not is_multiplayer_authority() or is_dead:
 		return
 
@@ -266,7 +316,6 @@ func _physics_process(delta: float) -> void:
 	var current_time := Time.get_ticks_msec() / 1000.0
 	if (current_time - last_input_time) > 1800.0:
 		last_input_time = current_time
-		print("[Luani AFK Manager] 30 minutes of inactivity reached. Kicking player...")
 		var net_mgr := get_node_or_null("/root/NetworkManager")
 		if net_mgr and net_mgr.has_method("_handle_connection_failure"):
 			net_mgr.call("_handle_connection_failure", "[Kicked] You were disconnected for 30 minutes of inactivity (AFK).")
@@ -279,7 +328,7 @@ func _physics_process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_SPACE) and is_on_floor():
 		velocity.y = jump_velocity
 
-	# Movement
+	# Movement input
 	var input_dir := Vector2.ZERO
 	if Input.is_key_pressed(KEY_W): input_dir.y -= 1.0
 	if Input.is_key_pressed(KEY_S): input_dir.y += 1.0
@@ -299,6 +348,52 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
+## Updates R6 Limb Swing & Action Animations (Idle, Walk, Jump/Fall, Attack)
+func _update_limb_animations(delta: float) -> void:
+	if not left_arm_pivot or not right_arm_pivot or not left_leg_pivot or not right_leg_pivot:
+		return
+
+	var is_moving := Vector2(velocity.x, velocity.z).length() > 0.5
+	var on_floor := is_on_floor()
+
+	# Attack Animation Sweep
+	if attack_anim_time >= 0.0:
+		attack_anim_time += delta * 6.0
+		var slash_angle: float = lerp(-90.0, 30.0, clamp(attack_anim_time, 0.0, 1.0))
+		right_arm_pivot.rotation_degrees.x = slash_angle
+		if attack_anim_time >= 1.0:
+			attack_anim_time = -1.0
+
+	if on_floor:
+		if is_moving:
+			# Walk / Run limb swing
+			walk_anim_time += delta * 12.0
+			var arm_swing: float = sin(walk_anim_time) * 35.0
+			var leg_swing: float = sin(walk_anim_time) * 35.0
+
+			left_arm_pivot.rotation_degrees.x = arm_swing
+			if attack_anim_time < 0.0:
+				right_arm_pivot.rotation_degrees.x = -arm_swing
+
+			left_leg_pivot.rotation_degrees.x = -leg_swing
+			right_leg_pivot.rotation_degrees.x = leg_swing
+		else:
+			# Idle subtle breathing stance
+			walk_anim_time += delta * 2.0
+			var breath: float = sin(walk_anim_time) * 2.5
+			left_arm_pivot.rotation_degrees.x = lerp(left_arm_pivot.rotation_degrees.x, breath, delta * 8.0)
+			if attack_anim_time < 0.0:
+				right_arm_pivot.rotation_degrees.x = lerp(right_arm_pivot.rotation_degrees.x, breath, delta * 8.0)
+			left_leg_pivot.rotation_degrees.x = lerp(left_leg_pivot.rotation_degrees.x, 0.0, delta * 8.0)
+			right_leg_pivot.rotation_degrees.x = lerp(right_leg_pivot.rotation_degrees.x, 0.0, delta * 8.0)
+	else:
+		# Jump / Fall pose
+		left_arm_pivot.rotation_degrees.x = lerp(left_arm_pivot.rotation_degrees.x, -40.0, delta * 10.0)
+		if attack_anim_time < 0.0:
+			right_arm_pivot.rotation_degrees.x = lerp(right_arm_pivot.rotation_degrees.x, -40.0, delta * 10.0)
+		left_leg_pivot.rotation_degrees.x = lerp(left_leg_pivot.rotation_degrees.x, 20.0, delta * 10.0)
+		right_leg_pivot.rotation_degrees.x = lerp(right_leg_pivot.rotation_degrees.x, -20.0, delta * 10.0)
+
 func set_player_username(uname: String) -> void:
 	if uname != "":
 		player_username = uname
@@ -313,10 +408,10 @@ func apply_avatar_colors(colors: Dictionary) -> void:
 	var part_map := {
 		"head": "BodyMesh/Head",
 		"torso": "BodyMesh/Torso",
-		"left_arm": "BodyMesh/LeftArm",
-		"right_arm": "BodyMesh/RightArm",
-		"left_leg": "BodyMesh/LeftLeg",
-		"right_leg": "BodyMesh/RightLeg"
+		"left_arm": "BodyMesh/LeftArmPivot/LeftArm",
+		"right_arm": "BodyMesh/RightArmPivot/RightArm",
+		"left_leg": "BodyMesh/LeftLegPivot/LeftLeg",
+		"right_leg": "BodyMesh/RightLegPivot/RightLeg"
 	}
 
 	for key in part_map:

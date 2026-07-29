@@ -1,7 +1,7 @@
 # client_and_studio/scenes/ui/touch_controls_overlay.gd
 extends CanvasLayer
 
-## Virtual TouchScreen Controls & Touch Camera Drag Overlay for Android / iOS Mobile Clients
+## Dynamic Floating Virtual Touch Joystick & Action Buttons Overlay for Mobile
 
 signal move_vector_changed(vector: Vector2)
 signal jump_pressed
@@ -11,75 +11,86 @@ signal attack_pressed
 @onready var joystick_knob: Control = %JoystickKnob
 @onready var btn_jump: Button = %BtnJump
 @onready var btn_attack: Button = %BtnAttack
-@onready var touch_camera_area: Control = %TouchCameraArea
 
 var is_joystick_active: bool = false
-var joystick_center: Vector2 = Vector2.ZERO
-var joystick_max_radius: float = 60.0
+var joystick_touch_index: int = -1
+var joystick_origin: Vector2 = Vector2.ZERO
+var joystick_max_radius: float = 65.0
 var current_move_vector: Vector2 = Vector2.ZERO
-
-var is_camera_touch_active: bool = false
-var last_camera_touch_pos: Vector2 = Vector2.ZERO
-var camera_touch_index: int = -1
 
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server"):
 		hide()
 		return
 
-	# Show touch controls on mobile or touch-enabled devices
-	if OS.has_feature("mobile") or OS.get_name() in ["Android", "iOS"]:
-		show()
-	else:
-		# Also visible if force-enabled or running on Android export
-		show()
+	# Show touch controls on mobile or desktop touch simulation
+	show()
+
+	# Start with joystick hidden until touched
+	if joystick_base:
+		joystick_base.hide()
 
 	if btn_jump:
 		btn_jump.pressed.connect(func(): jump_pressed.emit())
 	if btn_attack:
 		btn_attack.pressed.connect(func(): attack_pressed.emit())
 
-	if joystick_base:
-		joystick_center = joystick_base.size / 2.0
-
 func _input(event: InputEvent) -> void:
-	if not visible:
+	if not visible or not joystick_base:
 		return
 
-	# Joystick Touch Drag Handling
+	var screen_width := get_viewport().get_visible_rect().size.x
+
+	# 1. Screen Touch / Mouse Click Press on Left 50% of screen
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		var is_press: bool = event.is_pressed()
 		var pos: Vector2 = event.position
+		var idx: int = event.index if event is InputEventScreenTouch else 0
 
-		# Left side touch (Joystick)
-		if pos.x < get_viewport().get_visible_rect().size.x * 0.45:
-			if is_press:
-				is_joystick_active = true
-				_update_joystick(pos)
-			else:
-				is_joystick_active = false
+		if is_press and pos.x < (screen_width * 0.5):
+			# Start floating joystick at touch point
+			is_joystick_active = true
+			joystick_touch_index = idx
+			joystick_origin = pos
+
+			# Reposition JoystickBase centered at touch point
+			joystick_base.global_position = pos - (joystick_base.size / 2.0)
+			joystick_base.show()
+
+			_update_joystick(pos)
+
+		elif not is_press:
+			# Release matching touch index
+			if idx == joystick_touch_index or not (event is InputEventScreenTouch):
 				_reset_joystick()
 
+	# 2. Screen Drag / Mouse Motion relative to touch origin
 	elif event is InputEventScreenDrag or event is InputEventMouseMotion:
-		if is_joystick_active:
+		var idx: int = event.index if event is InputEventScreenDrag else 0
+		if is_joystick_active and (idx == joystick_touch_index or not (event is InputEventScreenDrag)):
 			_update_joystick(event.position)
 
 func _update_joystick(touch_pos: Vector2) -> void:
-	if not joystick_base:
+	if not joystick_base or not joystick_knob:
 		return
-	var base_global_center := joystick_base.global_position + (joystick_base.size / 2.0)
-	var diff := touch_pos - base_global_center
+
+	var diff := touch_pos - joystick_origin
 	if diff.length() > joystick_max_radius:
 		diff = diff.normalized() * joystick_max_radius
 
-	if joystick_knob:
-		joystick_knob.position = (joystick_base.size / 2.0) + diff - (joystick_knob.size / 2.0)
+	# Move knob inside base
+	var knob_center := (joystick_base.size / 2.0) - (joystick_knob.size / 2.0)
+	joystick_knob.position = knob_center + diff
 
+	# Calculate normalized movement vector (X: left/right, Y: forward/backward)
 	current_move_vector = diff / joystick_max_radius
 	move_vector_changed.emit(current_move_vector)
 
 func _reset_joystick() -> void:
+	is_joystick_active = false
+	joystick_touch_index = -1
 	current_move_vector = Vector2.ZERO
 	if joystick_knob and joystick_base:
 		joystick_knob.position = (joystick_base.size / 2.0) - (joystick_knob.size / 2.0)
+		joystick_base.hide()
 	move_vector_changed.emit(Vector2.ZERO)

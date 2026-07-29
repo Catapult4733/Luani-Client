@@ -16,6 +16,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 	_setup_overlays()
+	set_game_ui_visible(false)
 
 func _setup_overlays() -> void:
 	var chat_scene := load("res://scenes/ui/chat_overlay.tscn")
@@ -35,3 +36,10 @@ func toggle_chat() -> void:
 func toggle_leaderboard() -> void:
 	if leaderboard_overlay_inst and leaderboard_overlay_inst.has_method("toggle_leaderboard"):
 		leaderboard_overlay_inst.call("toggle_leaderboard")
+
+func set_game_ui_visible(is_visible: bool) -> void:
+	visible = is_visible
+	if chat_overlay_inst:
+		chat_overlay_inst.visible = is_visible
+	if leaderboard_overlay_inst:
+		leaderboard_overlay_inst.visible = is_visible
