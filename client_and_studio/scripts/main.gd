@@ -27,6 +27,7 @@ var main_menu_inst: CanvasLayer = null
 const MAIN_MENU_SCENE := preload("res://scenes/ui/main_menu.tscn")
 
 func _ready() -> void:
+	DisplayServer.screen_set_orientation(6)
 	credits_menu.hide()
 
 	connect_button.pressed.connect(_on_connect_pressed)
