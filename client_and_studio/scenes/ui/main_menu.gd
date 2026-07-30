@@ -19,10 +19,8 @@ extends CanvasLayer
 
 # Profile Customizer Elements
 @onready var username_edit: LineEdit = %UsernameEdit
-@onready var save_profile_btn: Button = %SaveProfileBtn
 @onready var color_head_btn: ColorPickerButton = %ColorHeadBtn
 @onready var color_torso_btn: ColorPickerButton = %ColorTorsoBtn
-@onready var color_arms_btn: ColorPickerButton = %ColorArmsBtn
 @onready var color_legs_btn: ColorPickerButton = %ColorLegsBtn
 
 # Settings Elements
