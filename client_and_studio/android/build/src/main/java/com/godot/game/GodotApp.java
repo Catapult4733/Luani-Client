@@ -15,6 +15,12 @@ import org.godotengine.godot.GodotLib;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 import androidx.activity.EdgeToEdge;
 import androidx.core.splashscreen.SplashScreen;
@@ -28,12 +34,13 @@ import com.google.android.gms.ads.interstitial.InterstitialAd;
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback;
 
 /**
- * Custom Godot Activity for Luani Client running 100% Native Godot UI with real Google AdMob Ads SDK integration.
+ * Custom Godot Activity for Luani Client running Native Android WebView Overlay loading https://luani.fyi & Google AdMob SDK.
  */
 public class GodotApp extends GodotActivity {
 	private static GodotApp instance;
 	public static String pendingUri = "";
 
+	public static WebView mWebView;
 	public static InterstitialAd mInterstitialAd;
 	public static final String AD_UNIT_ID = "ca-app-pub-6798749288294292/8584348398";
 
@@ -83,6 +90,9 @@ public class GodotApp extends GodotActivity {
 		// Initialize Real Google Mobile Ads SDK & Preload Interstitial Ad
 		initAdMob();
 
+		// Attach Native Android WebView Overlay loading https://luani.fyi
+		initWebView();
+
 		// Automatic APK Cache Clearing on Version Code Bump
 		try {
 			android.content.SharedPreferences prefs = getSharedPreferences("luani_app_prefs", MODE_PRIVATE);
@@ -96,6 +106,96 @@ public class GodotApp extends GodotActivity {
 			}
 		} catch (Exception e) {
 			Log.e("GODOT_APP", "Error executing cache clear check: " + e.getMessage());
+		}
+	}
+
+	public void initWebView() {
+		runOnUiThread(() -> {
+			try {
+				mWebView = new WebView(GodotApp.this);
+				mWebView.setLayoutParams(new ViewGroup.LayoutParams(
+					ViewGroup.LayoutParams.MATCH_PARENT,
+					ViewGroup.LayoutParams.MATCH_PARENT
+				));
+
+				WebSettings settings = mWebView.getSettings();
+				settings.setJavaScriptEnabled(true);
+				settings.setDomStorageEnabled(true);
+				settings.setDatabaseEnabled(true);
+				settings.setAllowFileAccess(true);
+				settings.setAllowContentAccess(true);
+				settings.setUseWideViewPort(true);
+				settings.setLoadWithOverviewMode(true);
+				settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+
+				mWebView.setWebViewClient(new WebViewClient() {
+					@Override
+					public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+						if (request != null && request.getUrl() != null) {
+							String url = request.getUrl().toString();
+							if (url.startsWith("luani://") || url.contains("join?server=")) {
+								Log.d("LuaniBridge", "Captured URI: " + url);
+								pendingUri = url;
+								hideWebViewStatic();
+								return true;
+							}
+						}
+						return false;
+					}
+
+					@Override
+					public boolean shouldOverrideUrlLoading(WebView view, String url) {
+						if (url != null && (url.startsWith("luani://") || url.contains("join?server="))) {
+							Log.d("LuaniBridge", "Captured URI: " + url);
+							pendingUri = url;
+							hideWebViewStatic();
+							return true;
+						}
+						return false;
+					}
+
+					@Override
+					public void onPageFinished(WebView view, String url) {
+						super.onPageFinished(view, url);
+						Log.i("GODOT_WEBVIEW", "Native WebView page finished loading: " + url);
+						// Inject CSS to purge download buttons and desktop clutter inside in-app view
+						String js = "javascript:(function() { " +
+									"var style = document.createElement('style'); " +
+									"style.innerHTML = '.download-btn, #apk-download, .desktop-only, a[href*=\"LuaniClient\"] { display: none !important; }'; " +
+									"document.head.appendChild(style); " +
+									"})()";
+						view.loadUrl(js);
+					}
+				});
+
+				mWebView.loadUrl("https://luani.fyi");
+				addContentView(mWebView, mWebView.getLayoutParams());
+				Log.i("GODOT_WEBVIEW", "Native Android WebView attached loading https://luani.fyi");
+			} catch (Exception e) {
+				Log.e("GODOT_WEBVIEW", "Error initializing native WebView: " + e.getMessage(), e);
+			}
+		});
+	}
+
+	public static void hideWebViewStatic() {
+		if (instance != null) {
+			instance.runOnUiThread(() -> {
+				if (mWebView != null) {
+					mWebView.setVisibility(View.GONE);
+					Log.i("GODOT_WEBVIEW", "Native Android WebView hidden.");
+				}
+			});
+		}
+	}
+
+	public static void showWebViewStatic() {
+		if (instance != null) {
+			instance.runOnUiThread(() -> {
+				if (mWebView != null) {
+					mWebView.setVisibility(View.VISIBLE);
+					Log.i("GODOT_WEBVIEW", "Native Android WebView shown.");
+				}
+			});
 		}
 	}
 
