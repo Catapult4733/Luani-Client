@@ -40,7 +40,7 @@
             android:excludeFromRecents="false"
             android:exported="true"
             android:supportsPictureInPicture="true"
-            android:screenOrientation="landscape"
+            android:screenOrientation="sensor"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="layoutDirection|locale|orientation|keyboardHidden|screenSize|smallestScreenSize|density|keyboard|navigation|screenLayout|uiMode"
             android:resizeableActivity="false"

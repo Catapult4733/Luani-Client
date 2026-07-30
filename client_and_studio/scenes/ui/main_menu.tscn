@@ -1,14 +1,38 @@
-[gd_scene load_steps=3 format=3 uid="uid://c8luani00mainmenu"]
+[gd_scene load_steps=7 format=3 uid="uid://c8luani00mainmenu"]
 
 [ext_resource type="Script" path="res://scenes/ui/main_menu.gd" id="1_menu"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_BG"]
+bg_color = Color(0.06, 0.09, 0.16, 0.98)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Header"]
+bg_color = Color(0.12, 0.16, 0.23, 0.9)
+border_width_bottom = 1
+border_color = Color(0.2, 0.26, 0.36, 0.6)
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Card"]
-bg_color = Color(0.08, 0.1, 0.16, 0.9)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 0.5, 0.9, 0.5)
+bg_color = Color(0.12, 0.16, 0.23, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.29, 0.41, 0.6)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_TabActive"]
+bg_color = Color(0.08, 0.53, 0.92, 0.85)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_TabNormal"]
+bg_color = Color(0.16, 0.21, 0.3, 0.6)
 corner_radius_top_left = 12
 corner_radius_top_right = 12
 corner_radius_bottom_right = 12
@@ -26,59 +50,84 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="BGColor" type="ColorRect" parent="RootControl"]
+[node name="BGColor" type="Panel" parent="RootControl"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.06, 0.07, 0.1, 0.95)
+theme_override_styles/panel = SubResource("StyleBoxFlat_BG")
 
 [node name="MainVBox" type="VBoxContainer" parent="RootControl"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = 20.0
-offset_right = -20.0
-offset_bottom = -20.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 12
 
-[node name="HeaderLabel" type="Label" parent="RootControl/MainVBox"]
+[node name="HeaderPanel" type="PanelContainer" parent="RootControl/MainVBox"]
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
-theme_override_colors/font_color = Color(0.3, 0.75, 1, 1)
-text = "LUANI SANDBOX GAMING PLATFORM"
-horizontal_alignment = 1
+theme_override_styles/panel = SubResource("StyleBoxFlat_Header")
 
-[node name="TabsHBox" type="HBoxContainer" parent="RootControl/MainVBox"]
+[node name="HeaderMargin" type="MarginContainer" parent="RootControl/MainVBox/HeaderPanel"]
 layout_mode = 2
-alignment = 1
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 8
+
+[node name="HeaderHBox" type="HBoxContainer" parent="RootControl/MainVBox/HeaderPanel/HeaderMargin"]
+layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="TabServersBtn" type="Button" parent="RootControl/MainVBox/TabsHBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 45)
+[node name="BrandTitle" type="Label" parent="RootControl/MainVBox/HeaderPanel/HeaderMargin/HeaderHBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "🌐 Servers"
+theme_override_colors/font_color = Color(0.22, 0.74, 0.97, 1)
+theme_override_font_sizes/font_size = 24
+text = "LUANI"
 
-[node name="TabProfileBtn" type="Button" parent="RootControl/MainVBox/TabsHBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 45)
+[node name="Subtitle" type="Label" parent="RootControl/MainVBox/HeaderPanel/HeaderMargin/HeaderHBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "👤 Profile"
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.58, 0.64, 0.75, 1)
+theme_override_font_sizes/font_size = 13
+text = "Sandbox Platform"
+vertical_alignment = 1
 
-[node name="TabSettingsBtn" type="Button" parent="RootControl/MainVBox/TabsHBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 45)
+[node name="TabsHBox" type="HBoxContainer" parent="RootControl/MainVBox/HeaderPanel/HeaderMargin/HeaderHBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_constants/separation = 8
+
+[node name="TabPlayBtn" type="Button" parent="RootControl/MainVBox/HeaderPanel/HeaderMargin/HeaderHBox/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_TabActive")
+text = "🎮 Play"
+
+[node name="TabProfileBtn" type="Button" parent="RootControl/MainVBox/HeaderPanel/HeaderMargin/HeaderHBox/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_TabNormal")
+text = "🎨 Avatar"
+
+[node name="TabSettingsBtn" type="Button" parent="RootControl/MainVBox/HeaderPanel/HeaderMargin/HeaderHBox/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_TabNormal")
 text = "⚙️ Settings"
 
 [node name="ContentPanel" type="PanelContainer" parent="RootControl/MainVBox"]
@@ -86,11 +135,11 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_Card")
 
-[node name="PanelServers" type="Control" parent="RootControl/MainVBox/ContentPanel"]
+[node name="PanelPlay" type="Control" parent="RootControl/MainVBox/ContentPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="ServersMargin" type="MarginContainer" parent="RootControl/MainVBox/ContentPanel/PanelServers"]
+[node name="PlayMargin" type="MarginContainer" parent="RootControl/MainVBox/ContentPanel/PanelPlay"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -102,51 +151,75 @@ theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 16
 theme_override_constants/margin_bottom = 16
 
-[node name="ServersVBox" type="VBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin"]
+[node name="PlayVBox" type="VBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="BrowserTitle" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "Official Live Servers"
-
-[node name="OfficialServerList" type="VBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="HSeparator" type="HSeparator" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox"]
+[node name="ServerHeaderHBox" type="HBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin/PlayVBox"]
 layout_mode = 2
 
-[node name="CustomTitle" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox"]
+[node name="ServersTitle" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin/PlayVBox/ServerHeaderHBox"]
 layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
 theme_override_font_sizes/font_size = 18
-text = "Join Custom IP / Domain"
+text = "Active Server Browser"
 
-[node name="CustomHBox" type="HBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox"]
+[node name="RefreshBtn" type="Button" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin/PlayVBox/ServerHeaderHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 44)
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_font_sizes/font_size = 14
+text = "🔄 Refresh"
 
-[node name="ServerIPEdit" type="LineEdit" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox/CustomHBox"]
+[node name="ServerScroll" type="ScrollContainer" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin/PlayVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ServerCardsVBox" type="VBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin/PlayVBox/ServerScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-placeholder_text = "IP Address / Host (e.g. 127.0.0.1)"
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="DirectConnectCard" type="PanelContainer" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin/PlayVBox"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin/PlayVBox/DirectConnectCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="HBox" type="HBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin/PlayVBox/DirectConnectCard/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="IPInput" type="LineEdit" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin/PlayVBox/DirectConnectCard/Margin/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Server IP (e.g. 127.0.0.1)"
 text = "127.0.0.1"
 
-[node name="ServerPortEdit" type="LineEdit" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox/CustomHBox"]
+[node name="PortInput" type="LineEdit" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin/PlayVBox/DirectConnectCard/Margin/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
+custom_minimum_size = Vector2(90, 44)
 layout_mode = 2
 placeholder_text = "Port"
 text = "7777"
 
-[node name="JoinCustomBtn" type="Button" parent="RootControl/MainVBox/ContentPanel/PanelServers/ServersMargin/ServersVBox/CustomHBox"]
+[node name="DirectConnectBtn" type="Button" parent="RootControl/MainVBox/ContentPanel/PanelPlay/PlayMargin/PlayVBox/DirectConnectCard/Margin/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(130, 44)
 layout_mode = 2
-text = "🚀 Join Server"
+theme_override_font_sizes/font_size = 14
+text = "⚡ Direct Join"
 
 [node name="PanelProfile" type="Control" parent="RootControl/MainVBox/ContentPanel"]
 unique_name_in_owner = true
@@ -167,33 +240,29 @@ theme_override_constants/margin_bottom = 20
 
 [node name="ProfileVBox" type="VBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin"]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 16
 
 [node name="ProfileTitle" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
 theme_override_font_sizes/font_size = 20
-text = "Character Profile & Customizer"
+text = "Character Customizer & Identity"
 
-[node name="UserHBox" type="HBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox"]
+[node name="NameHBox" type="HBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox"]
 layout_mode = 2
-theme_override_constants/separation = 12
 
-[node name="UserLabel" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/UserHBox"]
+[node name="NameLabel" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/NameHBox"]
+custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
-text = "Username Handle:"
+text = "Player Username:"
 
-[node name="UsernameEdit" type="LineEdit" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/UserHBox"]
+[node name="UsernameEdit" type="LineEdit" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/NameHBox"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
-placeholder_text = "Enter handle..."
+placeholder_text = "Enter handle (e.g. LuaniAlt)"
 text = "LuaniPlayer"
-
-[node name="SaveProfileBtn" type="Button" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/UserHBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 0)
-layout_mode = 2
-text = "💾 Save Profile"
 
 [node name="ColorsGrid" type="GridContainer" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox"]
 layout_mode = 2
@@ -203,11 +272,11 @@ theme_override_constants/v_separation = 12
 
 [node name="HeadLabel" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/ColorsGrid"]
 layout_mode = 2
-text = "Head & Arms Skin Color:"
+text = "Head & Arms Color:"
 
 [node name="ColorHeadBtn" type="ColorPickerButton" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/ColorsGrid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(80, 35)
+custom_minimum_size = Vector2(100, 44)
 layout_mode = 2
 color = Color(0.878431, 0.67451, 0.411765, 1)
 
@@ -217,7 +286,7 @@ text = "Torso Shirt Color:"
 
 [node name="ColorTorsoBtn" type="ColorPickerButton" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/ColorsGrid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(80, 35)
+custom_minimum_size = Vector2(100, 44)
 layout_mode = 2
 color = Color(0, 0, 1, 1)
 
@@ -227,9 +296,16 @@ text = "Pants Leg Color:"
 
 [node name="ColorLegsBtn" type="ColorPickerButton" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox/ColorsGrid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(80, 35)
+custom_minimum_size = Vector2(100, 44)
 layout_mode = 2
 color = Color(0, 1, 0, 1)
+
+[node name="SaveProfileBtn" type="Button" parent="RootControl/MainVBox/ContentPanel/PanelProfile/ProfileMargin/ProfileVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "💾 Save Profile Settings"
 
 [node name="PanelSettings" type="Control" parent="RootControl/MainVBox/ContentPanel"]
 unique_name_in_owner = true
@@ -254,8 +330,9 @@ theme_override_constants/separation = 16
 
 [node name="SettingsTitle" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
 theme_override_font_sizes/font_size = 20
-text = "Game Settings"
+text = "Mobile Engine & Touch Controls"
 
 [node name="VolHBox" type="HBoxContainer" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox"]
 layout_mode = 2
@@ -267,6 +344,7 @@ text = "Master Audio Volume:"
 
 [node name="VolumeSlider" type="HSlider" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox/VolHBox"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
@@ -284,6 +362,7 @@ text = "Graphics Quality:"
 
 [node name="GraphicsOption" type="OptionButton" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox/GfxHBox"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
 
@@ -293,10 +372,11 @@ layout_mode = 2
 [node name="SensLabel" type="Label" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox/SensHBox"]
 custom_minimum_size = Vector2(160, 0)
 layout_mode = 2
-text = "Mouse/Touch Sensitivity:"
+text = "Touch Sensitivity:"
 
 [node name="SensitivitySlider" type="HSlider" parent="RootControl/MainVBox/ContentPanel/PanelSettings/SettingsMargin/SettingsVBox/SensHBox"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
@@ -304,3 +384,13 @@ min_value = 0.2
 max_value = 3.0
 step = 0.1
 value = 1.0
+
+[node name="StatusFooter" type="Label" parent="RootControl/MainVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.38, 0.74, 0.98, 1)
+theme_override_font_sizes/font_size = 13
+text = "Status: Ready to connect or browse servers."
+horizontal_alignment = 1
+vertical_alignment = 1
