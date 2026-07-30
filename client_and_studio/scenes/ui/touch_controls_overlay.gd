@@ -25,9 +25,16 @@ var current_move_vector: Vector2 = Vector2.ZERO
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server"):
 		hide()
+		set_process_unhandled_input(false)
 		return
 
-	# Show touch controls on mobile or desktop touch simulation
+	# Hide virtual touch controls on PC / Linux desktop when touchscreen is not available
+	if not OS.has_feature("mobile") and not DisplayServer.is_touchscreen_available():
+		hide()
+		set_process_unhandled_input(false)
+		return
+
+	# Show touch controls on mobile or touch-enabled devices
 	show()
 
 	# Start with joystick hidden until touched

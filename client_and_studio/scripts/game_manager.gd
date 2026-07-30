@@ -149,18 +149,10 @@ func connect_via_uri(uri_str: String) -> void:
 	connect_to_server(ip, port, auth)
 
 func show_web_portal() -> void:
-	if OS.get_name() == "Android":
-		var godot_app = JavaClassWrapper.wrap("com.godot.game.GodotApp")
-		if godot_app:
-			godot_app.showWebPortalStatic()
-			print("[Luani GameManager] Triggered native Java showWebPortalStatic overlay.")
+	pass
 
 func hide_web_portal() -> void:
-	if OS.get_name() == "Android":
-		var godot_app = JavaClassWrapper.wrap("com.godot.game.GodotApp")
-		if godot_app:
-			godot_app.hideWebPortalStatic()
-			print("[Luani GameManager] Triggered native Java hideWebPortalStatic overlay.")
+	pass
 
 func check_pending_uri() -> void:
 	if OS.has_feature("android"):
