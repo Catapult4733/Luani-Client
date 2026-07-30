@@ -198,6 +198,12 @@ func _on_direct_connect_pressed() -> void:
 		_connect_to_server(ip, port, "")
 
 func _connect_to_server(ip: String, port: int, auth: String) -> void:
+	if OS.get_name() == "Android":
+		var godot_app = JavaClassWrapper.wrap("com.godot.game.GodotApp")
+		if godot_app and godot_app.has_method("showInterstitialAdStatic"):
+			godot_app.showInterstitialAdStatic()
+			print("[Luani AdMob] Triggered real AdMob Interstitial Ad before joining server.")
+
 	status_footer.text = "Status: Connecting to " + ip + ":" + str(port) + "..."
 	var net_mgr := get_node_or_null("/root/NetworkManager")
 	if net_mgr:

@@ -12,6 +12,11 @@
   --radius: 14px;
 }
 
+/* Purge download buttons and PC clutter on mobile/webview views */
+.download-btn, #apk-download, .desktop-only, a[href*="LuaniClient"] {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

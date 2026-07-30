@@ -27,6 +27,10 @@
         android:hasFragileUserData="false"
         android:requestLegacyExternalStorage="false"
         tools:ignore="GoogleAppIndexingWarning" >
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-6798749288294292~4856856373"/>
+
         <profileable
             android:shell="true"
             android:enabled="true"
