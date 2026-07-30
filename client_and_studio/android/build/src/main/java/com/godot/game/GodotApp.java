@@ -13,6 +13,7 @@ import org.godotengine.godot.GodotActivity;
 import org.godotengine.godot.GodotLib;
 
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -78,6 +79,7 @@ public class GodotApp extends GodotActivity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		instance = this;
+		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
 		SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
 		EdgeToEdge.enable(this);
 		super.onCreate(savedInstanceState);

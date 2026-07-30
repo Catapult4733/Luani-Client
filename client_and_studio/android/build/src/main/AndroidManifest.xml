@@ -44,7 +44,7 @@
             android:excludeFromRecents="false"
             android:exported="true"
             android:supportsPictureInPicture="true"
-            android:screenOrientation="sensor"
+            android:screenOrientation="fullSensor"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="layoutDirection|locale|orientation|keyboardHidden|screenSize|smallestScreenSize|density|keyboard|navigation|screenLayout|uiMode"
             android:resizeableActivity="false"
