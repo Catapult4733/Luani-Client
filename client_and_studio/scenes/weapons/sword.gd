@@ -31,31 +31,34 @@ func swing() -> void:
 	swing_timer = 0.0
 	hit_targets.clear()
 
-	# Enable blade collision during swing
 	if blade_area:
 		blade_area.monitoring = true
 
-func _process(delta: float) -> void:
-	if is_swinging:
-		swing_timer += delta
-		var progress := swing_timer / SWING_DURATION
+	# Spawn Slash Particle Trail
+	_spawn_slash_trail()
 
-		# Swing rotation animation arc
-		if progress <= 1.0:
-			var rot_z := sin(progress * PI) * -1.2
-			var rot_y := sin(progress * PI) * 0.8
-			mesh_holder.rotation = Vector3(0, rot_y, rot_z)
-		else:
-			is_swinging = false
-			mesh_holder.rotation = Vector3.ZERO
-			if blade_area:
-				blade_area.monitoring = false
+func _spawn_slash_trail() -> void:
+	var trail := GPUParticles3D.new()
+	var mat := ParticleProcessMaterial.new()
+	mat.direction = Vector3(0, 0, -1)
+	mat.spread = 45.0
+	mat.initial_velocity_min = 3.0
+	mat.initial_velocity_max = 5.0
+	mat.color = Color(0.3, 0.8, 1.0, 0.9)
+	trail.process_material = mat
+	var pmesh := QuadMesh.new()
+	pmesh.size = Vector2(0.2, 0.2)
+	trail.draw_pass_1 = pmesh
+	trail.one_shot = true
+	trail.explosiveness = 0.95
+	add_child(trail)
+	trail.emitting = true
+	get_tree().create_timer(0.4).timeout.connect(func(): if is_instance_valid(trail): trail.queue_free())
 
 func _on_blade_body_entered(body: Node) -> void:
 	if not is_swinging:
 		return
 
-	# Avoid hitting self or duplicate hits in a single swing
 	if body == owner_player or body in hit_targets:
 		return
 
@@ -68,4 +71,19 @@ func _on_blade_body_entered(body: Node) -> void:
 		else:
 			body.take_damage(DAMAGE_PER_HIT)
 
+		# Target Flash Effect
+		if body.has_node("BodyMesh"):
+			var bmesh: Node3D = body.get_node("BodyMesh")
+			var orig_pos := bmesh.position
+			bmesh.position += Vector3(0.05, 0.05, 0.05)
+			get_tree().create_timer(0.08).timeout.connect(func(): if is_instance_valid(bmesh): bmesh.position = orig_pos)
+
+		# Camera Shake
+		if owner_player and owner_player.get_node_or_null("CameraPivot/Camera3D"):
+			var cam: Camera3D = owner_player.get_node("CameraPivot/Camera3D")
+			var orig_rot := cam.rotation_degrees
+			cam.rotation_degrees += Vector3(randf_range(-1.5, 1.5), randf_range(-1.5, 1.5), 0)
+			get_tree().create_timer(0.06).timeout.connect(func(): if is_instance_valid(cam): cam.rotation_degrees = orig_rot)
+
 		hit_player.emit(body, DAMAGE_PER_HIT)
+

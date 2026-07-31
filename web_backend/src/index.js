@@ -890,6 +890,19 @@ app.post('/api/places/publish', upload.single('placeFile'), (req, res) => {
   };
 
   places.push(newPlace);
+
+  // Save game file to disk: web_backend/games/<game_id>/game.json
+  try {
+    const gameDir = path.resolve(__dirname, `../games/${placeId}`);
+    if (!fs.existsSync(gameDir)) {
+      fs.mkdirSync(gameDir, { recursive: true });
+    }
+    fs.writeFileSync(path.join(gameDir, 'game.json'), JSON.stringify(newPlace, null, 2), 'utf8');
+    console.log(`[Luani Studio] Saved game instance file to web_backend/games/${placeId}/game.json`);
+  } catch (e) {
+    console.error('[Luani Studio] Error writing game file to disk:', e.getMessage ? e.getMessage() : e);
+  }
+
   console.log(`[Luani Web Backend] Published place file: ${newPlace.name} (${newPlace.id})`);
 
   res.json({
@@ -897,6 +910,127 @@ app.post('/api/places/publish', upload.single('placeFile'), (req, res) => {
     message: 'Place published successfully to luani.fyi backend.',
     place: newPlace
   });
+});
+
+// LUANI STUDIO CREATOR PORTAL ENDPOINTS
+app.get('/api/studio/games', (req, res) => {
+  const user = getAuthUser(req);
+  const username = user ? user.username : 'Guest';
+  
+  // Filter creator games or default sample games
+  const userGames = places.filter(p => p.creator === username || p.creator === 'Luani Team' || p.creator === 'Anonymous Creator');
+  const active = userGames.filter(g => !g.archived);
+  const archived = userGames.filter(g => !!g.archived);
+
+  res.json({ success: true, active, archived });
+});
+
+app.post('/api/studio/games/create', (req, res) => {
+  const user = getAuthUser(req);
+  const creator = user ? user.username : 'GuestCreator';
+  const { name, description, thumbnail_url, allow_pets } = req.body;
+  const placeId = `place_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+  const newGame = {
+    id: placeId,
+    name: name || 'My New Luau Sandbox',
+    creator,
+    description: description || 'Built with Luani Studio.',
+    thumbnail_url: thumbnail_url || '',
+    is_public: true,
+    archived: false,
+    allow_pets: allow_pets !== undefined ? !!allow_pets : true,
+    maxPlayers: 10,
+    createdAt: new Date().toISOString(),
+    format_version: 1,
+    parts: [
+      {
+        name: "Baseplate",
+        primitive_type: 0,
+        position: [0, -0.5, 0],
+        rotation: [0, 0, 0],
+        scale: [50, 0.5, 50],
+        anchored: true,
+        color: [0.2, 0.25, 0.35, 1.0]
+      }
+    ]
+  };
+
+  places.push(newGame);
+
+  try {
+    const gameDir = path.resolve(__dirname, `../games/${placeId}`);
+    if (!fs.existsSync(gameDir)) fs.mkdirSync(gameDir, { recursive: true });
+    fs.writeFileSync(path.join(gameDir, 'game.json'), JSON.stringify(newGame, null, 2), 'utf8');
+  } catch (e) {
+    console.error('[Luani Studio] Error writing new game file to disk:', e);
+  }
+
+  res.json({ success: true, message: 'Game project created successfully.', place: newGame });
+});
+
+app.post('/api/studio/games/:id/update', (req, res) => {
+  const placeId = req.params.id;
+  const { name, description, thumbnail_url, is_public } = req.body;
+  const place = places.find(p => p.id === placeId);
+  
+  if (!place) {
+    return res.status(404).json({ success: false, error: 'Game not found.' });
+  }
+
+  if (name !== undefined) place.name = name;
+  if (description !== undefined) place.description = description;
+  if (thumbnail_url !== undefined) place.thumbnail_url = thumbnail_url;
+  if (is_public !== undefined) place.is_public = !!is_public;
+
+  try {
+    const gameDir = path.resolve(__dirname, `../games/${placeId}`);
+    if (!fs.existsSync(gameDir)) fs.mkdirSync(gameDir, { recursive: true });
+    fs.writeFileSync(path.join(gameDir, 'game.json'), JSON.stringify(place, null, 2), 'utf8');
+  } catch (e) {}
+
+  res.json({ success: true, message: 'Game updated successfully.', place });
+});
+
+app.post('/api/studio/games/:id/archive', (req, res) => {
+  const placeId = req.params.id;
+  const place = places.find(p => p.id === placeId);
+  
+  if (!place) {
+    return res.status(404).json({ success: false, error: 'Game not found.' });
+  }
+
+  place.archived = !place.archived;
+  if (place.archived) {
+    place.is_public = false; // Archiving automatically sets visibility to private
+  }
+
+  try {
+    const gameDir = path.resolve(__dirname, `../games/${placeId}`);
+    if (!fs.existsSync(gameDir)) fs.mkdirSync(gameDir, { recursive: true });
+    fs.writeFileSync(path.join(gameDir, 'game.json'), JSON.stringify(place, null, 2), 'utf8');
+  } catch (e) {}
+
+  res.json({ success: true, message: place.archived ? 'Game archived.' : 'Game restored from archive.', place });
+});
+
+app.post('/api/studio/games/:id/pets', (req, res) => {
+  const placeId = req.params.id;
+  const place = places.find(p => p.id === placeId);
+  
+  if (!place) {
+    return res.status(404).json({ success: false, error: 'Game not found.' });
+  }
+
+  place.allow_pets = req.body.allow_pets !== undefined ? !!req.body.allow_pets : !place.allow_pets;
+
+  try {
+    const gameDir = path.resolve(__dirname, `../games/${placeId}`);
+    if (!fs.existsSync(gameDir)) fs.mkdirSync(gameDir, { recursive: true });
+    fs.writeFileSync(path.join(gameDir, 'game.json'), JSON.stringify(place, null, 2), 'utf8');
+  } catch (e) {}
+
+  res.json({ success: true, message: `Pets setting set to ${place.allow_pets}.`, allow_pets: place.allow_pets, place });
 });
 
 // MATCHMAKING ENGINE: Request Server Join or Spin-up

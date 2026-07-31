@@ -38,6 +38,12 @@ func load_place(place_id: String, target_world_root: Node3D) -> void:
 func _on_place_download_completed(result: int, response_code: int, body: PackedByteArray, place_id: String, target_world_root: Node3D) -> void:
 	if result == HTTPRequest.RESULT_SUCCESS and (response_code == 200 or response_code == 201):
 		var json_str := body.get_string_from_utf8()
+		var parsed = JSON.parse_string(json_str)
+		if parsed is Dictionary and parsed.has("place"):
+			var place_dict: Dictionary = parsed["place"]
+			if place_dict.has("allow_pets") and target_world_root:
+				target_world_root.set_meta("allow_pets", bool(place_dict["allow_pets"]))
+				print("[Luani PlaceLoader] Allow Pets setting for place: ", place_dict["allow_pets"])
 		var json_result = JSON.parse_string(json_str)
 		if json_result is Dictionary:
 			print("[Luani PlaceLoader] Successfully downloaded place JSON from backend.")

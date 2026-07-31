@@ -254,18 +254,25 @@ document.addEventListener('DOMContentLoaded', () => {
     element.innerHTML = generateAvatarSvg(c);
   }
 
+  const studioDashboardView = document.getElementById('studioDashboardView');
+  const btnCreateNewGame = document.getElementById('btnCreateNewGame');
+  const tabStudioActive = document.getElementById('tabStudioActive');
+  const tabStudioArchived = document.getElementById('tabStudioArchived');
+  const studioGamesGrid = document.getElementById('studioGamesGrid');
+  let currentStudioTab = 'active';
+
   // --- ROUTING ENGINE ---
   function showView(viewToShow) {
-    [discoverView, gameDetailsView, userProfileView, avatarEditorView, searchResultsView].forEach(v => {
+    [discoverView, gameDetailsView, userProfileView, avatarEditorView, searchResultsView, studioDashboardView].forEach(v => {
       if (v) v.classList.add('hidden');
     });
     if (viewToShow) viewToShow.classList.remove('hidden');
     if (navLinksMenu) navLinksMenu.classList.remove('mobile-open');
 
-    // Remove promo banner from profile view
+    // Remove promo banner from profile/studio view
     const studioBanner = document.getElementById('studio');
     if (studioBanner) {
-      if (viewToShow === userProfileView || viewToShow === avatarEditorView) {
+      if (viewToShow === userProfileView || viewToShow === avatarEditorView || viewToShow === studioDashboardView) {
         studioBanner.classList.add('hidden');
       } else {
         studioBanner.classList.remove('hidden');
@@ -273,6 +280,151 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.scrollTo(0, 0);
+  }
+
+  if (navStudio) {
+    navStudio.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.history.pushState({}, '', '#studio');
+      loadStudioDashboard();
+      showView(studioDashboardView);
+    });
+  }
+
+  function loadStudioDashboard() {
+    apiFetch('/api/studio/games')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success) return;
+        renderStudioGames(currentStudioTab === 'active' ? data.active : data.archived);
+      })
+      .catch(err => console.error('[Studio] Error loading games:', err));
+  }
+
+  if (tabStudioActive && tabStudioArchived) {
+    tabStudioActive.addEventListener('click', () => {
+      currentStudioTab = 'active';
+      tabStudioActive.className = 'btn btn-sm btn-primary';
+      tabStudioArchived.className = 'btn btn-sm btn-secondary';
+      loadStudioDashboard();
+    });
+    tabStudioArchived.addEventListener('click', () => {
+      currentStudioTab = 'archived';
+      tabStudioActive.className = 'btn btn-sm btn-secondary';
+      tabStudioArchived.className = 'btn btn-sm btn-primary';
+      loadStudioDashboard();
+    });
+  }
+
+  if (btnCreateNewGame) {
+    btnCreateNewGame.addEventListener('click', () => {
+      const name = prompt("Enter Game Title:", "My Luau Sandbox");
+      if (!name) return;
+      apiFetch('/api/studio/games/create', {
+        method: 'POST',
+        body: JSON.stringify({ name })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert("Game Project Created!");
+          loadStudioDashboard();
+        }
+      });
+    });
+  }
+
+  function renderStudioGames(games) {
+    if (!studioGamesGrid) return;
+    studioGamesGrid.innerHTML = '';
+
+    if (!games || games.length === 0) {
+      studioGamesGrid.innerHTML = '<div style="color: var(--text-muted); grid-column: 1 / -1; padding: 2rem; text-align: center;">No projects in this tab yet.</div>';
+      return;
+    }
+
+    games.forEach(game => {
+      const card = document.createElement('div');
+      card.className = 'place-card';
+      card.style.position = 'relative';
+
+      const petsChecked = game.allow_pets !== false ? 'checked' : '';
+      const publicChecked = game.is_public !== false ? 'checked' : '';
+
+      card.innerHTML = `
+        <div class="place-icon" style="background: rgba(30, 41, 59, 0.9); font-size: 2.5rem; display: flex; align-items: center; justify-content: center; height: 120px;">
+          ${game.thumbnail_url ? `<img src="${game.thumbnail_url}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">` : '🎮'}
+        </div>
+        <div class="place-info" style="padding: 1rem;">
+          <input type="text" class="studio-game-name-input" value="${game.name}" style="width:100%; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 6px; border-radius: 6px; font-weight: bold; margin-bottom: 6px;">
+          <textarea class="studio-game-desc-input" style="width:100%; background: #0f172a; border: 1px solid #334155; color: #94a3b8; padding: 6px; border-radius: 6px; font-size: 0.85rem; resize: vertical; height: 50px;">${game.description || ''}</textarea>
+
+          <div style="display:flex; flex-direction:column; gap:0.4rem; margin-top: 0.8rem; font-size:0.85rem; color:#cbd5e1;">
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+              <input type="checkbox" class="chk-allow-pets" ${petsChecked}>
+              🐾 Allow Pets ON
+            </label>
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+              <input type="checkbox" class="chk-public-visibility" ${publicChecked}>
+              🌐 Public Visibility
+            </label>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top: 1rem;">
+            <button class="btn btn-sm btn-secondary btn-archive-game">${game.archived ? '📂 Restore' : '📦 Archive'}</button>
+            <button class="btn btn-sm btn-primary btn-edit-studio">✏️ Edit in Studio</button>
+          </div>
+        </div>
+      `;
+
+      const nameInput = card.querySelector('.studio-game-name-input');
+      const descInput = card.querySelector('.studio-game-desc-input');
+      const chkPets = card.querySelector('.chk-allow-pets');
+      const chkPublic = card.querySelector('.chk-public-visibility');
+      const btnArchive = card.querySelector('.btn-archive-game');
+      const btnEdit = card.querySelector('.btn-edit-studio');
+
+      nameInput.addEventListener('change', () => {
+        apiFetch(`/api/studio/games/${game.id}/update`, {
+          method: 'POST',
+          body: JSON.stringify({ name: nameInput.value })
+        });
+      });
+
+      descInput.addEventListener('change', () => {
+        apiFetch(`/api/studio/games/${game.id}/update`, {
+          method: 'POST',
+          body: JSON.stringify({ description: descInput.value })
+        });
+      });
+
+      chkPets.addEventListener('change', () => {
+        apiFetch(`/api/studio/games/${game.id}/pets`, {
+          method: 'POST',
+          body: JSON.stringify({ allow_pets: chkPets.checked })
+        });
+      });
+
+      chkPublic.addEventListener('change', () => {
+        apiFetch(`/api/studio/games/${game.id}/update`, {
+          method: 'POST',
+          body: JSON.stringify({ is_public: chkPublic.checked })
+        });
+      });
+
+      btnArchive.addEventListener('click', () => {
+        apiFetch(`/api/studio/games/${game.id}/archive`, { method: 'POST' })
+          .then(res => res.json())
+          .then(() => loadStudioDashboard());
+      });
+
+      btnEdit.addEventListener('click', () => {
+        const studioUri = `luani-studio://open?game_id=${game.id}`;
+        window.location.href = studioUri;
+      });
+
+      studioGamesGrid.appendChild(card);
+    });
   }
 
   brandLogoBtn.addEventListener('click', () => {

@@ -21,6 +21,7 @@ var joystick_touch_index: int = -1
 var joystick_origin: Vector2 = Vector2.ZERO
 var joystick_max_radius: float = 65.0
 var current_move_vector: Vector2 = Vector2.ZERO
+var is_autorun_locked: bool = false
 
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server"):
@@ -85,6 +86,14 @@ func _input(event: InputEvent) -> void:
 		if is_joystick_active and (idx == joystick_touch_index or not (event is InputEventScreenDrag)):
 			_update_joystick(event.position)
 
+func toggle_autorun() -> void:
+	is_autorun_locked = !is_autorun_locked
+	if is_autorun_locked:
+		current_move_vector = Vector2(0, -1)
+		move_vector_changed.emit(current_move_vector)
+	else:
+		_reset_joystick()
+
 func _update_joystick(touch_pos: Vector2) -> void:
 	if not joystick_base or not joystick_knob:
 		return
@@ -104,8 +113,12 @@ func _update_joystick(touch_pos: Vector2) -> void:
 func _reset_joystick() -> void:
 	is_joystick_active = false
 	joystick_touch_index = -1
-	current_move_vector = Vector2.ZERO
+	if joystick_base:
+		joystick_base.hide()
 	if joystick_knob and joystick_base:
 		joystick_knob.position = (joystick_base.size / 2.0) - (joystick_knob.size / 2.0)
-		joystick_base.hide()
-	move_vector_changed.emit(Vector2.ZERO)
+	if is_autorun_locked:
+		current_move_vector = Vector2(0, -1)
+	else:
+		current_move_vector = Vector2.ZERO
+	move_vector_changed.emit(current_move_vector)

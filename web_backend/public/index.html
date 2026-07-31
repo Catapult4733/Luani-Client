@@ -274,6 +274,26 @@
       </div>
     </div>
 
+    <!-- 6. LUANI STUDIO CREATOR DASHBOARD VIEW -->
+    <div id="studioDashboardView" class="hidden">
+      <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2>🛠️ Luani Studio Creator Portal</h2>
+          <p style="color: var(--text-muted);">Manage your custom Luau games, server settings, and project publishing.</p>
+        </div>
+        <button id="btnCreateNewGame" class="btn btn-primary">➕ Create New Game Project</button>
+      </div>
+
+      <div class="studio-tab-bar" style="margin-bottom: 1.5rem; display: flex; gap: 1rem; margin-top: 1rem;">
+        <button id="tabStudioActive" class="btn btn-sm btn-primary">Active Games</button>
+        <button id="tabStudioArchived" class="btn btn-sm btn-secondary">Archived Games</button>
+      </div>
+
+      <div id="studioGamesGrid" class="places-grid">
+        <!-- Dynamically rendered creator game cards -->
+      </div>
+    </div>
+
   </main>
 
   <!-- Footer -->

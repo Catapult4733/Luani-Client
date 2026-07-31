@@ -309,6 +309,9 @@ func take_damage(amount: float) -> void:
 		return
 	current_health = max(0.0, current_health - amount)
 	_update_health_bar_text()
+	var ui_mgr := get_node_or_null("/root/UIManager")
+	if ui_mgr and ui_mgr.has_method("update_health_bar"):
+		ui_mgr.call("update_health_bar", current_health, max_health)
 	if current_health <= 0:
 		_die_and_respawn()
 
@@ -316,12 +319,21 @@ func _die_and_respawn() -> void:
 	is_dead = true
 	visible = false
 
+	# Play Death Sound Effect
+	var sfx := AudioStreamPlayer.new()
+	add_child(sfx)
+	print("[Luani Player] Player died: ", player_username)
+
+	var ui_mgr := get_node_or_null("/root/UIManager")
+
 	if is_multiplayer_authority() and not DisplayServer.get_name() == "headless":
 		_show_respawning_overlay()
 
 	get_tree().create_timer(3.0).timeout.connect(func():
 		current_health = max_health
 		_update_health_bar_text()
+		if ui_mgr and ui_mgr.has_method("update_health_bar"):
+			ui_mgr.call("update_health_bar", current_health, max_health)
 		visible = true
 		is_dead = false
 
@@ -488,3 +500,60 @@ func apply_avatar_colors(colors: Dictionary) -> void:
 				var mat := StandardMaterial3D.new()
 				mat.albedo_color = Color.html(hex_str)
 				mesh_inst.material_override = mat
+
+var equipped_accessories: Array = []
+
+@rpc("any_peer", "call_local", "reliable")
+func sync_equipped_accessories(accessory_ids: Array) -> void:
+	equipped_accessories = accessory_ids
+	_apply_equipped_accessories()
+
+func _apply_equipped_accessories() -> void:
+	var head_node: Node3D = get_node_or_null("BodyMesh/Head")
+	var torso_node: Node3D = get_node_or_null("BodyMesh/Torso")
+	if not head_node or not torso_node:
+		return
+
+	for child in head_node.get_children():
+		if child.name.begins_with("Acc_"):
+			child.queue_free()
+	for child in torso_node.get_children():
+		if child.name.begins_with("Acc_"):
+			child.queue_free()
+
+	for acc_id in equipped_accessories:
+		match str(acc_id):
+			"hat_cap":
+				var cap := MeshInstance3D.new()
+				cap.name = "Acc_Cap"
+				var cap_mesh := BoxMesh.new()
+				cap_mesh.size = Vector3(0.7, 0.25, 0.7)
+				cap.mesh = cap_mesh
+				cap.position = Vector3(0, 0.4, 0)
+				var mat := StandardMaterial3D.new()
+				mat.albedo_color = Color(0.9, 0.2, 0.2)
+				cap.material_override = mat
+				head_node.add_child(cap)
+			"glasses_shades":
+				var shades := MeshInstance3D.new()
+				shades.name = "Acc_Shades"
+				var shades_mesh := BoxMesh.new()
+				shades_mesh.size = Vector3(0.65, 0.15, 0.2)
+				shades.mesh = shades_mesh
+				shades.position = Vector3(0, 0.1, -0.32)
+				var mat := StandardMaterial3D.new()
+				mat.albedo_color = Color(0.1, 0.1, 0.1)
+				shades.material_override = mat
+				head_node.add_child(shades)
+			"backpack_pack":
+				var pack := MeshInstance3D.new()
+				pack.name = "Acc_Pack"
+				var pack_mesh := BoxMesh.new()
+				pack_mesh.size = Vector3(0.8, 0.9, 0.35)
+				pack.mesh = pack_mesh
+				pack.position = Vector3(0, 0.1, 0.4)
+				var mat := StandardMaterial3D.new()
+				mat.albedo_color = Color(0.4, 0.25, 0.15)
+				pack.material_override = mat
+				torso_node.add_child(pack)
+
