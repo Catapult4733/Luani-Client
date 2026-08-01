@@ -49,25 +49,29 @@ func _setup_health_hud() -> void:
 	style.border_color = Color(0.2, 0.28, 0.4, 0.6)
 	hud_card.add_theme_stylebox_override("panel", style)
 
-	hud_card.custom_minimum_size = Vector2(200, 48)
-	hud_card.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	hud_card.offset_left = -320.0
+	hud_card.custom_minimum_size = Vector2(200, 40)
+	hud_card.anchor_left = 1.0
+	hud_card.anchor_right = 1.0
+	hud_card.anchor_top = 0.0
+	hud_card.anchor_bottom = 0.0
+	hud_card.offset_left = -280.0
 	hud_card.offset_top = 16.0
-	hud_card.offset_right = -110.0
-	hud_card.offset_bottom = 64.0
+	hud_card.offset_right = -68.0
+	hud_card.offset_bottom = 56.0
+	hud_card.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_top", 4)
 	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_bottom", 6)
+	margin.add_theme_constant_override("margin_bottom", 4)
 
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 8)
 
 	var portrait := Label.new()
 	portrait.text = "👤"
-	portrait.add_theme_font_size_override("font_size", 18)
+	portrait.add_theme_font_size_override("font_size", 16)
 	hbox.add_child(portrait)
 
 	var vbox := VBoxContainer.new()
@@ -80,16 +84,16 @@ func _setup_health_hud() -> void:
 	vbox.add_child(health_num_label)
 
 	var pbar := ProgressBar.new()
-	pbar.custom_minimum_size = Vector2(0, 12)
+	pbar.custom_minimum_size = Vector2(0, 10)
 	pbar.max_value = 100.0
 	pbar.value = 100.0
 	pbar.show_percentage = false
 	var fill_style := StyleBoxFlat.new()
 	fill_style.bg_color = Color(0.2, 0.8, 0.4, 0.9)
-	fill_style.corner_radius_top_left = 4
-	fill_style.corner_radius_top_right = 4
-	fill_style.corner_radius_bottom_right = 4
-	fill_style.corner_radius_bottom_left = 4
+	fill_style.corner_radius_top_left = 3
+	fill_style.corner_radius_top_right = 3
+	fill_style.corner_radius_bottom_right = 3
+	fill_style.corner_radius_bottom_left = 3
 	pbar.add_theme_stylebox_override("fill", fill_style)
 
 	vbox.add_child(pbar)
@@ -98,18 +102,27 @@ func _setup_health_hud() -> void:
 	margin.add_child(hbox)
 	hbox.add_child(vbox)
 
+	# Hide health HUD initially until player joins game
+	health_hud_inst.hide()
+
 	add_child.call_deferred(health_hud_inst)
 	get_viewport().size_changed.connect(_on_viewport_size_changed)
 
 func _on_viewport_size_changed() -> void:
 	if health_hud_inst and is_instance_valid(health_hud_inst):
-		health_hud_inst.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-		health_hud_inst.offset_left = -320.0
+		health_hud_inst.anchor_left = 1.0
+		health_hud_inst.anchor_right = 1.0
+		health_hud_inst.anchor_top = 0.0
+		health_hud_inst.anchor_bottom = 0.0
+		health_hud_inst.offset_left = -280.0
 		health_hud_inst.offset_top = 16.0
-		health_hud_inst.offset_right = -110.0
-		health_hud_inst.offset_bottom = 64.0
+		health_hud_inst.offset_right = -68.0
+		health_hud_inst.offset_bottom = 56.0
+		health_hud_inst.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 
 func update_health_bar(current_hp: float, max_hp: float) -> void:
+	if health_hud_inst:
+		health_hud_inst.show()
 	if health_num_label:
 		health_num_label.text = "HP: %d / %d" % [int(current_hp), int(max_hp)]
 	if health_hud_inst and health_hud_inst.has_node("MarginContainer/HBoxContainer/VBoxContainer/ProgressBar"):

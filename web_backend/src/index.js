@@ -43,16 +43,8 @@ app.use('/downloads', express.static(path.join(__dirname, '../public/downloads')
   }
 }));
 
-// Serve static web portal frontend with strict no-cache headers for HTML, JS, and CSS
-app.use(express.static(path.join(__dirname, '../public'), {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-    }
-  }
-}));
+// Serve static web portal frontend
+app.use(express.static(path.join(__dirname, '../public')));
 
 // SERVE 1-COMMAND INSTALLER SCRIPT
 app.get('/install.sh', (req, res) => {
@@ -68,9 +60,9 @@ app.get('/install.sh', (req, res) => {
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 
-const isUnconfigured = !supabaseUrl || !supabaseKey || 
-  supabaseUrl.includes('YOUR-PROJECT-ID') || 
-  supabaseUrl.includes('YOUR-PROJECT-REF') || 
+const isUnconfigured = !supabaseUrl || !supabaseKey ||
+  supabaseUrl.includes('YOUR-PROJECT-ID') ||
+  supabaseUrl.includes('YOUR-PROJECT-REF') ||
   supabaseKey.includes('YOUR_SECRET_KEY');
 
 const supabase = !isUnconfigured ? createClient(supabaseUrl, supabaseKey, {
@@ -212,13 +204,13 @@ function getAuthUser(req) {
 
 // Healthcheck
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    service: 'luani-web-backend', 
-    domain: 'luani.fyi', 
+  res.json({
+    status: 'ok',
+    service: 'luani-web-backend',
+    domain: 'luani.fyi',
     supabaseConfigured: !!supabase,
     activeServersCount: activeServers.length,
-    timestamp: new Date().toISOString() 
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -459,9 +451,9 @@ app.get('/api/user/:username', async (req, res) => {
     const pair2 = `${targetUser.id}_${currentUser.id}`;
     isFriend = friendships.has(pair1) || friendships.has(pair2);
     isBlocked = blockList.has(`${currentUser.id}_${targetUser.id}`);
-    
-    const pendingReq = friendRequests.find(r => 
-      r.status === 'PENDING' && 
+
+    const pendingReq = friendRequests.find(r =>
+      r.status === 'PENDING' &&
       ((r.fromUserId === currentUser.id && r.toUserId === targetUser.id) || (r.fromUserId === targetUser.id && r.toUserId === currentUser.id))
     );
     if (pendingReq) isPending = true;
@@ -754,9 +746,9 @@ app.get('/api/search', async (req, res) => {
   const query = (req.query.q || '').trim();
   const lowerQuery = query.toLowerCase();
 
-  const matchedPlaces = places.filter(p => 
-    p.name.toLowerCase().includes(lowerQuery) || 
-    p.creator.toLowerCase().includes(lowerQuery) || 
+  const matchedPlaces = places.filter(p =>
+    p.name.toLowerCase().includes(lowerQuery) ||
+    p.creator.toLowerCase().includes(lowerQuery) ||
     p.description.toLowerCase().includes(lowerQuery)
   );
 
@@ -933,7 +925,7 @@ app.post('/api/places/publish', upload.single('placeFile'), (req, res) => {
 app.get('/api/studio/games', (req, res) => {
   const user = getAuthUser(req);
   const username = user ? user.username : 'Guest';
-  
+
   // Filter creator games or default sample games
   const userGames = places.filter(p => p.creator === username || p.creator === 'Luani Team' || p.creator === 'Anonymous Creator');
   const active = userGames.filter(g => !g.archived);
@@ -990,7 +982,7 @@ app.post('/api/studio/games/:id/update', (req, res) => {
   const placeId = req.params.id;
   const { name, description, thumbnail_url, is_public } = req.body;
   const place = places.find(p => p.id === placeId);
-  
+
   if (!place) {
     return res.status(404).json({ success: false, error: 'Game not found.' });
   }
@@ -1004,7 +996,7 @@ app.post('/api/studio/games/:id/update', (req, res) => {
     const gameDir = path.resolve(__dirname, `../games/${placeId}`);
     if (!fs.existsSync(gameDir)) fs.mkdirSync(gameDir, { recursive: true });
     fs.writeFileSync(path.join(gameDir, 'game.json'), JSON.stringify(place, null, 2), 'utf8');
-  } catch (e) {}
+  } catch (e) { }
 
   res.json({ success: true, message: 'Game updated successfully.', place });
 });
@@ -1012,7 +1004,7 @@ app.post('/api/studio/games/:id/update', (req, res) => {
 app.post('/api/studio/games/:id/archive', (req, res) => {
   const placeId = req.params.id;
   const place = places.find(p => p.id === placeId);
-  
+
   if (!place) {
     return res.status(404).json({ success: false, error: 'Game not found.' });
   }
@@ -1026,7 +1018,7 @@ app.post('/api/studio/games/:id/archive', (req, res) => {
     const gameDir = path.resolve(__dirname, `../games/${placeId}`);
     if (!fs.existsSync(gameDir)) fs.mkdirSync(gameDir, { recursive: true });
     fs.writeFileSync(path.join(gameDir, 'game.json'), JSON.stringify(place, null, 2), 'utf8');
-  } catch (e) {}
+  } catch (e) { }
 
   res.json({ success: true, message: place.archived ? 'Game archived.' : 'Game restored from archive.', place });
 });
@@ -1034,7 +1026,7 @@ app.post('/api/studio/games/:id/archive', (req, res) => {
 app.post('/api/studio/games/:id/pets', (req, res) => {
   const placeId = req.params.id;
   const place = places.find(p => p.id === placeId);
-  
+
   if (!place) {
     return res.status(404).json({ success: false, error: 'Game not found.' });
   }
@@ -1045,7 +1037,7 @@ app.post('/api/studio/games/:id/pets', (req, res) => {
     const gameDir = path.resolve(__dirname, `../games/${placeId}`);
     if (!fs.existsSync(gameDir)) fs.mkdirSync(gameDir, { recursive: true });
     fs.writeFileSync(path.join(gameDir, 'game.json'), JSON.stringify(place, null, 2), 'utf8');
-  } catch (e) {}
+  } catch (e) { }
 
   res.json({ success: true, message: `Pets setting set to ${place.allow_pets}.`, allow_pets: place.allow_pets, place });
 });
@@ -1069,10 +1061,10 @@ app.post('/api/servers/request', (req, res) => {
   const colorParam = encodeURIComponent(JSON.stringify(playerAvatarColors));
 
   // 1. Check for existing active server with capacity (current_players < max_players)
-  const existingServer = activeServers.find(s => 
-    s.placeId === placeId && 
-    s.serverType === targetType && 
-    (s.status === 'RUNNING' || s.status === 'SPAWNING') && 
+  const existingServer = activeServers.find(s =>
+    s.placeId === placeId &&
+    s.serverType === targetType &&
+    (s.status === 'RUNNING' || s.status === 'SPAWNING') &&
     s.playerCount < s.maxPlayers
   );
 
@@ -1139,7 +1131,7 @@ app.post('/api/servers/request', (req, res) => {
 // Daemon / Server Heartbeat & Status Signaling
 app.post('/api/daemon/heartbeat', (req, res) => {
   const { requestId, playerCount, status, serverIp, serverPort, publicHost, publicPort } = req.body;
-  
+
   if (publicHost || serverIp) {
     lastDaemonConfig.publicHost = getPublicServerIp(publicHost || serverIp);
   }

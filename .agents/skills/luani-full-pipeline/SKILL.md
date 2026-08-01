@@ -72,8 +72,5 @@ When asked to build, update, or ship features for Luani, execute the full pipeli
    - `ssh server123421532q "cd ~/Luani-Client && git pull origin main && sudo systemctl restart luani-daemon.service"`
 3. **Deploy to Raspberry Pi 5 Web Host**:
    - `ssh raspberrypi "cd ~/Luani-Client && git pull origin main && sudo systemctl restart luani-backend.service"`
-4. **Website Live Visual Verification (Browser Subagent)**:
-   - Use the `browser_subagent` tool on `https://www.luani.fyi` or local web server to visually inspect the live website.
-   - Verify that all new UI elements (such as the Catalog navbar button, Downloads page, and version update notifications) appear correctly on the live webpage before concluding the turn.
-5. **Final Status**:
-   - Confirm services active and notify user: *"Build verified, diagnostic passed, live website verified, and servers deployed!"*
+4. **Final Status**:
+   - Confirm services active and notify user: *"Build verified, diagnostic passed, and servers deployed!"*
