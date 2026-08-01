@@ -34,7 +34,8 @@
         <a href="#" id="navDiscover" class="active">Discover</a>
         <a href="#avatar" id="navAvatarLink">Avatar</a>
         <a href="#studio" id="navStudio">Studio</a>
-        <a href="/downloads/LuaniClient.apk?v=1.4.0" download="LuaniClient.apk" class="btn-download-app">📱 Download App</a>
+        <a href="#downloads" id="navDownloads">Downloads</a>
+        <a href="/downloads/LuaniClient.apk" download="LuaniClient.apk" class="btn-download-app">📱 Download App</a>
       </nav>
 
       <!-- Auth, Notifications, & User Menu -->
@@ -256,6 +257,58 @@
             </div>
             <button id="btnSaveAvatar" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">Save Avatar</button>
             <div id="avatarSaveSuccess" class="success-msg hidden" style="margin-top: 0.8rem; color: #4ade80; text-align: center;">Avatar colors saved successfully!</div>
+          </div>
+        </div>
+
+        <!-- 3D Accessory Catalog Grid -->
+        <div class="accessory-catalog-section" style="margin-top: 2rem; background: #0f172a; padding: 1.5rem; border-radius: 12px; border: 1px solid #1e293b;">
+          <div style="margin-bottom: 1rem;">
+            <h3>🛍️ Accessory Catalog (Free Equip)</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Browse and equip 3D hats, shades, and backpacks onto your avatar for multiplayer games.</p>
+          </div>
+
+          <div id="accessoryCatalogGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
+            <!-- Dynamically rendered by app.js -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. DEDICATED DOWNLOADS VIEW -->
+    <div id="downloadsView" class="hidden">
+      <div class="section-header" style="text-align: center; margin-bottom: 2rem;">
+        <h2>📥 Download Luani Client</h2>
+        <p style="color: var(--text-muted);">Get the official Luani Sandbox Client for Android & Linux desktop.</p>
+      </div>
+
+      <div class="downloads-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; max-width: 900px; margin: 0 auto;">
+        <!-- Android Download Card -->
+        <div class="download-card" style="background: #0f172a; border: 1px solid #1e293b; padding: 2rem; border-radius: 16px; text-align: center; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-size: 3.5rem; margin-bottom: 1rem;">📱</div>
+            <h3>Android Release APK</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem; margin-bottom: 1.5rem;">Native Godot 4 ARM64 Android app with 100% sensor rotation & touch controls.</p>
+          </div>
+          <a href="/downloads/LuaniClient.apk" download="LuaniClient.apk" class="btn btn-primary btn-block" style="text-decoration: none; padding: 12px; font-weight: bold;">📱 Download Android APK</a>
+        </div>
+
+        <!-- Linux Install & Update Card -->
+        <div class="download-card" style="background: #0f172a; border: 1px solid #1e293b; padding: 2rem; border-radius: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-size: 3.5rem; margin-bottom: 1rem; text-align: center;">🐧</div>
+            <h3 style="text-align: center;">Linux Desktop Installer & Updater</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem; margin-bottom: 1rem;">Run this 1-command script in your terminal to install or update LuaniClient and register the <code style="color:#60a5fa;">luani://</code> protocol handler:</p>
+
+            <div class="styled-terminal-box" style="margin-bottom: 1rem;">
+              <div class="terminal-header">
+                <span class="terminal-lang">bash</span>
+                <button id="btnCopyDownloadsCmd" class="btn-copy">📋 Copy</button>
+              </div>
+              <pre class="terminal-code"><code id="downloadsCmdText">curl -fsSL https://www.luani.fyi/install.sh | bash</code></pre>
+            </div>
+          </div>
+          <div style="background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; padding: 10px; border-radius: 6px; font-size: 0.85rem; color: #93c5fd;">
+            ℹ️ Running this command automatically updates any existing installation to the latest version!
           </div>
         </div>
       </div>

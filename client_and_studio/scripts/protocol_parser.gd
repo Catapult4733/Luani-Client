@@ -118,6 +118,11 @@ func parse_uri(uri_string: String) -> Dictionary:
 					var parsed = JSON.parse_string(json_str)
 					if parsed is Dictionary:
 						result["avatar_colors"] = parsed
+				elif key == "accessory_ids" or key == "accessories":
+					var json_str := value.uri_decode()
+					var parsed = JSON.parse_string(json_str)
+					if parsed is Array:
+						result["accessory_ids"] = parsed
 				elif key == "owner":
 					result["owner"] = (value.to_lower() == "true" or value == "1")
 				elif key == "verified":

@@ -222,6 +222,12 @@ func spawn_player_avatar(peer_id: int) -> Node:
 		var uname: String = local_username if peer_id == multiplayer.get_unique_id() else "Player_" + str(peer_id)
 		avatar.call_deferred("set_player_username", uname)
 
+	var proto_mgr := get_node_or_null("/root/ProtocolParser")
+	if proto_mgr and proto_mgr.latest_session_data.has("accessory_ids"):
+		var accs: Array = proto_mgr.latest_session_data["accessory_ids"]
+		if avatar.has_method("sync_equipped_accessories"):
+			avatar.call_deferred("rpc", "sync_equipped_accessories", accs)
+
 	var path_str: String = str(target_container.get_path()) if target_container.is_inside_tree() else target_container.name
 	print("[Luani NetworkManager] Spawned PlayerAvatar for peer ID: ", peer_id, " under container: ", path_str)
 	player_spawned.emit(peer_id, avatar)

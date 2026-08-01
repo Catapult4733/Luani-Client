@@ -261,18 +261,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const studioGamesGrid = document.getElementById('studioGamesGrid');
   let currentStudioTab = 'active';
 
+  const navDownloads = document.getElementById('navDownloads');
+  const downloadsView = document.getElementById('downloadsView');
+  const btnCopyDownloadsCmd = document.getElementById('btnCopyDownloadsCmd');
+  const downloadsCmdText = document.getElementById('downloadsCmdText');
+  const accessoryCatalogGrid = document.getElementById('accessoryCatalogGrid');
+
+  let equippedAccessories = JSON.parse(localStorage.getItem('luani_equipped_accessories') || '["hat_cap"]');
+
+  const ACCESSORY_CATALOG = [
+    { id: 'hat_cap', name: 'Red Cap', type: 'Hat', icon: '🧢', price: 0 },
+    { id: 'glasses_shades', name: 'Dark Shades', type: 'Glasses', icon: '🕶️', price: 0 },
+    { id: 'backpack_pack', name: 'Adventurer Pack', type: 'Backpack', icon: '🎒', price: 0 },
+    { id: 'hat_crown', name: 'Golden Crown', type: 'Hat', icon: '👑', price: 0 },
+    { id: 'headset_pro', name: 'Pro Headphones', type: 'Hat', icon: '🎧', price: 0 }
+  ];
+
   // --- ROUTING ENGINE ---
   function showView(viewToShow) {
-    [discoverView, gameDetailsView, userProfileView, avatarEditorView, searchResultsView, studioDashboardView].forEach(v => {
+    [discoverView, gameDetailsView, userProfileView, avatarEditorView, searchResultsView, studioDashboardView, downloadsView].forEach(v => {
       if (v) v.classList.add('hidden');
     });
     if (viewToShow) viewToShow.classList.remove('hidden');
     if (navLinksMenu) navLinksMenu.classList.remove('mobile-open');
 
-    // Remove promo banner from profile/studio view
     const studioBanner = document.getElementById('studio');
     if (studioBanner) {
-      if (viewToShow === userProfileView || viewToShow === avatarEditorView || viewToShow === studioDashboardView) {
+      if (viewToShow === userProfileView || viewToShow === avatarEditorView || viewToShow === studioDashboardView || viewToShow === downloadsView) {
         studioBanner.classList.add('hidden');
       } else {
         studioBanner.classList.remove('hidden');
@@ -281,6 +296,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.scrollTo(0, 0);
   }
+
+  if (navDownloads) {
+    navDownloads.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.history.pushState({}, '', '#downloads');
+      showView(downloadsView);
+    });
+  }
+
+  if (btnCopyDownloadsCmd && downloadsCmdText) {
+    btnCopyDownloadsCmd.addEventListener('click', () => {
+      navigator.clipboard.writeText(downloadsCmdText.innerText);
+      btnCopyDownloadsCmd.innerText = '✅ Copied!';
+      setTimeout(() => { btnCopyDownloadsCmd.innerText = '📋 Copy'; }, 2000);
+    });
+  }
+
+  function renderAccessoryCatalog() {
+    if (!accessoryCatalogGrid) return;
+    accessoryCatalogGrid.innerHTML = '';
+
+    ACCESSORY_CATALOG.forEach(item => {
+      const isEquipped = equippedAccessories.includes(item.id);
+      const card = document.createElement('div');
+      card.className = 'accessory-card';
+      card.style.cssText = `
+        background: #1e293b;
+        border: 1px solid ${isEquipped ? '#3b82f6' : '#334155'};
+        border-radius: 10px;
+        padding: 1rem;
+        text-align: center;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      `;
+
+      card.innerHTML = `
+        <div>
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">${item.icon}</div>
+          <div style="font-weight: bold; font-size: 0.95rem; color: #fff;">${item.name}</div>
+          <div style="font-size: 0.8rem; color: #94a3b8;">${item.type}</div>
+          <div style="margin-top: 0.4rem; display: inline-block; background: rgba(34, 197, 94, 0.2); color: #4ade80; font-size: 0.75rem; font-weight: bold; padding: 2px 8px; border-radius: 12px;">
+            FREE ($0)
+          </div>
+        </div>
+        <button class="btn btn-sm ${isEquipped ? 'btn-secondary' : 'btn-primary'} btn-toggle-acc" style="margin-top: 0.8rem; width: 100%;">
+          ${isEquipped ? '✅ Equipped' : '➕ Equip'}
+        </button>
+      `;
+
+      const btnToggle = card.querySelector('.btn-toggle-acc');
+      btnToggle.addEventListener('click', () => {
+        if (isEquipped) {
+          equippedAccessories = equippedAccessories.filter(id => id !== item.id);
+        } else {
+          equippedAccessories.push(item.id);
+        }
+        localStorage.setItem('luani_equipped_accessories', JSON.stringify(equippedAccessories));
+        renderAccessoryCatalog();
+      });
+
+      accessoryCatalogGrid.appendChild(card);
+    });
+  }
+
+  // Initial catalog render
+  renderAccessoryCatalog();
 
   if (navStudio) {
     navStudio.addEventListener('click', (e) => {
@@ -457,9 +540,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const userToPass = currentUser ? currentUser.username : 'Player';
     const isOwner = currentUser ? (currentUser.owner === true || currentUser.owner === 'true') : false;
     const isVerified = currentUser ? (currentUser.verified === true || currentUser.verified === 'true') : false;
-    const colorsParam = currentUser && currentUser.avatar_colors ? encodeURIComponent(JSON.stringify(currentUser.avatar_colors)) : '';
-
-    const launchUri = `luani://join?server=luani.fyi:7700&username=${encodeURIComponent(userToPass)}&owner=${isOwner}&verified=${isVerified}&avatar_colors=${colorsParam}`;
+    const accParam = encodeURIComponent(JSON.stringify(equippedAccessories));
+    const launchUri = `luani://join?server=luani.fyi:7700&username=${encodeURIComponent(userToPass)}&owner=${isOwner}&verified=${isVerified}&avatar_colors=${colorsParam}&accessory_ids=${accParam}`;
     promptInstallOrLaunch(launchUri);
   });
 
