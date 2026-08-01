@@ -176,10 +176,11 @@ func _on_server_item_button_clicked(item: TreeItem, column: int, id: int, mouse_
 		if game_mgr:
 			game_mgr.connect_to_server(ip, port, auth)
 
-func _on_session_state_changed(new_state: int) -> void:
+func _on_session_state_changed(new_state_val) -> void:
+	var state_int: int = int(new_state_val)
 	if main_menu_inst:
-		main_menu_inst.visible = (new_state == 0) # 0: LAUNCHER state
-	if new_state == 0:
+		main_menu_inst.visible = (state_int == 0)
+	if state_int == 0:
 		show()
 	else:
 		hide()

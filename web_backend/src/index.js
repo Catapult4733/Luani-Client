@@ -16,6 +16,21 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// SERVE COMPILED CLIENT BINARY BEFORE STATIC MIDDLEWARE
+app.get('/downloads/LuaniClient.x86_64', (req, res) => {
+  const binPath = path.resolve(__dirname, '../../bin/LuaniClient.x86_64');
+  if (fs.existsSync(binPath)) {
+    res.setHeader('Content-Type', 'application/octet-stream');
+    return res.sendFile(binPath);
+  }
+  const localProject = path.resolve(__dirname, '../../client_and_studio');
+  res.setHeader('Content-Type', 'application/x-sh');
+  res.send(`#!/usr/bin/env bash
+echo "[Luani Client Runner] Launching Luani Game Client for URI: $1"
+godot --path "${localProject}" -- "$1"
+`);
+});
+
 // Serve static APK downloads with strict no-cache headers
 app.use('/downloads', express.static(path.join(__dirname, '../public/downloads'), {
   setHeaders: (res, filePath) => {
@@ -39,21 +54,6 @@ app.get('/install.sh', (req, res) => {
     return res.sendFile(scriptPath);
   }
   res.status(404).send('#!/bin/bash\necho "Error: install.sh not found on server."\nexit 1\n');
-});
-
-// SERVE COMPILED CLIENT BINARY
-app.get('/downloads/LuaniClient.x86_64', (req, res) => {
-  const binPath = path.resolve(__dirname, '../../bin/LuaniClient.x86_64');
-  if (fs.existsSync(binPath)) {
-    res.setHeader('Content-Type', 'application/octet-stream');
-    return res.sendFile(binPath);
-  }
-  // Fallback runner script if binary is building
-  res.setHeader('Content-Type', 'application/x-sh');
-  res.send(`#!/usr/bin/env bash
-echo "[Luani Client Runner] Launching Luani Game Client for URI: $1"
-godot --path "${path.resolve(__dirname, '../../client_and_studio')}" -- "$1"
-`);
 });
 
 // Initialize Supabase Client
