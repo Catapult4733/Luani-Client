@@ -43,8 +43,16 @@ app.use('/downloads', express.static(path.join(__dirname, '../public/downloads')
   }
 }));
 
-// Serve static web portal frontend
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve static web portal frontend with strict no-cache headers for HTML, JS, and CSS
+app.use(express.static(path.join(__dirname, '../public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
 
 // SERVE 1-COMMAND INSTALLER SCRIPT
 app.get('/install.sh', (req, res) => {
