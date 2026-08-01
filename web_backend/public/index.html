@@ -33,6 +33,7 @@
       <nav class="nav-links" id="navLinksMenu">
         <a href="#" id="navDiscover" class="active">Discover</a>
         <a href="#avatar" id="navAvatarLink">Avatar</a>
+        <a href="#catalog" id="navCatalog">Catalog</a>
         <a href="#studio" id="navStudio">Studio</a>
         <a href="#downloads" id="navDownloads">Downloads</a>
         <a href="/downloads/LuaniClient.apk" download="LuaniClient.apk" class="btn-download-app">📱 Download App</a>
@@ -76,6 +77,12 @@
       </div>
     </div>
   </header>
+
+  <!-- Live Website Version Update Notification Banner -->
+  <div id="updateNoticeBanner" class="hidden" style="background: linear-gradient(90deg, #2563eb, #7c3aed); color: #fff; text-align: center; padding: 10px 16px; font-size: 0.95rem; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 12px; z-index: 1000; position: sticky; top: 0;">
+    <span>⚡ There's an update of the page available, please refresh to see the new updates.</span>
+    <button id="btnRefreshPageNotice" class="btn btn-sm btn-secondary" style="background: #fff; color: #0f172a; font-weight: bold; border: none; padding: 4px 12px; cursor: pointer;">🔄 Refresh Now</button>
+  </div>
 
   <!-- Friends Header Bar -->
   <section id="friendsBarSection" class="friends-bar">
@@ -260,17 +267,32 @@
           </div>
         </div>
 
-        <!-- 3D Accessory Catalog Grid -->
-        <div class="accessory-catalog-section" style="margin-top: 2rem; background: #0f172a; padding: 1.5rem; border-radius: 12px; border: 1px solid #1e293b;">
-          <div style="margin-bottom: 1rem;">
-            <h3>🛍️ Accessory Catalog (Free Equip)</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">Browse and equip 3D hats, shades, and backpacks onto your avatar for multiplayer games.</p>
+        <!-- My Inventory Section on Avatar Page -->
+        <div class="avatar-inventory-section" style="margin-top: 2rem; background: #0f172a; padding: 1.5rem; border-radius: 12px; border: 1px solid #1e293b;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <h3>🎒 My Purchased Accessories</h3>
+              <p style="color: var(--text-muted); font-size: 0.9rem;">Equip or unequip 3D items acquired from the Catalog onto your avatar.</p>
+            </div>
+            <a href="#catalog" id="btnGoToCatalog" class="btn btn-sm btn-secondary" style="text-decoration: none;">🛍️ Browse Catalog</a>
           </div>
 
-          <div id="accessoryCatalogGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
-            <!-- Dynamically rendered by app.js -->
+          <div id="avatarInventoryGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
+            <!-- Dynamically rendered equipped/purchased items -->
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 4.5 SEPARATE CATALOG VIEW PAGE -->
+    <div id="catalogView" class="hidden">
+      <div class="section-header" style="margin-bottom: 1.5rem;">
+        <h2>🛍️ Luani Accessory Catalog</h2>
+        <p style="color: var(--text-muted);">Get free 3D hats, sunglasses, crowns, and backpacks to add to your Avatar Inventory!</p>
+      </div>
+
+      <div id="catalogGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem;">
+        <!-- Dynamically rendered catalog items -->
       </div>
     </div>
 

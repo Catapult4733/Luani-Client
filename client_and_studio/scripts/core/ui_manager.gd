@@ -49,8 +49,12 @@ func _setup_health_hud() -> void:
 	style.border_color = Color(0.2, 0.28, 0.4, 0.6)
 	hud_card.add_theme_stylebox_override("panel", style)
 
-	hud_card.custom_minimum_size = Vector2(220, 50)
-	hud_card.position = Vector2(16, 16)
+	hud_card.custom_minimum_size = Vector2(200, 48)
+	hud_card.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	hud_card.offset_left = -320.0
+	hud_card.offset_top = 16.0
+	hud_card.offset_right = -110.0
+	hud_card.offset_bottom = 64.0
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 8)
@@ -63,7 +67,7 @@ func _setup_health_hud() -> void:
 
 	var portrait := Label.new()
 	portrait.text = "👤"
-	portrait.add_theme_font_size_override("font_size", 20)
+	portrait.add_theme_font_size_override("font_size", 18)
 	hbox.add_child(portrait)
 
 	var vbox := VBoxContainer.new()
@@ -71,12 +75,12 @@ func _setup_health_hud() -> void:
 
 	health_num_label = Label.new()
 	health_num_label.text = "HP: 100 / 100"
-	health_num_label.add_theme_font_size_override("font_size", 12)
+	health_num_label.add_theme_font_size_override("font_size", 11)
 	health_num_label.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
 	vbox.add_child(health_num_label)
 
 	var pbar := ProgressBar.new()
-	pbar.custom_minimum_size = Vector2(0, 14)
+	pbar.custom_minimum_size = Vector2(0, 12)
 	pbar.max_value = 100.0
 	pbar.value = 100.0
 	pbar.show_percentage = false
@@ -95,6 +99,15 @@ func _setup_health_hud() -> void:
 	hbox.add_child(vbox)
 
 	add_child.call_deferred(health_hud_inst)
+	get_viewport().size_changed.connect(_on_viewport_size_changed)
+
+func _on_viewport_size_changed() -> void:
+	if health_hud_inst and is_instance_valid(health_hud_inst):
+		health_hud_inst.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		health_hud_inst.offset_left = -320.0
+		health_hud_inst.offset_top = 16.0
+		health_hud_inst.offset_right = -110.0
+		health_hud_inst.offset_bottom = 64.0
 
 func update_health_bar(current_hp: float, max_hp: float) -> void:
 	if health_num_label:

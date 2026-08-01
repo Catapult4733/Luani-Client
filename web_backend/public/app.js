@@ -261,12 +261,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const studioGamesGrid = document.getElementById('studioGamesGrid');
   let currentStudioTab = 'active';
 
+  const SITE_VERSION = '0.2.10';
+
   const navDownloads = document.getElementById('navDownloads');
   const downloadsView = document.getElementById('downloadsView');
   const btnCopyDownloadsCmd = document.getElementById('btnCopyDownloadsCmd');
   const downloadsCmdText = document.getElementById('downloadsCmdText');
-  const accessoryCatalogGrid = document.getElementById('accessoryCatalogGrid');
 
+  const navCatalog = document.getElementById('navCatalog');
+  const catalogView = document.getElementById('catalogView');
+  const catalogGrid = document.getElementById('catalogGrid');
+  const avatarInventoryGrid = document.getElementById('avatarInventoryGrid');
+  const updateNoticeBanner = document.getElementById('updateNoticeBanner');
+  const btnRefreshPageNotice = document.getElementById('btnRefreshPageNotice');
+
+  let purchasedAccessories = JSON.parse(localStorage.getItem('luani_purchased_accessories') || '["hat_cap", "glasses_shades"]');
   let equippedAccessories = JSON.parse(localStorage.getItem('luani_equipped_accessories') || '["hat_cap"]');
 
   const ACCESSORY_CATALOG = [
@@ -279,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- ROUTING ENGINE ---
   function showView(viewToShow) {
-    [discoverView, gameDetailsView, userProfileView, avatarEditorView, searchResultsView, studioDashboardView, downloadsView].forEach(v => {
+    [discoverView, gameDetailsView, userProfileView, avatarEditorView, searchResultsView, studioDashboardView, downloadsView, catalogView].forEach(v => {
       if (v) v.classList.add('hidden');
     });
     if (viewToShow) viewToShow.classList.remove('hidden');
@@ -287,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const studioBanner = document.getElementById('studio');
     if (studioBanner) {
-      if (viewToShow === userProfileView || viewToShow === avatarEditorView || viewToShow === studioDashboardView || viewToShow === downloadsView) {
+      if (viewToShow === userProfileView || viewToShow === avatarEditorView || viewToShow === studioDashboardView || viewToShow === downloadsView || viewToShow === catalogView) {
         studioBanner.classList.add('hidden');
       } else {
         studioBanner.classList.remove('hidden');
@@ -295,6 +304,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.scrollTo(0, 0);
+  }
+
+  if (navCatalog) {
+    navCatalog.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.history.pushState({}, '', '#catalog');
+      renderCatalogPage();
+      showView(catalogView);
+    });
   }
 
   if (navDownloads) {
@@ -313,21 +331,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function renderAccessoryCatalog() {
-    if (!accessoryCatalogGrid) return;
-    accessoryCatalogGrid.innerHTML = '';
+  if (btnRefreshPageNotice) {
+    btnRefreshPageNotice.addEventListener('click', () => {
+      window.location.reload();
+    });
+  }
+
+  // --- VERSION INDICATOR & UPDATE NOTIFICATION SYSTEM ---
+  function checkWebsiteVersion() {
+    fetch('/api/version')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.version && data.version !== SITE_VERSION) {
+          if (updateNoticeBanner) {
+            updateNoticeBanner.classList.remove('hidden');
+          }
+        }
+      })
+      .catch(() => {});
+  }
+
+  // Check version on load and every 30 seconds
+  checkWebsiteVersion();
+  setInterval(checkWebsiteVersion, 30000);
+
+  // Notify user once if website was updated since last visit
+  const lastSeenVer = localStorage.getItem('last_seen_site_version');
+  if (lastSeenVer && lastSeenVer !== SITE_VERSION) {
+    alert(`🎉 Website updated! You are now on the latest version (${SITE_VERSION}).`);
+  }
+  localStorage.setItem('last_seen_site_version', SITE_VERSION);
+
+  // --- SEPARATE CATALOG PAGE RENDERING ---
+  function renderCatalogPage() {
+    if (!catalogGrid) return;
+    catalogGrid.innerHTML = '';
 
     ACCESSORY_CATALOG.forEach(item => {
-      const isEquipped = equippedAccessories.includes(item.id);
+      const isOwned = purchasedAccessories.includes(item.id);
       const card = document.createElement('div');
-      card.className = 'accessory-card';
+      card.className = 'catalog-card';
       card.style.cssText = `
-        background: #1e293b;
-        border: 1px solid ${isEquipped ? '#3b82f6' : '#334155'};
-        border-radius: 10px;
-        padding: 1rem;
+        background: #0f172a;
+        border: 1px solid ${isOwned ? '#10b981' : '#334155'};
+        border-radius: 12px;
+        padding: 1.25rem;
         text-align: center;
-        position: relative;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -335,35 +384,101 @@ document.addEventListener('DOMContentLoaded', () => {
 
       card.innerHTML = `
         <div>
-          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">${item.icon}</div>
-          <div style="font-weight: bold; font-size: 0.95rem; color: #fff;">${item.name}</div>
-          <div style="font-size: 0.8rem; color: #94a3b8;">${item.type}</div>
-          <div style="margin-top: 0.4rem; display: inline-block; background: rgba(34, 197, 94, 0.2); color: #4ade80; font-size: 0.75rem; font-weight: bold; padding: 2px 8px; border-radius: 12px;">
+          <div style="font-size: 3rem; margin-bottom: 0.5rem;">${item.icon}</div>
+          <div style="font-weight: bold; font-size: 1.1rem; color: #fff;">${item.name}</div>
+          <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 2px;">${item.type}</div>
+          <div style="margin-top: 0.6rem; display: inline-block; background: rgba(34, 197, 94, 0.2); color: #4ade80; font-size: 0.8rem; font-weight: bold; padding: 4px 10px; border-radius: 12px;">
             FREE ($0)
           </div>
         </div>
-        <button class="btn btn-sm ${isEquipped ? 'btn-secondary' : 'btn-primary'} btn-toggle-acc" style="margin-top: 0.8rem; width: 100%;">
+        <button class="btn btn-sm ${isOwned ? 'btn-secondary' : 'btn-primary'} btn-buy-catalog" style="margin-top: 1rem; width: 100%;">
+          ${isOwned ? '✅ Acquired (In Inventory)' : '🛍️ Get for FREE'}
+        </button>
+      `;
+
+      const btnBuy = card.querySelector('.btn-buy-catalog');
+      btnBuy.addEventListener('click', () => {
+        if (!isOwned) {
+          purchasedAccessories.push(item.id);
+          localStorage.setItem('luani_purchased_accessories', JSON.stringify(purchasedAccessories));
+          alert(`🎉 Added ${item.name} to your Avatar Inventory!`);
+          renderCatalogPage();
+          renderAvatarInventory();
+        }
+      });
+
+      catalogGrid.appendChild(card);
+    });
+  }
+
+  // --- AVATAR PAGE INVENTORY RENDERING ---
+  function renderAvatarInventory() {
+    if (!avatarInventoryGrid) return;
+    avatarInventoryGrid.innerHTML = '';
+
+    const ownedItems = ACCESSORY_CATALOG.filter(item => purchasedAccessories.includes(item.id));
+
+    if (ownedItems.length === 0) {
+      avatarInventoryGrid.innerHTML = `
+        <div style="color: var(--text-muted); grid-column: 1 / -1; padding: 1.5rem; text-align: center;">
+          No accessories in your inventory yet. <a href="#catalog" id="linkCatalogEmpty" style="color: #60a5fa; font-weight: bold;">Browse the Catalog</a> to get free items!
+        </div>
+      `;
+      const linkEmpty = avatarInventoryGrid.querySelector('#linkCatalogEmpty');
+      if (linkEmpty) {
+        linkEmpty.addEventListener('click', (e) => {
+          e.preventDefault();
+          showView(catalogView);
+          renderCatalogPage();
+        });
+      }
+      return;
+    }
+
+    ownedItems.forEach(item => {
+      const isEquipped = equippedAccessories.includes(item.id);
+      const card = document.createElement('div');
+      card.className = 'inventory-card';
+      card.style.cssText = `
+        background: #1e293b;
+        border: 1px solid ${isEquipped ? '#3b82f6' : '#334155'};
+        border-radius: 10px;
+        padding: 1rem;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      `;
+
+      card.innerHTML = `
+        <div>
+          <div style="font-size: 2.2rem; margin-bottom: 0.4rem;">${item.icon}</div>
+          <div style="font-weight: bold; font-size: 0.9rem; color: #fff;">${item.name}</div>
+          <div style="font-size: 0.75rem; color: #94a3b8;">${item.type}</div>
+        </div>
+        <button class="btn btn-sm ${isEquipped ? 'btn-secondary' : 'btn-primary'} btn-toggle-equip" style="margin-top: 0.75rem; width: 100%;">
           ${isEquipped ? '✅ Equipped' : '➕ Equip'}
         </button>
       `;
 
-      const btnToggle = card.querySelector('.btn-toggle-acc');
-      btnToggle.addEventListener('click', () => {
+      const btnEquip = card.querySelector('.btn-toggle-equip');
+      btnEquip.addEventListener('click', () => {
         if (isEquipped) {
           equippedAccessories = equippedAccessories.filter(id => id !== item.id);
         } else {
           equippedAccessories.push(item.id);
         }
         localStorage.setItem('luani_equipped_accessories', JSON.stringify(equippedAccessories));
-        renderAccessoryCatalog();
+        renderAvatarInventory();
       });
 
-      accessoryCatalogGrid.appendChild(card);
+      avatarInventoryGrid.appendChild(card);
     });
   }
 
-  // Initial catalog render
-  renderAccessoryCatalog();
+  // Initial renders
+  renderCatalogPage();
+  renderAvatarInventory();
 
   if (navStudio) {
     navStudio.addEventListener('click', (e) => {
@@ -615,11 +730,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- AUTH SYSTEM ---
   function checkAuthStatus() {
     const token = getAuthToken();
-    if (!token) {
+    const cachedUserRaw = localStorage.getItem('luani_user_session');
+    let cachedUser = null;
+    try { cachedUser = cachedUserRaw ? JSON.parse(cachedUserRaw) : null; } catch(e) {}
+
+    if (!token && !cachedUser) {
       currentUser = null;
       window.currentUser = null;
       updateAuthUI(null);
       return;
+    }
+
+    // Immediately restore cached session so user is never logged off during updates
+    if (cachedUser) {
+      currentUser = cachedUser;
+      window.currentUser = cachedUser;
+      updateAuthUI(currentUser);
     }
 
     apiFetch('/api/auth/me')
@@ -628,10 +754,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success && data.user) {
         currentUser = data.user;
         window.currentUser = data.user;
+        localStorage.setItem('luani_user_session', JSON.stringify(data.user));
         updateAuthUI(currentUser);
         fetchFriendsList();
         fetchNotifications();
-      } else {
+      } else if (!cachedUser) {
         setAuthToken(null);
         currentUser = null;
         window.currentUser = null;
@@ -639,9 +766,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     })
     .catch(() => {
-      currentUser = null;
-      window.currentUser = null;
-      updateAuthUI(null);
+      if (cachedUser) {
+        currentUser = cachedUser;
+        window.currentUser = cachedUser;
+        updateAuthUI(currentUser);
+      } else {
+        currentUser = null;
+        window.currentUser = null;
+        updateAuthUI(null);
+      }
     });
   }
 
@@ -704,6 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
           setAuthToken(data.token);
           currentUser = data.user;
           window.currentUser = data.user;
+          localStorage.setItem('luani_user_session', JSON.stringify(data.user));
           updateAuthUI(currentUser);
           closeAuthModal();
           fetchFriendsList();
@@ -769,6 +903,7 @@ document.addEventListener('DOMContentLoaded', () => {
     menuLogout.addEventListener('click', (e) => {
       e.preventDefault();
       setAuthToken(null);
+      localStorage.removeItem('luani_user_session');
       currentUser = null;
       window.currentUser = null;
       updateAuthUI(null);

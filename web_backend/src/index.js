@@ -214,6 +214,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Website Version Indicator Endpoint
+app.get('/api/version', (req, res) => {
+  res.json({
+    success: true,
+    version: '0.2.10',
+    timestamp: new Date().toISOString()
+  });
+});
+
 const DEFAULT_AVATAR_COLORS = {
   head: "#e0ac69",
   torso: "#0000ff",
