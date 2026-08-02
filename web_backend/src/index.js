@@ -1179,6 +1179,9 @@ app.post('/api/daemon/update-status', (req, res) => {
   res.status(404).json({ success: false, error: 'Server instance request not found.' });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[Luani Web Backend] Running on http://localhost:${PORT} (Domain target: ${PUBLIC_DOMAIN})`);
 });
+
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
