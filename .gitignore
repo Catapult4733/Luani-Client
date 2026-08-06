@@ -29,3 +29,4 @@ client_and_studio/android/build/build/
 client_and_studio/android/build/.gradle/
 web_backend/public/downloads/*.apk
 web_backend/public/downloads/*.x86_64
+web_backend/public/downloads/*.aab
