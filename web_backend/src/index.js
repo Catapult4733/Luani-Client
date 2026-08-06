@@ -85,6 +85,15 @@ if (!supabase) {
   });
 }
 
+const DEFAULT_AVATAR_COLORS = {
+  head: "#e0ac69",
+  torso: "#0000ff",
+  left_arm: "#e0ac69",
+  right_arm: "#e0ac69",
+  left_leg: "#00ff00",
+  right_leg: "#00ff00"
+};
+
 // Memory stores
 const users = [];
 const sessions = new Map();
@@ -294,15 +303,6 @@ app.get('/api/version', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-
-const DEFAULT_AVATAR_COLORS = {
-  head: "#e0ac69",
-  torso: "#0000ff",
-  left_arm: "#e0ac69",
-  right_arm: "#e0ac69",
-  left_leg: "#00ff00",
-  right_leg: "#00ff00"
-};
 
 // AUTH SYSTEM (Username + Password only, no email)
 app.post('/api/auth/register', async (req, res) => {
