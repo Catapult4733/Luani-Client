@@ -214,7 +214,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/privacy', (req, res) => {
+app.get(['/privacy', '/studio', '/catalog', '/downloads'], (req, res) => {
   res.sendFile(path.resolve(__dirname, '../public/index.html'));
 });
 

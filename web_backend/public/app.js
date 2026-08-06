@@ -744,6 +744,16 @@ document.addEventListener('DOMContentLoaded', () => {
       loadGameDetails(gameId);
     } else if (usernameParam) {
       loadUserProfile(usernameParam);
+    } else if (window.location.hash === '#privacy' || window.location.pathname === '/privacy') {
+      showView(privacyView);
+    } else if (window.location.hash === '#catalog' || window.location.pathname === '/catalog') {
+      renderCatalogPage();
+      showView(catalogView);
+    } else if (window.location.hash === '#studio' || window.location.pathname === '/studio') {
+      loadStudioDashboard();
+      showView(studioDashboardView);
+    } else if (window.location.hash === '#downloads' || window.location.pathname === '/downloads') {
+      showView(downloadsView);
     } else {
       showView(discoverView);
     }
