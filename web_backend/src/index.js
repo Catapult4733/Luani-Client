@@ -92,6 +92,19 @@ const friendRequests = [];
 const friendships = new Set();
 const blockList = new Set();
 
+// Pre-populate Google Play Reviewer demo account
+const hashedPasswordDemo = bcrypt.hashSync('password123', 10);
+users.push({
+  id: 'usr_testuser',
+  username: 'testuser',
+  password: hashedPasswordDemo,
+  bio: 'Google Play Reviewer Test Account',
+  owner: false,
+  verified: true,
+  avatar_colors: { ...DEFAULT_AVATAR_COLORS },
+  createdAt: new Date().toISOString()
+});
+
 // Default Places Catalog
 const places = [
   {
