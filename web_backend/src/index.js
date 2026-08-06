@@ -214,6 +214,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/privacy', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '../public/index.html'));
+});
+
 // Website Version Indicator Endpoint
 app.get('/api/version', (req, res) => {
   res.json({

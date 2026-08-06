@@ -370,13 +370,62 @@
       </div>
     </div>
 
+    <!-- 7. PRIVACY POLICY VIEW -->
+    <div id="privacyView" class="hidden" style="max-width: 850px; margin: 0 auto; padding: 1rem 0;">
+      <div class="section-header" style="text-align: center; margin-bottom: 2rem;">
+        <h2>🔒 Privacy Policy</h2>
+        <p style="color: var(--text-muted);">Effective Date: August 2026 &bull; Luani Platform (luani.fyi)</p>
+      </div>
+
+      <div style="background: #0f172a; border: 1px solid #1e293b; padding: 2rem; border-radius: 16px; color: #cbd5e1; line-height: 1.7; display: flex; flex-direction: column; gap: 1.5rem;">
+        <section>
+          <h3 style="color: #fff; margin-bottom: 0.5rem;">1. Information We Collect</h3>
+          <p>Luani Platform collects minimal information necessary to provide multiplayer game matchmaking, avatar customization, and game creation features:</p>
+          <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li><strong>Account Data:</strong> Username, securely hashed password credentials, avatar customization preferences (colors and equipped accessories).</li>
+            <li><strong>Game & Server Logs:</strong> IP addresses and connection metadata temporarily logged during multiplayer matchmaking and self-hosted server connections.</li>
+            <li><strong>Creator Projects:</strong> Game place files, Luau scripts, and project metadata saved in Luani Studio.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3 style="color: #fff; margin-bottom: 0.5rem;">2. How We Use Information</h3>
+          <p>We use collected data solely to:</p>
+          <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li>Authenticate users and maintain active sessions.</li>
+            <li>Route players to official and creator-hosted server instances.</li>
+            <li>Sync multiplayer avatar appearances and inventory across sessions.</li>
+          </ul>
+          <p style="margin-top: 0.5rem; color: #94a3b8;"><em>We do not sell, rent, or trade your personal data to third parties.</em></p>
+        </section>
+
+        <section>
+          <h3 style="color: #fff; margin-bottom: 0.5rem;">3. Data Security</h3>
+          <p>All passwords are encrypted using secure cryptographic hashing before storage in our PostgreSQL database. Communications with <code>luani.fyi</code> use TLS/SSL encryption.</p>
+        </section>
+
+        <section>
+          <h3 style="color: #fff; margin-bottom: 0.5rem;">4. Children's Privacy</h3>
+          <p>Luani is designed for general audiences. We do not knowingly collect personal identifiable information from children under 13 without parental consent.</p>
+        </section>
+
+        <section>
+          <h3 style="color: #fff; margin-bottom: 0.5rem;">5. Contact Us & Data Rights</h3>
+          <p>You may request account deletion or data inquiry at any time by reaching out to us at <a href="mailto:privacy@luani.fyi" style="color: #60a5fa;">privacy@luani.fyi</a>.</p>
+        </section>
+      </div>
+    </div>
+
   </main>
 
   <!-- Footer -->
   <footer class="footer">
     <div class="footer-container">
       <p>&copy; 2026 Luani Platform (luani.fyi). Powered by Godot Engine & Luau MIT open-source technologies.</p>
-      <p class="credits-line">Crown icon by icons8</p>
+      <p class="credits-line">
+        Crown icon by icons8 &bull; 
+        <a href="#privacy" id="navPrivacyLink" style="color: var(--text-muted); text-decoration: underline; margin-left: 6px;">Privacy Policy</a>
+      </p>
     </div>
   </footer>
 

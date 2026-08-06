@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const userProfileView = document.getElementById('userProfileView');
   const avatarEditorView = document.getElementById('avatarEditorView');
   const searchResultsView = document.getElementById('searchResultsView');
+  const privacyView = document.getElementById('privacyView');
 
   const btnBackToDiscover = document.getElementById('btnBackToDiscover');
   const btnBackFromProfile = document.getElementById('btnBackFromProfile');
@@ -280,9 +281,11 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: 'headset_pro', name: 'Pro Headphones', type: 'Hat', icon: '🎧', price: 0 }
   ];
 
+  const navPrivacyLink = document.getElementById('navPrivacyLink');
+
   // --- ROUTING ENGINE ---
   function showView(viewToShow) {
-    [discoverView, gameDetailsView, userProfileView, avatarEditorView, searchResultsView, studioDashboardView, downloadsView, catalogView].forEach(v => {
+    [discoverView, gameDetailsView, userProfileView, avatarEditorView, searchResultsView, studioDashboardView, downloadsView, catalogView, privacyView].forEach(v => {
       if (v) v.classList.add('hidden');
     });
     if (viewToShow) viewToShow.classList.remove('hidden');
@@ -290,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const studioBanner = document.getElementById('studio');
     if (studioBanner) {
-      if (viewToShow === userProfileView || viewToShow === avatarEditorView || viewToShow === studioDashboardView || viewToShow === downloadsView || viewToShow === catalogView) {
+      if (viewToShow === userProfileView || viewToShow === avatarEditorView || viewToShow === studioDashboardView || viewToShow === downloadsView || viewToShow === catalogView || viewToShow === privacyView) {
         studioBanner.classList.add('hidden');
       } else {
         studioBanner.classList.remove('hidden');
@@ -315,6 +318,18 @@ document.addEventListener('DOMContentLoaded', () => {
       window.history.pushState({}, '', '#downloads');
       showView(downloadsView);
     });
+  }
+
+  if (navPrivacyLink) {
+    navPrivacyLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.history.pushState({}, '', '#privacy');
+      showView(privacyView);
+    });
+  }
+
+  if (window.location.hash === '#privacy' || window.location.pathname === '/privacy') {
+    showView(privacyView);
   }
 
   if (btnCopyDownloadsCmd && downloadsCmdText) {
