@@ -26,24 +26,14 @@ import android.webkit.WebViewClient;
 import androidx.activity.EdgeToEdge;
 import androidx.core.splashscreen.SplashScreen;
 
-import com.google.android.gms.ads.AdError;
-import com.google.android.gms.ads.AdRequest;
-import com.google.android.gms.ads.FullScreenContentCallback;
-import com.google.android.gms.ads.LoadAdError;
-import com.google.android.gms.ads.MobileAds;
-import com.google.android.gms.ads.interstitial.InterstitialAd;
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback;
-
 /**
- * Custom Godot Activity for Luani Client running Native Android WebView Overlay loading https://luani.fyi & Google AdMob SDK.
+ * Custom Godot Activity for Luani Client running Native Android WebView Overlay loading https://luani.fyi.
  */
 public class GodotApp extends GodotActivity {
 	private static GodotApp instance;
 	public static String pendingUri = "";
 
 	public static WebView mWebView;
-	public static InterstitialAd mInterstitialAd;
-	public static final String AD_UNIT_ID = "ca-app-pub-6798749288294292/8584348398";
 
 	public static String getPendingUri() {
 		String uri = pendingUri;
@@ -88,9 +78,6 @@ public class GodotApp extends GodotActivity {
 		if (godot != null && godot.getDisableGodotSplash()) {
 			splashScreen.setKeepOnScreenCondition(() -> godot.getRunStatus() != Godot.RunStatus.STARTED);
 		}
-
-		// Initialize Real Google Mobile Ads SDK & Preload Interstitial Ad
-		initAdMob();
 
 		// Attach Native Android WebView Overlay loading https://luani.fyi
 		initWebView();
@@ -199,82 +186,6 @@ public class GodotApp extends GodotActivity {
 				}
 			});
 		}
-	}
-
-	public void initAdMob() {
-		runOnUiThread(() -> {
-			try {
-				MobileAds.initialize(this, initializationStatus -> {
-					Log.i("GODOT_ADMOB", "Real Google Mobile Ads SDK Initialized successfully.");
-					loadInterstitialAdStatic();
-				});
-			} catch (Exception e) {
-				Log.e("GODOT_ADMOB", "Error initializing MobileAds: " + e.getMessage());
-			}
-		});
-	}
-
-	public static void loadInterstitialAdStatic() {
-		if (instance == null) return;
-		instance.runOnUiThread(() -> {
-			try {
-				AdRequest adRequest = new AdRequest.Builder().build();
-				InterstitialAd.load(instance, AD_UNIT_ID, adRequest, new InterstitialAdLoadCallback() {
-					@Override
-					public void onAdLoaded(InterstitialAd interstitialAd) {
-						mInterstitialAd = interstitialAd;
-						Log.i("GODOT_ADMOB", "Real AdMob Interstitial Ad loaded successfully!");
-					}
-
-					@Override
-					public void onAdFailedToLoad(LoadAdError loadAdError) {
-						mInterstitialAd = null;
-						Log.e("GODOT_ADMOB", "AdMob Interstitial Ad failed to load: " + loadAdError.getMessage());
-					}
-				});
-			} catch (Exception e) {
-				Log.e("GODOT_ADMOB", "Error loading Interstitial Ad: " + e.getMessage());
-			}
-		});
-	}
-
-	public static boolean showInterstitialAdStatic() {
-		if (instance == null) return false;
-		final boolean[] shown = {false};
-		instance.runOnUiThread(() -> {
-			try {
-				if (mInterstitialAd != null) {
-					mInterstitialAd.setFullScreenContentCallback(new FullScreenContentCallback() {
-						@Override
-						public void onAdDismissedFullScreenContent() {
-							mInterstitialAd = null;
-							Log.i("GODOT_ADMOB", "Interstitial Ad dismissed by user. Reloading next ad...");
-							loadInterstitialAdStatic();
-						}
-
-						@Override
-						public void onAdFailedToShowFullScreenContent(AdError adError) {
-							mInterstitialAd = null;
-							Log.e("GODOT_ADMOB", "Interstitial Ad failed to show: " + adError.getMessage());
-							loadInterstitialAdStatic();
-						}
-					});
-					mInterstitialAd.show(instance);
-					shown[0] = true;
-					Log.i("GODOT_ADMOB", "Real AdMob Interstitial Ad displayed on screen!");
-				} else {
-					Log.w("GODOT_ADMOB", "Interstitial Ad not loaded yet. Requesting load...");
-					loadInterstitialAdStatic();
-				}
-			} catch (Exception e) {
-				Log.e("GODOT_ADMOB", "Error displaying Interstitial Ad: " + e.getMessage());
-			}
-		});
-		return shown[0];
-	}
-
-	public static boolean isInterstitialLoadedStatic() {
-		return mInterstitialAd != null;
 	}
 
 	private void clearAppCache(java.io.File dir) {

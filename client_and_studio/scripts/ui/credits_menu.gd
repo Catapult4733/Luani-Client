@@ -41,8 +41,8 @@ SOFTWARE.
 ========================================================================
 LUAU SCRIPTING ENGINE LICENSE (MIT)
 ========================================================================
-Copyright (c) 2019-2024 Roblox Corporation
-Copyright (c) 2014-2020 Lua.org, PUC-Rio.
+Copyright (c) Luau open-source project contributors
+Copyright (c) Lua.org, PUC-Rio.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

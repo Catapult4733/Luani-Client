@@ -218,7 +218,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api/version', (req, res) => {
   res.json({
     success: true,
-    version: '0.2.10',
+    version: '0.2.11',
     timestamp: new Date().toISOString()
   });
 });
@@ -1042,12 +1042,36 @@ app.post('/api/studio/games/:id/pets', (req, res) => {
   res.json({ success: true, message: `Pets setting set to ${place.allow_pets}.`, allow_pets: place.allow_pets, place });
 });
 
+app.post('/api/studio/games/:id/self-hosted', (req, res) => {
+  const placeId = req.params.id;
+  const place = places.find(p => p.id === placeId);
+
+  if (!place) {
+    return res.status(404).json({ success: false, error: 'Game not found.' });
+  }
+
+  place.self_hosted_servers = req.body.self_hosted_servers !== undefined ? !!req.body.self_hosted_servers : !place.self_hosted_servers;
+
+  try {
+    const gameDir = path.resolve(__dirname, `../games/${placeId}`);
+    if (!fs.existsSync(gameDir)) fs.mkdirSync(gameDir, { recursive: true });
+    fs.writeFileSync(path.join(gameDir, 'game.json'), JSON.stringify(place, null, 2), 'utf8');
+  } catch (e) { }
+
+  res.json({ success: true, message: `Self-hosted servers set to ${place.self_hosted_servers}.`, self_hosted_servers: place.self_hosted_servers, place });
+});
+
 // MATCHMAKING ENGINE: Request Server Join or Spin-up
 app.post('/api/servers/request', (req, res) => {
   const { placeId, serverType, username, avatar } = req.body;
 
   if (!placeId) {
     return res.status(400).json({ success: false, error: 'Missing placeId parameter.' });
+  }
+
+  const place = places.find(p => p.id === placeId);
+  if (serverType === 'hosted' && place && place.self_hosted_servers === false) {
+    return res.status(403).json({ success: false, error: 'Self-hosted servers have been disabled by the game creator for this game.' });
   }
 
   const targetType = serverType === 'hosted' ? 'hosted' : 'official';

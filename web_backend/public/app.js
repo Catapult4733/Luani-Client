@@ -117,12 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const placesGrid = document.getElementById('placesGrid');
   const friendsList = document.getElementById('friendsList');
 
-  // Ad Modal Elements
-  const adModal = document.getElementById('adModal');
-  const adProgressBar = document.getElementById('adProgressBar');
-  const adCountdownText = document.getElementById('adCountdownText');
-  const btnSkipAd = document.getElementById('btnSkipAd');
-
   let isRegisterMode = false;
   let currentUser = null;
   let currentGame = null;
@@ -261,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const studioGamesGrid = document.getElementById('studioGamesGrid');
   let currentStudioTab = 'active';
 
-  const SITE_VERSION = '0.2.10';
+  const SITE_VERSION = '0.2.11';
 
   const navDownloads = document.getElementById('navDownloads');
   const downloadsView = document.getElementById('downloadsView');
@@ -548,6 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const petsChecked = game.allow_pets !== false ? 'checked' : '';
       const publicChecked = game.is_public !== false ? 'checked' : '';
+      const selfHostedChecked = game.self_hosted_servers !== false ? 'checked' : '';
 
       card.innerHTML = `
         <div class="place-icon" style="background: rgba(30, 41, 59, 0.9); font-size: 2.5rem; display: flex; align-items: center; justify-content: center; height: 120px;">
@@ -566,6 +561,10 @@ document.addEventListener('DOMContentLoaded', () => {
               <input type="checkbox" class="chk-public-visibility" ${publicChecked}>
               🌐 Public Visibility
             </label>
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+              <input type="checkbox" class="chk-self-hosted-servers" ${selfHostedChecked}>
+              🖥️ Allow Self-Hosted Game Servers
+            </label>
           </div>
 
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top: 1rem;">
@@ -579,6 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const descInput = card.querySelector('.studio-game-desc-input');
       const chkPets = card.querySelector('.chk-allow-pets');
       const chkPublic = card.querySelector('.chk-public-visibility');
+      const chkSelfHosted = card.querySelector('.chk-self-hosted-servers');
       const btnArchive = card.querySelector('.btn-archive-game');
       const btnEdit = card.querySelector('.btn-edit-studio');
 
@@ -607,6 +607,13 @@ document.addEventListener('DOMContentLoaded', () => {
         apiFetch(`/api/studio/games/${game.id}/update`, {
           method: 'POST',
           body: JSON.stringify({ is_public: chkPublic.checked })
+        });
+      });
+
+      chkSelfHosted.addEventListener('change', () => {
+        apiFetch(`/api/studio/games/${game.id}/self-hosted`, {
+          method: 'POST',
+          body: JSON.stringify({ self_hosted_servers: chkSelfHosted.checked })
         });
       });
 
@@ -1042,39 +1049,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnOptionOfficial.addEventListener('click', () => {
     serverTypeModal.classList.add('hidden');
-    triggerOfficialServerAdFlow();
+    requestAndLaunchServer('official');
   });
 
   btnOptionHosted.addEventListener('click', () => {
     serverTypeModal.classList.add('hidden');
     requestAndLaunchServer('hosted');
   });
-
-  function triggerOfficialServerAdFlow() {
-    adModal.classList.remove('hidden');
-    adProgressBar.style.width = '0%';
-    btnSkipAd.classList.add('hidden');
-    adCountdownText.innerText = 'Sponsored Ad Verification (5s)...';
-
-    let elapsed = 0;
-    const interval = setInterval(() => {
-      elapsed += 1;
-      const pct = (elapsed / 5) * 100;
-      adProgressBar.style.width = `${pct}%`;
-      adCountdownText.innerText = `Sponsored Ad Verification (${5 - elapsed}s)...`;
-
-      if (elapsed >= 5) {
-        clearInterval(interval);
-        adCountdownText.innerText = 'Ad complete! You can now join official server.';
-        btnSkipAd.classList.remove('hidden');
-      }
-    }, 1000);
-
-    btnSkipAd.onclick = () => {
-      adModal.classList.add('hidden');
-      requestAndLaunchServer('official');
-    };
-  }
 
   function requestAndLaunchServer(type) {
     if (!currentGame) return;
