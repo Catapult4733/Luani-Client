@@ -189,11 +189,66 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+const crypto = require('crypto');
+const SESSION_SECRET = process.env.SESSION_SECRET || 'luani_session_secret_key_2026';
+
+function generateToken(user) {
+  const payload = Buffer.from(JSON.stringify({
+    id: user.id,
+    username: user.username,
+    exp: Date.now() + 30 * 24 * 60 * 60 * 1000
+  })).toString('base64url');
+
+  const signature = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+function verifyToken(token) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+
+  const [payloadB64, signature] = parts;
+  const expectedSignature = crypto.createHmac('sha256', SESSION_SECRET).update(payloadB64).digest('base64url');
+  if (signature !== expectedSignature) return null;
+
+  try {
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+    if (payload.exp && Date.now() > payload.exp) return null;
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Helper: Extract user from Bearer Token
 function getAuthUser(req) {
   const authHeader = req.headers.authorization;
   const token = authHeader ? authHeader.replace('Bearer ', '') : req.query.token;
-  if (token && sessions.has(token)) {
+  if (!token) return null;
+
+  const payload = verifyToken(token);
+  if (payload) {
+    let user = users.find(u => u.username.toLowerCase() === payload.username.toLowerCase());
+    if (user) return user;
+
+    const cleanName = payload.username;
+    const isOwner = cleanName.toLowerCase() === 'owner' || cleanName.toLowerCase() === 'admin';
+    const restoredUser = {
+      id: payload.id || `usr_${cleanName}`,
+      username: cleanName,
+      password: '',
+      bio: `Hello! I am ${cleanName} on Luani.`,
+      owner: isOwner,
+      verified: isOwner,
+      avatar_colors: { ...DEFAULT_AVATAR_COLORS },
+      createdAt: new Date().toISOString()
+    };
+    users.push(restoredUser);
+    return restoredUser;
+  }
+
+  if (sessions.has(token)) {
     const sess = sessions.get(token);
     return users.find(u => u.id === sess.id) || null;
   }
@@ -309,7 +364,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 
   users.push(newUser);
-  const token = `luani_token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  const token = generateToken(newUser);
   sessions.set(token, { id: newUser.id, username: newUser.username });
 
   res.json({
@@ -375,7 +430,7 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(401).json({ success: false, error: 'Invalid username or password.' });
   }
 
-  const token = `luani_token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  const token = generateToken(user);
   sessions.set(token, { id: user.id, username: user.username });
 
   if (supabase) {

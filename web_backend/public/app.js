@@ -778,6 +778,8 @@ document.addEventListener('DOMContentLoaded', () => {
       currentUser = cachedUser;
       window.currentUser = cachedUser;
       updateAuthUI(currentUser);
+      fetchFriendsList();
+      fetchNotifications();
     }
 
     apiFetch('/api/auth/me')
@@ -790,11 +792,8 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAuthUI(currentUser);
         fetchFriendsList();
         fetchNotifications();
-      } else if (!cachedUser) {
-        setAuthToken(null);
-        currentUser = null;
-        window.currentUser = null;
-        updateAuthUI(null);
+      } else if (data.success && data.token) {
+        setAuthToken(data.token);
       }
     })
     .catch(() => {
@@ -802,10 +801,8 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUser = cachedUser;
         window.currentUser = cachedUser;
         updateAuthUI(currentUser);
-      } else {
-        currentUser = null;
-        window.currentUser = null;
-        updateAuthUI(null);
+        fetchFriendsList();
+        fetchNotifications();
       }
     });
   }
