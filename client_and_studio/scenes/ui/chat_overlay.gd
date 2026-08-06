@@ -56,13 +56,14 @@ func _on_chat_submitted(new_text: String) -> void:
 
 @rpc("any_peer", "call_local", "reliable")
 func receive_chat_message(sender_name: String, msg_text: String, sender_is_owner: bool, sender_is_verified: bool) -> void:
+	var filtered_msg := ChatFilter.filter_text(msg_text)
 	var badges := ""
 	if sender_is_owner:
 		badges += " 👑"
 	if sender_is_verified:
 		badges += " [img tint=#1DA1F2 width=16 height=16]res://assets/verified_badge.png[/img]"
 
-	var formatted := "[b][color=#818cf8]%s[/color][/b]%s: %s" % [sender_name, badges, msg_text]
+	var formatted := "[b][color=#818cf8]%s[/color][/b]%s: %s" % [sender_name, badges, filtered_msg]
 	chat_log.append_text(formatted + "\n")
 
 func add_system_message(text: String) -> void:
