@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const studioGamesGrid = document.getElementById('studioGamesGrid');
   let currentStudioTab = 'active';
 
-  const SITE_VERSION = '0.2.11';
+  const SITE_VERSION = '0.2.12';
 
   const navDownloads = document.getElementById('navDownloads');
   const downloadsView = document.getElementById('downloadsView');

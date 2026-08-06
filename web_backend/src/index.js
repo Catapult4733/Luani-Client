@@ -299,7 +299,7 @@ app.get(['/privacy', '/studio', '/catalog', '/downloads'], (req, res) => {
 app.get('/api/version', (req, res) => {
   res.json({
     success: true,
-    version: '0.2.11',
+    version: '0.2.12',
     timestamp: new Date().toISOString()
   });
 });
