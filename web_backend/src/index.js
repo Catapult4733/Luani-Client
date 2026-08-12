@@ -124,6 +124,10 @@ const places = [
     maxPlayers: 16,
     version: 1,
     format_version: 1,
+    self_hosted_servers: true,
+    allow_pets: true,
+    is_public: true,
+    archived: false,
     parts: []
   },
   {
@@ -134,6 +138,10 @@ const places = [
     maxPlayers: 10,
     version: 1,
     format_version: 1,
+    self_hosted_servers: true,
+    allow_pets: true,
+    is_public: true,
+    archived: false,
     parts: [
       {
         name: "Baseplate",
@@ -164,6 +172,10 @@ const places = [
     maxPlayers: 10,
     version: 1,
     format_version: 1,
+    self_hosted_servers: true,
+    allow_pets: true,
+    is_public: true,
+    archived: false,
     parts: [
       {
         name: "Baseplate",
@@ -177,6 +189,43 @@ const places = [
     ]
   }
 ];
+
+// Persistent games directory scanner
+const gamesDir = path.resolve(__dirname, '../games');
+if (!fs.existsSync(gamesDir)) {
+  fs.mkdirSync(gamesDir, { recursive: true });
+}
+
+function loadPersistentGameSettings() {
+  try {
+    const subdirs = fs.readdirSync(gamesDir, { withFileTypes: true });
+    for (const dirent of subdirs) {
+      if (dirent.isDirectory()) {
+        const gameJsonPath = path.join(gamesDir, dirent.name, 'game.json');
+        if (fs.existsSync(gameJsonPath)) {
+          try {
+            const raw = fs.readFileSync(gameJsonPath, 'utf8');
+            const savedGame = JSON.parse(raw);
+            if (savedGame && savedGame.id) {
+              const idx = places.findIndex(p => p.id === savedGame.id || p.id === dirent.name);
+              if (idx >= 0) {
+                places[idx] = { ...places[idx], ...savedGame };
+              } else {
+                places.push(savedGame);
+              }
+            }
+          } catch (err) {
+            console.error(`[Luani Backend] Failed to load game.json from ${dirent.name}:`, err.message);
+          }
+        }
+      }
+    }
+    console.log(`[Luani Backend] Successfully loaded ${places.length} persistent games from disk.`);
+  } catch (err) {
+    console.error('[Luani Backend] Error loading persistent game settings:', err.message);
+  }
+}
+loadPersistentGameSettings();
 
 // Active Game Servers List
 const activeServers = [];
@@ -1020,6 +1069,7 @@ app.post('/api/studio/games/create', (req, res) => {
     thumbnail_url: thumbnail_url || '',
     is_public: true,
     archived: false,
+    self_hosted_servers: true,
     allow_pets: allow_pets !== undefined ? !!allow_pets : true,
     maxPlayers: 10,
     createdAt: new Date().toISOString(),

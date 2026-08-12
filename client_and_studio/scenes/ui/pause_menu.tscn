@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scenes/ui/pause_menu.gd" id="1_pause"]
 
 [node name="PauseMenu" type="Control"]
+process_mode = 3
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -18,7 +19,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.04, 0.05, 0.08, 0.85)
+color = Color(0.04, 0.06, 0.1, 0.88)
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 1
@@ -29,72 +30,266 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="MenuCard" type="PanelContainer" parent="CenterContainer"]
-custom_minimum_size = Vector2(420, 380)
+custom_minimum_size = Vector2(860, 560)
 layout_mode = 2
 
 [node name="Margin" type="MarginContainer" parent="CenterContainer/MenuCard"]
 layout_mode = 2
-theme_override_constants/margin_left = 30
-theme_override_constants/margin_top = 30
-theme_override_constants/margin_right = 30
-theme_override_constants/margin_bottom = 30
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
 
-[node name="VBox" type="VBoxContainer" parent="CenterContainer/MenuCard/Margin"]
+[node name="MainLayout" type="VBoxContainer" parent="CenterContainer/MenuCard/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="HeaderBar" type="HBoxContainer" parent="CenterContainer/MenuCard/Margin/MainLayout"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BrandLabel" type="Label" parent="CenterContainer/MenuCard/Margin/MainLayout/HeaderBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "LUANI"
+
+[node name="VSeparator" type="VSeparator" parent="CenterContainer/MenuCard/Margin/MainLayout/HeaderBar"]
+layout_mode = 2
+
+[node name="TabPeopleBtn" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/HeaderBar"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "👥 People"
+
+[node name="TabSettingsBtn" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/HeaderBar"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "⚙️ Settings"
+
+[node name="TabGalleryBtn" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/HeaderBar"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "🖼️ Gallery"
+
+[node name="TabReportBtn" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/HeaderBar"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "🚩 Report"
+
+[node name="TabHelpBtn" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/HeaderBar"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "❓ Help"
+
+[node name="HSeparator" type="HSeparator" parent="CenterContainer/MenuCard/Margin/MainLayout"]
+layout_mode = 2
+
+[node name="BodyContainer" type="MarginContainer" parent="CenterContainer/MenuCard/Margin/MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PeopleView" type="VBoxContainer" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TopActionsRow" type="HBoxContainer" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/PeopleView"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="InviteFriendsBtn" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/PeopleView/TopActionsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 36)
+layout_mode = 2
+text = "👥 Invite Friends"
+
+[node name="MuteAllBtn" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/PeopleView/TopActionsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 36)
+layout_mode = 2
+text = "🔇 Mute All"
+
+[node name="Spacer" type="Control" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/PeopleView/TopActionsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ViewModeBtn" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/PeopleView/TopActionsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 36)
+layout_mode = 2
+text = "🔳 Grid View"
+
+[node name="SectionTitle" type="Label" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/PeopleView"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "In this server"
+
+[node name="PlayersScroll" type="ScrollContainer" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/PeopleView"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PlayersGrid" type="GridContainer" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/PeopleView/PlayersScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 4
+
+[node name="SettingsView" type="VBoxContainer" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer"]
+unique_name_in_owner = true
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Title" type="Label" parent="CenterContainer/MenuCard/Margin/VBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "GAME PAUSED"
-horizontal_alignment = 1
-
-[node name="HSeparator" type="HSeparator" parent="CenterContainer/MenuCard/Margin/VBox"]
+[node name="ShiftLockBox" type="HBoxContainer" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView"]
 layout_mode = 2
 
-[node name="ResumeButton" type="Button" parent="CenterContainer/MenuCard/Margin/VBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
-layout_mode = 2
-text = "▶ Resume Game"
-
-[node name="RespawnButton" type="Button" parent="CenterContainer/MenuCard/Margin/VBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
-layout_mode = 2
-text = "🔄 Respawn Character"
-
-[node name="ShiftLockBox" type="HBoxContainer" parent="CenterContainer/MenuCard/Margin/VBox"]
-layout_mode = 2
-
-[node name="ShiftLockLabel" type="Label" parent="CenterContainer/MenuCard/Margin/VBox/ShiftLockBox"]
+[node name="ShiftLockLabel" type="Label" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/ShiftLockBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Mouse Shift Lock:"
 
-[node name="ShiftLockButton" type="CheckButton" parent="CenterContainer/MenuCard/Margin/VBox/ShiftLockBox"]
+[node name="ShiftLockButton" type="CheckButton" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/ShiftLockBox"]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
 
-[node name="VolumeBox" type="VBoxContainer" parent="CenterContainer/MenuCard/Margin/VBox"]
+[node name="VolumeBox" type="VBoxContainer" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView"]
 layout_mode = 2
+theme_override_constants/separation = 6
 
-[node name="VolumeLabel" type="Label" parent="CenterContainer/MenuCard/Margin/VBox/VolumeBox"]
+[node name="VolumeLabel" type="Label" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/VolumeBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Master Volume: 100%"
 
-[node name="VolumeSlider" type="HSlider" parent="CenterContainer/MenuCard/Margin/VBox/VolumeBox"]
+[node name="VolumeSlider" type="HSlider" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/VolumeBox"]
 unique_name_in_owner = true
 layout_mode = 2
 value = 100.0
 
-[node name="HSeparator2" type="HSeparator" parent="CenterContainer/MenuCard/Margin/VBox"]
+[node name="FullscreenBox" type="HBoxContainer" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView"]
 layout_mode = 2
 
-[node name="LeaveButton" type="Button" parent="CenterContainer/MenuCard/Margin/VBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 40)
+[node name="FullscreenLabel" type="Label" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/FullscreenBox"]
 layout_mode = 2
-text = "🚪 Leave Game"
+size_flags_horizontal = 3
+text = "Fullscreen Mode:"
+
+[node name="FullscreenBtn" type="CheckButton" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/FullscreenBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="GalleryView" type="VBoxContainer" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CaptureBtn" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/GalleryView"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 42)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "📷 Take Screenshot"
+
+[node name="GalleryStatusLabel" type="Label" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/GalleryView"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Screenshots will be saved to your user directory."
+horizontal_alignment = 1
+
+[node name="ReportView" type="VBoxContainer" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ReportInfoLabel" type="Label" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/ReportView"]
+layout_mode = 2
+text = "Report unacceptable behavior or content to Luani Safety Team:"
+
+[node name="ReportReasonOption" type="OptionButton" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/ReportView"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+selected = 0
+item_0/text = "Inappropriate Chat / Profanity"
+item_1/text = "Exploiting / Cheating"
+item_2/text = "Harassment / Bullying"
+item_3/text = "Offensive Avatar / Content"
+
+[node name="ReportDetailsEdit" type="TextEdit" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/ReportView"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+placeholder_text = "Provide additional details (optional)..."
+
+[node name="SubmitReportBtn" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/ReportView"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 38)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "🚩 Submit Report"
+
+[node name="HelpView" type="VBoxContainer" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HelpLabel" type="Label" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/HelpView"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Luani Controls & Keyboard Shortcuts:"
+
+[node name="ControlsText" type="RichTextLabel" parent="CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/HelpView"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "[b]WASD / Touch Joystick[/b] - Move Character
+[b]Space / Jump Button[/b] - Jump
+[b]Shift[/b] - Toggle Mouse Lock / Speed Boost
+[b]Keys 1-9[/b] - Equip Accessories & Sword Tools
+[b]Left Click / Action Button[/b] - Attack / Action
+[b]ESC Key[/b] - Toggle Pause Menu
+[b]L Key (in Menu)[/b] - Leave Server
+[b]R Key (in Menu)[/b] - Respawn Avatar"
+
+[node name="HSeparator2" type="HSeparator" parent="CenterContainer/MenuCard/Margin/MainLayout"]
+layout_mode = 2
+
+[node name="FooterBar" type="HBoxContainer" parent="CenterContainer/MenuCard/Margin/MainLayout"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="LeaveButton" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/FooterBar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(170, 42)
+layout_mode = 2
+text = "[L] Leave Server"
+
+[node name="RespawnButton" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/FooterBar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(210, 42)
+layout_mode = 2
+text = "[R] Respawn Character"
+
+[node name="Spacer" type="Control" parent="CenterContainer/MenuCard/Margin/MainLayout/FooterBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ResumeButton" type="Button" parent="CenterContainer/MenuCard/Margin/MainLayout/FooterBar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(170, 42)
+layout_mode = 2
+text = "[ESC] Resume"

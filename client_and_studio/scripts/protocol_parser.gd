@@ -71,6 +71,8 @@ func parse_uri(uri_string: String) -> Dictionary:
 		clean_uri = clean_uri.replace("intent://", "luani://")
 		if "#Intent;" in clean_uri:
 			clean_uri = clean_uri.split("#Intent;")[0]
+	elif clean_uri.begins_with("luani-studio://"):
+		clean_uri = clean_uri.replace("luani-studio://", "luani://studio?")
 
 	if not clean_uri.begins_with("luani://"):
 		return result
@@ -78,16 +80,16 @@ func parse_uri(uri_string: String) -> Dictionary:
 	# Strip scheme prefix
 	var path_and_query := clean_uri.trim_prefix("luani://")
 	
-	# Separate action (e.g. 'join') and query parameters ('?server=IP:PORT&auth=TOKEN')
+	# Separate action (e.g. 'join', 'edit', 'studio') and query parameters ('?server=IP:PORT&auth=TOKEN')
 	var action := ""
 	var query_string := ""
 	
 	if "?" in path_and_query:
 		var parts := path_and_query.split("?", true, 1)
-		action = parts[0].strip_edges()
+		action = parts[0].strip_edges().to_lower()
 		query_string = parts[1].strip_edges()
 	else:
-		action = path_and_query.strip_edges()
+		action = path_and_query.strip_edges().to_lower()
 		
 	result["action"] = action
 	
@@ -111,6 +113,8 @@ func parse_uri(uri_string: String) -> Dictionary:
 					result["auth_token"] = value
 				elif key == "username" or key == "user":
 					result["username"] = value.uri_decode()
+				elif key == "game_id" or key == "place_id" or key == "game":
+					result["game_id"] = value.uri_decode()
 				elif key == "avatar":
 					result["avatar"] = value.uri_decode()
 				elif key == "avatar_colors" or key == "colors":
@@ -128,8 +132,11 @@ func parse_uri(uri_string: String) -> Dictionary:
 				elif key == "verified":
 					result["verified"] = (value.to_lower() == "true" or value == "1")
 					
-	# Validation rule: 'join' action requires valid IP/domain and non-zero port
-	if action == "join" or action == "":
+	# Validation rules
+	if action == "edit" or action == "studio" or action == "open":
+		result["action"] = "studio"
+		result["valid"] = true
+	elif action == "join" or action == "":
 		result["action"] = "join"
 		if result["server_ip"] != "" and result["server_port"] > 0:
 			result["valid"] = true

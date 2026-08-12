@@ -74,6 +74,12 @@ func _ready() -> void:
 		print("[Luani Launcher] Main Menu loaded native Godot UI overlay.")
 
 func _trigger_direct_uri_join(data: Dictionary) -> void:
+	var action: String = data.get("action", "join")
+	if action == "studio":
+		print("[Luani Launcher] Direct URI Studio launch detected. Opening Luani Studio...")
+		get_tree().change_scene_to_file("res://studio/studio_main.tscn")
+		return
+
 	var ip: String = data.get("server_ip", "127.0.0.1")
 	var port: int = data.get("server_port", 7777)
 	var auth: String = data.get("auth_token", "")

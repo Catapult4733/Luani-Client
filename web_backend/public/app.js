@@ -639,7 +639,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       btnEdit.addEventListener('click', () => {
-        const studioUri = `luani-studio://open?game_id=${game.id}`;
+        const studioUri = `luani://edit?game_id=${game.id}`;
         window.location.href = studioUri;
       });
 
