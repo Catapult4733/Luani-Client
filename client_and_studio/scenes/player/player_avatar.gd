@@ -78,11 +78,37 @@ func _ready() -> void:
 	username_label.text = player_username
 	apply_avatar_colors(avatar_colors)
 	_setup_health_bar()
+	_setup_voice_playback()
 
 	if is_local and not DisplayServer.get_name() == "headless":
 		_setup_local_ui()
 		# Broadcast RPC username & customization data to all connected peers
 		rpc("rpc_sync_player_data", multiplayer.get_unique_id(), player_username, avatar_colors)
+
+var voice_audio_player: AudioStreamPlayer3D = null
+var voice_generator: AudioStreamGenerator = null
+var voice_playback: AudioStreamGeneratorPlayback = null
+
+func _setup_voice_playback() -> void:
+	if not is_multiplayer_authority():
+		voice_audio_player = AudioStreamPlayer3D.new()
+		voice_audio_player.name = "VoicePlayer3D"
+		voice_audio_player.bus = "Voice"
+		voice_audio_player.unit_size = 10.0
+		voice_audio_player.max_distance = 35.0
+		
+		voice_generator = AudioStreamGenerator.new()
+		voice_generator.mix_rate = 44100.0
+		voice_generator.buffer_length = 0.5
+		
+		voice_audio_player.stream = voice_generator
+		add_child(voice_audio_player)
+		voice_audio_player.play()
+		voice_playback = voice_audio_player.get_stream_playback() as AudioStreamGeneratorPlayback
+
+func play_voice_chunk(pcm_frames: PackedVector2Array) -> void:
+	if not is_multiplayer_authority() and voice_playback:
+		voice_playback.push_buffer(pcm_frames)
 
 func _load_profile_identity() -> void:
 	var net_mgr := get_node_or_null("/root/NetworkManager")

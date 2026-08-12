@@ -27,25 +27,43 @@ func _ready() -> void:
 	_setup_top_left_hud()
 	set_game_ui_visible(false)
 
+const VECTOR_ICON_SCRIPT := preload("res://scripts/ui/vector_icon_button.gd")
+
 func _setup_top_left_hud() -> void:
 	var hud_bar := HBoxContainer.new()
 	hud_bar.name = "TopLeftHUD"
 	hud_bar.position = Vector2(16, 16)
 	hud_bar.add_theme_constant_override("separation", 8)
 
+	# Menu Button
+	var menu_btn := Button.new()
+	menu_btn.set_script(VECTOR_ICON_SCRIPT)
+	menu_btn.set("icon_type", 0) # IconType.MENU
+	menu_btn.tooltip_text = "Pause Menu (ESC)"
+	menu_btn.pressed.connect(func():
+		var pause_menu := get_node_or_null("/root/PauseMenu")
+		if not pause_menu:
+			var game_world := get_node_or_null("/root/GameWorld")
+			if game_world: pause_menu = game_world.get_node_or_null("PauseMenu")
+		if pause_menu and pause_menu.has_method("toggle_menu"):
+			pause_menu.call("toggle_menu")
+	)
+	hud_bar.add_child(menu_btn)
+
+	# Microphone Button (Muted by default)
 	mic_btn_inst = Button.new()
-	mic_btn_inst.name = "MicButton"
-	mic_btn_inst.text = "🎙️❌" # Muted by default with red cross
-	mic_btn_inst.custom_minimum_size = Vector2(40, 40)
+	mic_btn_inst.set_script(VECTOR_ICON_SCRIPT)
+	mic_btn_inst.set("icon_type", 2) # IconType.MIC
+	mic_btn_inst.set("is_muted", true)
 	mic_btn_inst.tooltip_text = "Toggle Microphone (Voice Chat)"
 	mic_btn_inst.pressed.connect(_on_mic_toggle_pressed)
 	hud_bar.add_child(mic_btn_inst)
 
+	# Chat Button
 	var chat_btn := Button.new()
-	chat_btn.name = "ChatButton"
-	chat_btn.text = "💬"
-	chat_btn.custom_minimum_size = Vector2(40, 40)
-	chat_btn.tooltip_text = "Toggle Chat"
+	chat_btn.set_script(VECTOR_ICON_SCRIPT)
+	chat_btn.set("icon_type", 1) # IconType.CHAT
+	chat_btn.tooltip_text = "Toggle Chat (T)"
 	chat_btn.pressed.connect(toggle_chat)
 	hud_bar.add_child(chat_btn)
 
@@ -53,12 +71,14 @@ func _setup_top_left_hud() -> void:
 	add_child.call_deferred(top_left_hud_inst)
 
 func _on_mic_toggle_pressed() -> void:
-	is_mic_muted = not is_mic_muted
-	if mic_btn_inst:
-		mic_btn_inst.text = "🎙️❌" if is_mic_muted else "🎙️"
-	var rec_bus := AudioServer.get_bus_index("Record")
-	if rec_bus >= 0:
-		AudioServer.set_bus_mute(rec_bus, is_mic_muted)
+	var voice_mgr := get_node_or_null("/root/VoiceChatManager")
+	if voice_mgr and voice_mgr.has_method("toggle_mic"):
+		is_mic_muted = not voice_mgr.call("toggle_mic")
+	else:
+		is_mic_muted = not is_mic_muted
+		
+	if mic_btn_inst and mic_btn_inst.has_method("set_muted"):
+		mic_btn_inst.call("set_muted", is_mic_muted)
 
 func _setup_overlays() -> void:
 	var chat_scene := load("res://scenes/ui/chat_overlay.tscn")
