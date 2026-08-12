@@ -27,6 +27,9 @@ var main_menu_inst: CanvasLayer = null
 const MAIN_MENU_SCENE := preload("res://scenes/ui/main_menu.tscn")
 
 func _ready() -> void:
+	print("==================================================")
+	print("   LUANI CLIENT ENGINE - VERSION v0.2.13 (Code 21) ")
+	print("==================================================")
 	DisplayServer.screen_set_orientation(6)
 	credits_menu.hide()
 
