@@ -49,12 +49,12 @@ func _draw() -> void:
 	match icon_type:
 		IconType.MENU:
 			if not galaxy_texture:
-				if ResourceLoader.exists("res://icon.svg"):
-					galaxy_texture = load("res://icon.svg") as Texture2D
-				elif ResourceLoader.exists("res://icon.png"):
+				if ResourceLoader.exists("res://icon.png"):
 					galaxy_texture = load("res://icon.png") as Texture2D
+				elif ResourceLoader.exists("res://icon.svg"):
+					galaxy_texture = load("res://icon.svg") as Texture2D
 			if galaxy_texture:
-				var rect := Rect2(center.x - 11.0, center.y - 11.0, 22.0, 22.0)
+				var rect := Rect2(center.x - 12.0, center.y - 12.0, 24.0, 24.0)
 				draw_texture_rect(galaxy_texture, rect, false)
 			else:
 				draw_circle(center, 8.0, Color(0.55, 0.36, 0.96))

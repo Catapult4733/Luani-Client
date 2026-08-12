@@ -13,13 +13,15 @@ DESKTOP_FILE="$HOME/.local/share/applications/luani.desktop"
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$HOME/.local/share/applications"
 
-echo "[1/4] Downloading Luani Client binary..."
+echo "[1/4] Stopping active instances & downloading Luani Client binary..."
+pkill -9 -f LuaniClient || true
+rm -f "$INSTALL_DIR/$BIN_NAME"
 curl -fsSL "$DOWNLOAD_URL" -o "$INSTALL_DIR/$BIN_NAME"
 
 echo "[2/4] Setting executable permissions..."
 chmod +x "$INSTALL_DIR/$BIN_NAME"
 
-echo "[3/4] Registering luani:// protocol handler & desktop shortcut..."
+echo "[3/4] Registering luani:// & luani-studio:// protocol handlers..."
 cat <<EOF > "$DESKTOP_FILE"
 [Desktop Entry]
 Name=Luani
@@ -29,15 +31,20 @@ Icon=luani
 Terminal=false
 Type=Application
 Categories=Game;
-MimeType=x-scheme-handler/luani;
+MimeType=x-scheme-handler/luani;x-scheme-handler/luani-studio;
 EOF
 
 chmod +x "$DESKTOP_FILE"
 
 if command -v xdg-mime >/dev/null 2>&1; then
     xdg-mime default luani.desktop x-scheme-handler/luani || true
+    xdg-mime default luani.desktop x-scheme-handler/luani-studio || true
+fi
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "$HOME/.local/share/applications" || true
 fi
 
 echo "[4/4] Installation Complete!"
 echo "Luani Client installed to: $INSTALL_DIR/$BIN_NAME"
-echo "You can now launch Luani from your app menu or join games directly from luani.fyi!"
+echo "You can now launch Luani from your app menu or join/edit games directly from luani.fyi!"
