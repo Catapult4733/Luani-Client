@@ -1,5 +1,5 @@
 # client_and_studio/scenes/ui/pause_menu.gd
-extends Control
+extends CanvasLayer
 
 ## In-Game Pause Menu Overlay for Luani Client (Tabbed modern UI)
 

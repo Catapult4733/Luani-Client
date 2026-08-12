@@ -122,7 +122,7 @@ text = "🔇 Mute All"
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ViewModeBtn" type="Button" parent="RootControl/CenterContainer/Margin/MainLayout/BodyContainer/PeopleView/TopActionsRow"]
+[node name="ViewModeBtn" type="Button" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/PeopleView/TopActionsRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(110, 36)
 layout_mode = 2
