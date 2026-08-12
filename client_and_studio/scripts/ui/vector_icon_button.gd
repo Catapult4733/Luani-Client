@@ -48,16 +48,27 @@ func _draw() -> void:
 	
 	match icon_type:
 		IconType.MENU:
-			if not galaxy_texture:
-				if ResourceLoader.exists("res://icon.png"):
-					galaxy_texture = load("res://icon.png") as Texture2D
-				elif ResourceLoader.exists("res://icon.svg"):
-					galaxy_texture = load("res://icon.svg") as Texture2D
-			if galaxy_texture:
+			var tex: Texture2D = null
+			if ResourceLoader.exists("res://icon.png"):
+				tex = load("res://icon.png") as Texture2D
+			if not tex and ResourceLoader.exists("res://icon.svg"):
+				tex = load("res://icon.svg") as Texture2D
+				
+			if tex:
 				var rect := Rect2(center.x - 12.0, center.y - 12.0, 24.0, 24.0)
-				draw_texture_rect(galaxy_texture, rect, false)
+				draw_texture_rect(tex, rect, false)
 			else:
-				draw_circle(center, 8.0, Color(0.55, 0.36, 0.96))
+				# Vector Luani Galaxy Spiral Logo
+				draw_circle(center, 9.0, Color(0.08, 0.05, 0.18))
+				var galaxy_purple := Color(0.55, 0.36, 0.96)
+				var galaxy_cyan := Color(0.2, 0.75, 0.95)
+				for i in range(12):
+					var angle := deg_to_rad(i * 30.0)
+					var radius := 2.0 + (i * 0.6)
+					var pos := center + Vector2(cos(angle), sin(angle)) * radius
+					var col := galaxy_purple.lerp(galaxy_cyan, float(i) / 12.0)
+					draw_circle(pos, 1.8, col)
+				draw_circle(center, 3.0, Color(1, 1, 1, 0.9))
 				
 		IconType.CHAT:
 			# Draw 2D Vector Speech Bubble
