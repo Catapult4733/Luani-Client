@@ -131,28 +131,30 @@ func _refresh_players_list() -> void:
 		
 	var net_mgr := get_node_or_null("/root/NetworkManager")
 	var my_name: String = net_mgr.local_username if net_mgr else "Player"
+	var my_peer_id: int = multiplayer.get_unique_id() if multiplayer else 1
 
-	var total_count := player_nodes.size()
-	if total_count == 0:
-		total_count = 1 # Local player alone
-		
-	section_title.text = "In this server (" + str(total_count) + ")"
-	
 	if is_grid_view:
 		players_grid.columns = 4
 	else:
 		players_grid.columns = 1
-		
-	# Populate local player card
-	_create_player_card(my_name, true, net_mgr.is_owner if net_mgr else false, multiplayer.get_unique_id())
-	
-	# Populate connected remote players ONLY (No dummy players)
-	for p_node in player_nodes:
-		var uname: String = p_node.get("username") if p_node.get("username") else p_node.name
-		if uname != my_name:
-			var p_owner: bool = p_node.get("is_owner") if p_node.get("is_owner") != null else false
+
+	var added_peers: Dictionary = {}
+
+	if player_nodes.size() > 0:
+		section_title.text = "In this server (" + str(player_nodes.size()) + ")"
+		for p_node in player_nodes:
 			var p_peer_id: int = p_node.name.to_int()
-			_create_player_card(uname, false, p_owner, p_peer_id)
+			if p_peer_id in added_peers:
+				continue
+			added_peers[p_peer_id] = true
+			
+			var is_me: bool = (p_peer_id == my_peer_id or p_node.name == str(my_peer_id))
+			var uname: String = p_node.get("username") if p_node.get("username") else (my_name if is_me else p_node.name)
+			var p_owner: bool = p_node.get("is_owner") if p_node.get("is_owner") != null else false
+			_create_player_card(uname, is_me, p_owner, p_peer_id)
+	else:
+		section_title.text = "In this server (1)"
+		_create_player_card(my_name, true, net_mgr.is_owner if net_mgr else false, my_peer_id)
 
 func _create_player_card(username: String, is_local: bool, is_owner_user: bool, peer_id: int) -> void:
 	var card := PanelContainer.new()
