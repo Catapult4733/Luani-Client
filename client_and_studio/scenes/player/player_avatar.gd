@@ -378,11 +378,26 @@ func _show_respawning_overlay() -> void:
 	respawn_overlay_inst.add_child(panel)
 	add_child(respawn_overlay_inst)
 
+var last_synced_pos: Vector3 = Vector3.ZERO
+
 func _physics_process(delta: float) -> void:
+	if not is_multiplayer_authority():
+		if last_synced_pos != Vector3.ZERO and delta > 0.0001:
+			var pos_delta := global_position - last_synced_pos
+			# Ignore sudden teleport jumps
+			if pos_delta.length() < 15.0:
+				velocity = pos_delta / delta
+			else:
+				velocity = Vector3.ZERO
+		last_synced_pos = global_position
+		_update_camera_zoom(delta)
+		_update_limb_animations(delta)
+		return
+
 	_update_camera_zoom(delta)
 	_update_limb_animations(delta)
 
-	if not is_multiplayer_authority() or is_dead:
+	if is_dead:
 		return
 
 	# AFK 30-Minute Inactivity Kick Check (1800s)

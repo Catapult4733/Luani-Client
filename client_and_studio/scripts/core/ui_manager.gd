@@ -10,6 +10,10 @@ var health_hud_inst: Control = null
 var health_bar_progress: TextureProgressBar = null
 var health_num_label: Label = null
 
+var top_left_hud_inst: Control = null
+var mic_btn_inst: Button = null
+var is_mic_muted: bool = true
+
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server"):
 		print("[Luani UIManager] Running in Headless/Dedicated Server Mode. Bypassing UI overlays.")
@@ -20,7 +24,41 @@ func _ready() -> void:
 
 	_setup_overlays()
 	_setup_health_hud()
+	_setup_top_left_hud()
 	set_game_ui_visible(false)
+
+func _setup_top_left_hud() -> void:
+	var hud_bar := HBoxContainer.new()
+	hud_bar.name = "TopLeftHUD"
+	hud_bar.position = Vector2(16, 16)
+	hud_bar.add_theme_constant_override("separation", 8)
+
+	mic_btn_inst = Button.new()
+	mic_btn_inst.name = "MicButton"
+	mic_btn_inst.text = "🎙️❌" # Muted by default with red cross
+	mic_btn_inst.custom_minimum_size = Vector2(40, 40)
+	mic_btn_inst.tooltip_text = "Toggle Microphone (Voice Chat)"
+	mic_btn_inst.pressed.connect(_on_mic_toggle_pressed)
+	hud_bar.add_child(mic_btn_inst)
+
+	var chat_btn := Button.new()
+	chat_btn.name = "ChatButton"
+	chat_btn.text = "💬"
+	chat_btn.custom_minimum_size = Vector2(40, 40)
+	chat_btn.tooltip_text = "Toggle Chat"
+	chat_btn.pressed.connect(toggle_chat)
+	hud_bar.add_child(chat_btn)
+
+	top_left_hud_inst = hud_bar
+	add_child.call_deferred(top_left_hud_inst)
+
+func _on_mic_toggle_pressed() -> void:
+	is_mic_muted = not is_mic_muted
+	if mic_btn_inst:
+		mic_btn_inst.text = "🎙️❌" if is_mic_muted else "🎙️"
+	var rec_bus := AudioServer.get_bus_index("Record")
+	if rec_bus >= 0:
+		AudioServer.set_bus_mute(rec_bus, is_mic_muted)
 
 func _setup_overlays() -> void:
 	var chat_scene := load("res://scenes/ui/chat_overlay.tscn")
@@ -146,3 +184,5 @@ func set_game_ui_visible(is_visible: bool) -> void:
 		leaderboard_overlay_inst.visible = is_visible
 	if health_hud_inst:
 		health_hud_inst.visible = is_visible
+	if top_left_hud_inst:
+		top_left_hud_inst.visible = is_visible

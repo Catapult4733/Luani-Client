@@ -1,27 +1,25 @@
 # client_and_studio/scenes/ui/pause_menu.gd
 extends CanvasLayer
 
-## In-Game Pause Menu Overlay for Luani Client (Tabbed modern UI)
+## In-Game Pause Menu Overlay for Luani Client (Website Theme, Voice Chat & Per-Player Mute Controls)
 
 @onready var leave_button: Button = %LeaveButton
 @onready var respawn_button: Button = %RespawnButton
 @onready var shift_lock_button: CheckButton = %ShiftLockButton
 @onready var volume_slider: HSlider = %VolumeSlider
 @onready var volume_label: Label = %VolumeLabel
+@onready var voice_volume_slider: HSlider = %VoiceVolumeSlider
+@onready var voice_volume_label: Label = %VoiceVolumeLabel
 @onready var resume_button: Button = %ResumeButton
 
-# Navigation Tabs
+# Navigation Tabs (People, Settings, Help)
 @onready var tab_people_btn: Button = %TabPeopleBtn
 @onready var tab_settings_btn: Button = %TabSettingsBtn
-@onready var tab_gallery_btn: Button = %TabGalleryBtn
-@onready var tab_report_btn: Button = %TabReportBtn
 @onready var tab_help_btn: Button = %TabHelpBtn
 
 # Views
 @onready var people_view: Control = %PeopleView
 @onready var settings_view: Control = %SettingsView
-@onready var gallery_view: Control = %GalleryView
-@onready var report_view: Control = %ReportView
 @onready var help_view: Control = %HelpView
 
 # People View Controls
@@ -34,18 +32,10 @@ extends CanvasLayer
 # Settings Controls
 @onready var fullscreen_btn: CheckButton = %FullscreenBtn
 
-# Gallery Controls
-@onready var capture_btn: Button = %CaptureBtn
-@onready var gallery_status_label: Label = %GalleryStatusLabel
-
-# Report Controls
-@onready var report_reason_option: OptionButton = %ReportReasonOption
-@onready var report_details_edit: TextEdit = %ReportDetailsEdit
-@onready var submit_report_btn: Button = %SubmitReportBtn
-
 var is_shift_lock_enabled: bool = true
 var is_grid_view: bool = true
-var is_muted_all: bool = false
+var is_voice_muted_all: bool = false
+var muted_player_ids: Dictionary = {}
 var all_tabs: Array = []
 var all_views: Array = []
 
@@ -53,19 +43,20 @@ func _ready() -> void:
 	layer = 150
 	hide()
 	
-	all_tabs = [tab_people_btn, tab_settings_btn, tab_gallery_btn, tab_report_btn, tab_help_btn]
-	all_views = [people_view, settings_view, gallery_view, report_view, help_view]
+	_ensure_voice_audio_bus()
+
+	all_tabs = [tab_people_btn, tab_settings_btn, tab_help_btn]
+	all_views = [people_view, settings_view, help_view]
 	
 	tab_people_btn.pressed.connect(func(): _switch_tab(0))
 	tab_settings_btn.pressed.connect(func(): _switch_tab(1))
-	tab_gallery_btn.pressed.connect(func(): _switch_tab(2))
-	tab_report_btn.pressed.connect(func(): _switch_tab(3))
-	tab_help_btn.pressed.connect(func(): _switch_tab(4))
+	tab_help_btn.pressed.connect(func(): _switch_tab(2))
 	
 	leave_button.pressed.connect(_on_leave_pressed)
 	respawn_button.pressed.connect(_on_respawn_pressed)
 	shift_lock_button.toggled.connect(_on_shift_lock_toggled)
-	volume_slider.value_changed.connect(_on_volume_changed)
+	volume_slider.value_changed.connect(_on_game_volume_changed)
+	voice_volume_slider.value_changed.connect(_on_voice_volume_changed)
 	resume_button.pressed.connect(_on_resume_pressed)
 	
 	if fullscreen_btn:
@@ -78,16 +69,25 @@ func _ready() -> void:
 		mute_all_btn.pressed.connect(_on_mute_all_pressed)
 	if view_mode_btn:
 		view_mode_btn.pressed.connect(_on_toggle_view_mode)
-	if capture_btn:
-		capture_btn.pressed.connect(_on_take_screenshot)
-	if submit_report_btn:
-		submit_report_btn.pressed.connect(_on_submit_report)
 
-	# Initial volume setup
-	var bus_idx := AudioServer.get_bus_index("Master")
-	if bus_idx >= 0:
-		var current_db := AudioServer.get_bus_volume_db(bus_idx)
+	# Initial game volume setup
+	var master_bus := AudioServer.get_bus_index("Master")
+	if master_bus >= 0:
+		var current_db := AudioServer.get_bus_volume_db(master_bus)
 		volume_slider.value = db_to_linear(current_db) * 100.0
+
+	# Initial voice volume setup
+	var voice_bus := AudioServer.get_bus_index("Voice")
+	if voice_bus >= 0:
+		var voice_db := AudioServer.get_bus_volume_db(voice_bus)
+		voice_volume_slider.value = db_to_linear(voice_db) * 100.0
+
+func _ensure_voice_audio_bus() -> void:
+	if AudioServer.get_bus_index("Voice") < 0:
+		AudioServer.add_bus()
+		var idx := AudioServer.bus_count - 1
+		AudioServer.set_bus_name(idx, "Voice")
+		AudioServer.set_bus_send(idx, "Master")
 
 func _switch_tab(tab_idx: int) -> void:
 	for i in range(all_tabs.size()):
@@ -129,6 +129,9 @@ func _refresh_players_list() -> void:
 	if players_parent:
 		player_nodes = players_parent.get_children()
 		
+	var net_mgr := get_node_or_null("/root/NetworkManager")
+	var my_name: String = net_mgr.local_username if net_mgr else "Player"
+
 	var total_count := player_nodes.size()
 	if total_count == 0:
 		total_count = 1 # Local player alone
@@ -141,38 +144,51 @@ func _refresh_players_list() -> void:
 		players_grid.columns = 1
 		
 	# Populate local player card
-	var net_mgr := get_node_or_null("/root/NetworkManager")
-	var my_name: String = net_mgr.local_username if net_mgr else "Player"
-	_create_player_card(my_name, true, net_mgr.is_owner if net_mgr else false)
+	_create_player_card(my_name, true, net_mgr.is_owner if net_mgr else false, multiplayer.get_unique_id())
 	
-	# Populate connected peer player cards
+	# Populate connected remote players ONLY (No dummy players)
 	for p_node in player_nodes:
 		var uname: String = p_node.get("username") if p_node.get("username") else p_node.name
 		if uname != my_name:
 			var p_owner: bool = p_node.get("is_owner") if p_node.get("is_owner") != null else false
-			_create_player_card(uname, false, p_owner)
+			var p_peer_id: int = p_node.name.to_int()
+			_create_player_card(uname, false, p_owner, p_peer_id)
 
-func _create_player_card(username: String, is_local: bool, is_owner_user: bool) -> void:
+func _create_player_card(username: String, is_local: bool, is_owner_user: bool, peer_id: int) -> void:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(160, 160) if is_grid_view else Vector2(0, 56)
+	card.custom_minimum_size = Vector2(170, 175) if is_grid_view else Vector2(0, 56)
 	
+	# Apply website styled panel card
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.11, 0.18, 0.9)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(0.2, 0.28, 0.45, 0.5)
+	style.corner_radius_top_left = 10
+	style.corner_radius_top_right = 10
+	style.corner_radius_bottom_right = 10
+	style.corner_radius_bottom_left = 10
+	card.add_theme_stylebox_override("panel", style)
+
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
 	card.add_child(margin)
 	
 	if is_grid_view:
 		var vbox := VBoxContainer.new()
 		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		vbox.add_theme_constant_override("separation", 6)
+		vbox.add_theme_constant_override("separation", 4)
 		margin.add_child(vbox)
 		
 		var icon_lbl := Label.new()
 		icon_lbl.text = "👑 🧑‍🚀" if is_owner_user else "🧑‍🚀"
 		icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		icon_lbl.add_theme_font_size_override("font_size", 32)
+		icon_lbl.add_theme_font_size_override("font_size", 30)
 		vbox.add_child(icon_lbl)
 		
 		var name_lbl := Label.new()
@@ -184,18 +200,36 @@ func _create_player_card(username: String, is_local: bool, is_owner_user: bool) 
 		var handle_lbl := Label.new()
 		handle_lbl.text = "@" + username.to_lower()
 		handle_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		handle_lbl.add_theme_font_size_override("font_size", 11)
-		handle_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8))
+		handle_lbl.add_theme_font_size_override("font_size", 10)
+		handle_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.85))
 		vbox.add_child(handle_lbl)
 		
 		if not is_local:
+			var btn_box := HBoxContainer.new()
+			btn_box.add_theme_constant_override("separation", 4)
+			
 			var friend_btn := Button.new()
-			friend_btn.text = "➕ Add Friend"
-			friend_btn.custom_minimum_size = Vector2(0, 26)
-			friend_btn.pressed.connect(func(): friend_btn.text = "✔ Sent")
-			vbox.add_child(friend_btn)
+			friend_btn.text = "➕"
+			friend_btn.tooltip_text = "Add Friend"
+			friend_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			friend_btn.pressed.connect(func(): friend_btn.text = "✔")
+			btn_box.add_child(friend_btn)
+
+			var is_muted: bool = muted_player_ids.get(peer_id, false)
+			var mute_btn := Button.new()
+			mute_btn.text = "🔇" if is_muted else "🎙️"
+			mute_btn.tooltip_text = "Toggle Voice Mute for " + username
+			mute_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			mute_btn.pressed.connect(func():
+				var new_state: bool = not muted_player_ids.get(peer_id, false)
+				muted_player_ids[peer_id] = new_state
+				mute_btn.text = "🔇" if new_state else "🎙️"
+			)
+			btn_box.add_child(mute_btn)
+			vbox.add_child(btn_box)
 	else:
 		var hbox := HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 8)
 		margin.add_child(hbox)
 		
 		var icon_lbl := Label.new()
@@ -213,6 +247,16 @@ func _create_player_card(username: String, is_local: bool, is_owner_user: bool) 
 			friend_btn.text = "➕ Add Friend"
 			friend_btn.pressed.connect(func(): friend_btn.text = "✔ Sent")
 			hbox.add_child(friend_btn)
+
+			var is_muted: bool = muted_player_ids.get(peer_id, false)
+			var mute_btn := Button.new()
+			mute_btn.text = "🔇 Muted" if is_muted else "🎙️ Mute"
+			mute_btn.pressed.connect(func():
+				var new_state: bool = not muted_player_ids.get(peer_id, false)
+				muted_player_ids[peer_id] = new_state
+				mute_btn.text = "🔇 Muted" if new_state else "🎙️ Mute"
+			)
+			hbox.add_child(mute_btn)
 			
 	players_grid.add_child(card)
 
@@ -224,33 +268,18 @@ func _on_invite_friends_pressed() -> void:
 		invite_friends_btn.text = "👥 Invite Friends"
 
 func _on_mute_all_pressed() -> void:
-	is_muted_all = not is_muted_all
-	var bus_idx := AudioServer.get_bus_index("Master")
-	if bus_idx >= 0:
-		AudioServer.set_bus_mute(bus_idx, is_muted_all)
+	is_voice_muted_all = not is_voice_muted_all
+	var voice_bus := AudioServer.get_bus_index("Voice")
+	if voice_bus >= 0:
+		AudioServer.set_bus_mute(voice_bus, is_voice_muted_all)
 	if mute_all_btn:
-		mute_all_btn.text = "🔊 Unmute All" if is_muted_all else "🔇 Mute All"
+		mute_all_btn.text = "🔇 Voice: Unmute All" if is_voice_muted_all else "🔊 Voice: Mute All"
 
 func _on_toggle_view_mode() -> void:
 	is_grid_view = not is_grid_view
 	if view_mode_btn:
 		view_mode_btn.text = "📑 List View" if is_grid_view else "🔳 Grid View"
 	_refresh_players_list()
-
-func _on_take_screenshot() -> void:
-	var img := get_viewport().get_texture().get_image()
-	var time_str := Time.get_datetime_string_from_system().replace(":", "-")
-	var path_str := "user://screenshot_" + time_str + ".png"
-	img.save_png(path_str)
-	if gallery_status_label:
-		gallery_status_label.text = "Screenshot saved to: " + path_str
-
-func _on_submit_report() -> void:
-	if report_details_edit and submit_report_btn:
-		submit_report_btn.text = "✔ Report Submitted"
-		report_details_edit.text = ""
-		await get_tree().create_timer(2.0).timeout
-		submit_report_btn.text = "🚩 Submit Report"
 
 func _on_fullscreen_toggled(pressed: bool) -> void:
 	if pressed:
@@ -293,12 +322,19 @@ func _on_shift_lock_toggled(pressed: bool) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	else:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	print("[Luani PauseMenu] Shift Lock toggled: ", pressed)
 
-func _on_volume_changed(value: float) -> void:
+func _on_game_volume_changed(value: float) -> void:
 	var bus_idx := AudioServer.get_bus_index("Master")
 	if bus_idx >= 0:
 		var linear_val := value / 100.0
 		var db_val := linear_to_db(linear_val)
 		AudioServer.set_bus_volume_db(bus_idx, db_val)
-		volume_label.text = "Master Volume: " + str(int(value)) + "%"
+		volume_label.text = "Game Sound Volume: " + str(int(value)) + "%"
+
+func _on_voice_volume_changed(value: float) -> void:
+	var bus_idx := AudioServer.get_bus_index("Voice")
+	if bus_idx >= 0:
+		var linear_val := value / 100.0
+		var db_val := linear_to_db(linear_val)
+		AudioServer.set_bus_volume_db(bus_idx, db_val)
+		voice_volume_label.text = "Voice Chat Volume: " + str(int(value)) + "%"

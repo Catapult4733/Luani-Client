@@ -1,6 +1,18 @@
-[gd_scene load_steps=2 format=3 uid="uid://c8luani00pause"]
+[gd_scene load_steps=3 format=3 uid="uid://c8luani00pause"]
 
 [ext_resource type="Script" path="res://scenes/ui/pause_menu.gd" id="1_pause"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_MenuCard"]
+bg_color = Color(0.05, 0.07, 0.12, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.28, 0.45, 0.8)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
 
 [node name="PauseMenu" type="CanvasLayer"]
 process_mode = 3
@@ -22,7 +34,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.04, 0.06, 0.1, 0.88)
+color = Color(0.03, 0.04, 0.08, 0.88)
 
 [node name="CenterContainer" type="CenterContainer" parent="RootControl"]
 layout_mode = 1
@@ -33,8 +45,9 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="MenuCard" type="PanelContainer" parent="RootControl/CenterContainer"]
-custom_minimum_size = Vector2(860, 560)
+custom_minimum_size = Vector2(860, 540)
 layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_MenuCard")
 
 [node name="Margin" type="MarginContainer" parent="RootControl/CenterContainer/MenuCard"]
 layout_mode = 2
@@ -53,6 +66,7 @@ theme_override_constants/separation = 12
 
 [node name="BrandLabel" type="Label" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/HeaderBar"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.36, 0.96, 1)
 theme_override_font_sizes/font_size = 20
 text = "LUANI"
 
@@ -71,18 +85,6 @@ unique_name_in_owner = true
 layout_mode = 2
 toggle_mode = true
 text = "⚙️ Settings"
-
-[node name="TabGalleryBtn" type="Button" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/HeaderBar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-text = "🖼️ Gallery"
-
-[node name="TabReportBtn" type="Button" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/HeaderBar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-text = "🚩 Report"
 
 [node name="TabHelpBtn" type="Button" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/HeaderBar"]
 unique_name_in_owner = true
@@ -114,9 +116,9 @@ text = "👥 Invite Friends"
 
 [node name="MuteAllBtn" type="Button" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/PeopleView/TopActionsRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(110, 36)
+custom_minimum_size = Vector2(140, 36)
 layout_mode = 2
-text = "🔇 Mute All"
+text = "🔊 Voice: Mute All"
 
 [node name="Spacer" type="Control" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/PeopleView/TopActionsRow"]
 layout_mode = 2
@@ -166,16 +168,30 @@ unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
 
-[node name="VolumeBox" type="VBoxContainer" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView"]
+[node name="GameVolumeBox" type="VBoxContainer" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="VolumeLabel" type="Label" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/VolumeBox"]
+[node name="VolumeLabel" type="Label" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/GameVolumeBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Master Volume: 100%"
+text = "Game Sound Volume: 100%"
 
-[node name="VolumeSlider" type="HSlider" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/VolumeBox"]
+[node name="VolumeSlider" type="HSlider" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/GameVolumeBox"]
+unique_name_in_owner = true
+layout_mode = 2
+value = 100.0
+
+[node name="VoiceVolumeBox" type="VBoxContainer" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="VoiceVolumeLabel" type="Label" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/VoiceVolumeBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Voice Chat Volume: 100%"
+
+[node name="VoiceVolumeSlider" type="HSlider" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/VoiceVolumeBox"]
 unique_name_in_owner = true
 layout_mode = 2
 value = 100.0
@@ -191,58 +207,6 @@ text = "Fullscreen Mode:"
 [node name="FullscreenBtn" type="CheckButton" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/SettingsView/FullscreenBox"]
 unique_name_in_owner = true
 layout_mode = 2
-
-[node name="GalleryView" type="VBoxContainer" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="CaptureBtn" type="Button" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/GalleryView"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(200, 42)
-layout_mode = 2
-size_flags_horizontal = 4
-text = "📷 Take Screenshot"
-
-[node name="GalleryStatusLabel" type="Label" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/GalleryView"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Screenshots will be saved to your user directory."
-horizontal_alignment = 1
-
-[node name="ReportView" type="VBoxContainer" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="ReportInfoLabel" type="Label" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/ReportView"]
-layout_mode = 2
-text = "Report unacceptable behavior or content to Luani Safety Team:"
-
-[node name="ReportReasonOption" type="OptionButton" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/ReportView"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
-layout_mode = 2
-selected = 0
-item_0/text = "Inappropriate Chat / Profanity"
-item_1/text = "Exploiting / Cheating"
-item_2/text = "Harassment / Bullying"
-item_3/text = "Offensive Avatar / Content"
-
-[node name="ReportDetailsEdit" type="TextEdit" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/ReportView"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 100)
-layout_mode = 2
-placeholder_text = "Provide additional details (optional)..."
-
-[node name="SubmitReportBtn" type="Button" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer/ReportView"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 38)
-layout_mode = 2
-size_flags_horizontal = 4
-text = "🚩 Submit Report"
 
 [node name="HelpView" type="VBoxContainer" parent="RootControl/CenterContainer/MenuCard/Margin/MainLayout/BodyContainer"]
 unique_name_in_owner = true
