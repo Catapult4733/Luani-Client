@@ -35,19 +35,12 @@ func _setup_top_left_hud() -> void:
 	hud_bar.position = Vector2(16, 16)
 	hud_bar.add_theme_constant_override("separation", 8)
 
-	# Menu Button
+	# Menu Button (Luani Galaxy Icon)
 	var menu_btn := Button.new()
 	menu_btn.set_script(VECTOR_ICON_SCRIPT)
 	menu_btn.set("icon_type", 0) # IconType.MENU
 	menu_btn.tooltip_text = "Pause Menu (ESC)"
-	menu_btn.pressed.connect(func():
-		var pause_menu := get_node_or_null("/root/PauseMenu")
-		if not pause_menu:
-			var game_world := get_node_or_null("/root/GameWorld")
-			if game_world: pause_menu = game_world.get_node_or_null("PauseMenu")
-		if pause_menu and pause_menu.has_method("toggle_menu"):
-			pause_menu.call("toggle_menu")
-	)
+	menu_btn.pressed.connect(toggle_pause_menu)
 	hud_bar.add_child(menu_btn)
 
 	# Microphone Button (Muted by default)
@@ -187,6 +180,19 @@ func update_health_bar(current_hp: float, max_hp: float) -> void:
 		var pbar: ProgressBar = health_hud_inst.get_node("MarginContainer/HBoxContainer/VBoxContainer/ProgressBar")
 		pbar.max_value = max_hp
 		pbar.value = current_hp
+
+func toggle_pause_menu() -> void:
+	var pause_menu := get_node_or_null("/root/PauseMenu")
+	if not pause_menu:
+		pause_menu = get_node_or_null("/root/GameWorld/UI/PauseMenu")
+	if not pause_menu:
+		pause_menu = get_tree().root.find_child("PauseMenu", true, false)
+		
+	if pause_menu and pause_menu.has_method("toggle_menu"):
+		pause_menu.call("toggle_menu")
+		print("[Luani UIManager] Toggled PauseMenu successfully!")
+	else:
+		print("[Luani UIManager] Warning: PauseMenu node not found in scene tree!")
 
 func toggle_chat() -> void:
 	if chat_overlay_inst and chat_overlay_inst.has_method("toggle_chat"):

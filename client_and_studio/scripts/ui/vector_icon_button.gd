@@ -40,20 +40,24 @@ func set_muted(muted: bool) -> void:
 	is_muted = muted
 	queue_redraw()
 
+var galaxy_texture: Texture2D = null
+
 func _draw() -> void:
 	var center := size * 0.5
 	var color := Color(0.92, 0.95, 1.0)
 	
 	match icon_type:
 		IconType.MENU:
-			# Draw 3 sleek horizontal bars
-			var bar_width := 18.0
-			var bar_height := 2.5
-			var spacing := 5.0
-			var start_y := center.y - spacing
-			for i in range(3):
-				var rect := Rect2(center.x - (bar_width * 0.5), start_y + (i * spacing), bar_width, bar_height)
-				draw_rect(rect, color, true)
+			if not galaxy_texture:
+				if ResourceLoader.exists("res://icon.svg"):
+					galaxy_texture = load("res://icon.svg") as Texture2D
+				elif ResourceLoader.exists("res://icon.png"):
+					galaxy_texture = load("res://icon.png") as Texture2D
+			if galaxy_texture:
+				var rect := Rect2(center.x - 11.0, center.y - 11.0, 22.0, 22.0)
+				draw_texture_rect(galaxy_texture, rect, false)
+			else:
+				draw_circle(center, 8.0, Color(0.55, 0.36, 0.96))
 				
 		IconType.CHAT:
 			# Draw 2D Vector Speech Bubble
