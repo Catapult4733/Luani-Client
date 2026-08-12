@@ -50,6 +50,7 @@ var all_tabs: Array = []
 var all_views: Array = []
 
 func _ready() -> void:
+	layer = 150
 	hide()
 	
 	all_tabs = [tab_people_btn, tab_settings_btn, tab_gallery_btn, tab_report_btn, tab_help_btn]
