@@ -21,6 +21,10 @@ var active_auth_token: String = ""
 var active_place_id: String = "place_default_01"
 
 func _ready() -> void:
+	print("**************************************************")
+	print("*** LUANI ENGINE CLIENT v0.2.13-BUILD21 (HEADLESS READY) ***")
+	print("**************************************************")
+	printerr("*** LUANI VERSION STAMP: 0.2.13.21 ***")
 	print("[Luani GameManager] Initialized Luani Core Engine.")
 
 	# Check CLI flags for headless server mode or direct URI protocol launch
