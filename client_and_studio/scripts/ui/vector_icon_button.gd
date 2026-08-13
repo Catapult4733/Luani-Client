@@ -48,27 +48,31 @@ func _draw() -> void:
 	
 	match icon_type:
 		IconType.MENU:
-			var tex: Texture2D = null
-			if ResourceLoader.exists("res://icon.png"):
-				tex = load("res://icon.png") as Texture2D
-			if not tex and ResourceLoader.exists("res://icon.svg"):
-				tex = load("res://icon.svg") as Texture2D
+			# Vector Luani Galaxy Spiral Logo (No white Godot icon!)
+			draw_circle(center, 9.5, Color(0.06, 0.08, 0.14, 0.95))
+			
+			var purple_color := Color(0.65, 0.35, 0.98) # #a855f7
+			var cyan_color := Color(0.02, 0.71, 0.83)   # #06b6d4
+			
+			# Dual Spiral Arms
+			for i in range(16):
+				var progress := float(i) / 16.0
+				var angle1 := progress * TAU * 1.2
+				var angle2 := angle1 + PI
+				var dist := 2.5 + (progress * 7.0)
+				var star_color := purple_color.lerp(cyan_color, progress)
 				
-			if tex:
-				var rect := Rect2(center.x - 12.0, center.y - 12.0, 24.0, 24.0)
-				draw_texture_rect(tex, rect, false)
-			else:
-				# Vector Luani Galaxy Spiral Logo
-				draw_circle(center, 9.0, Color(0.08, 0.05, 0.18))
-				var galaxy_purple := Color(0.55, 0.36, 0.96)
-				var galaxy_cyan := Color(0.2, 0.75, 0.95)
-				for i in range(12):
-					var angle := deg_to_rad(i * 30.0)
-					var radius := 2.0 + (i * 0.6)
-					var pos := center + Vector2(cos(angle), sin(angle)) * radius
-					var col := galaxy_purple.lerp(galaxy_cyan, float(i) / 12.0)
-					draw_circle(pos, 1.8, col)
-				draw_circle(center, 3.0, Color(1, 1, 1, 0.9))
+				# Arm 1
+				var pos1 := center + Vector2(cos(angle1), sin(angle1)) * dist
+				draw_circle(pos1, 1.5, star_color)
+				
+				# Arm 2
+				var pos2 := center + Vector2(cos(angle2), sin(angle2)) * dist
+				draw_circle(pos2, 1.5, star_color)
+				
+			# Core glowing galaxy center
+			draw_circle(center, 3.8, Color(0.55, 0.36, 0.96, 0.7))
+			draw_circle(center, 2.0, Color(0.95, 0.98, 1.0, 1.0))
 				
 		IconType.CHAT:
 			# Draw 2D Vector Speech Bubble

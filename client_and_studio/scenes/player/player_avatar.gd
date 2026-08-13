@@ -87,6 +87,12 @@ func _ready() -> void:
 		_setup_local_ui()
 		# Broadcast RPC username & customization data to all connected peers
 		rpc("rpc_sync_player_data", multiplayer.get_unique_id(), player_username, avatar_colors)
+		if multiplayer and not multiplayer.peer_connected.is_connected(_on_peer_connected_sync):
+			multiplayer.peer_connected.connect(_on_peer_connected_sync)
+
+func _on_peer_connected_sync(peer_id: int) -> void:
+	if is_multiplayer_authority():
+		rpc_id(peer_id, "rpc_sync_player_data", multiplayer.get_unique_id(), player_username, avatar_colors)
 
 var voice_audio_player: AudioStreamPlayer3D = null
 var voice_generator: AudioStreamGenerator = null
@@ -110,7 +116,15 @@ func _setup_voice_playback() -> void:
 		voice_playback = voice_audio_player.get_stream_playback() as AudioStreamGeneratorPlayback
 
 func play_voice_chunk(pcm_frames: PackedVector2Array) -> void:
-	if not is_multiplayer_authority() and voice_playback:
+	if is_multiplayer_authority():
+		return
+	if not voice_audio_player:
+		_setup_voice_playback()
+	if voice_audio_player and not voice_audio_player.playing:
+		voice_audio_player.play()
+	if voice_audio_player and not voice_playback:
+		voice_playback = voice_audio_player.get_stream_playback() as AudioStreamGeneratorPlayback
+	if voice_playback:
 		voice_playback.push_buffer(pcm_frames)
 
 func _load_profile_identity() -> void:
