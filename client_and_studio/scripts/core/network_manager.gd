@@ -44,14 +44,27 @@ func _ready() -> void:
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
 	var parser := get_node_or_null("/root/ProtocolParser")
-	if parser and parser.latest_session_data.get("valid", false):
-		var data: Dictionary = parser.latest_session_data
-		if data.get("username", "") != "":
-			local_username = data.get("username")
-		if data.has("avatar_colors") and data.get("avatar_colors") is Dictionary:
-			local_avatar_colors = data.get("avatar_colors")
-		is_owner = data.get("owner", false)
-		is_verified = data.get("verified", false)
+	if parser:
+		parser.protocol_received.connect(_on_protocol_received_net)
+		if parser.latest_session_data.get("valid", false):
+			_on_protocol_received_net(parser.latest_session_data)
+
+func _on_protocol_received_net(data: Dictionary) -> void:
+	if data.get("username", "") != "":
+		local_username = data.get("username")
+	if data.has("avatar_colors") and data.get("avatar_colors") is Dictionary:
+		local_avatar_colors = data.get("avatar_colors")
+	is_owner = data.get("owner", false)
+	is_verified = data.get("verified", false)
+	
+	# Update local avatar node if already spawned
+	var my_id := multiplayer.get_unique_id() if multiplayer else 1
+	var players_parent := get_node_or_null("/root/GameWorld/Players")
+	if players_parent and players_parent.has_node(str(my_id)):
+		var my_avatar = players_parent.get_node(str(my_id))
+		if my_avatar and my_avatar.has_method("set_player_username"):
+			my_avatar.call("set_player_username", local_username)
+			my_avatar.call("rpc", "rpc_sync_player_data", my_id, local_username, local_avatar_colors)
 
 	# Read user_profile.json if username is default
 	if local_username == "Player" and FileAccess.file_exists("user://user_profile.json"):
@@ -219,7 +232,7 @@ func spawn_player_avatar(peer_id: int) -> Node:
 	target_container.add_child.call_deferred(avatar)
 
 	if avatar.has_method("set_player_username"):
-		var uname: String = local_username if peer_id == multiplayer.get_unique_id() else "Player_" + str(peer_id)
+		var uname: String = local_username if peer_id == multiplayer.get_unique_id() else ("Player " + str(peer_id))
 		avatar.call_deferred("set_player_username", uname)
 
 	var proto_mgr := get_node_or_null("/root/ProtocolParser")

@@ -128,15 +128,26 @@ func play_voice_chunk(pcm_frames: PackedVector2Array) -> void:
 		voice_playback.push_buffer(pcm_frames)
 
 func _load_profile_identity() -> void:
+	if not is_multiplayer_authority():
+		return
+
 	var net_mgr := get_node_or_null("/root/NetworkManager")
-	if is_multiplayer_authority() and net_mgr:
-		if net_mgr.local_username != "" and net_mgr.local_username != "Player":
-			player_username = net_mgr.local_username
+	if net_mgr and net_mgr.local_username != "" and net_mgr.local_username != "Player":
+		player_username = net_mgr.local_username
 		if not net_mgr.local_avatar_colors.is_empty():
 			avatar_colors = net_mgr.local_avatar_colors
 
-	# Also check local user_profile.json
-	if is_multiplayer_authority() and FileAccess.file_exists("user://user_profile.json"):
+	var proto_mgr := get_node_or_null("/root/ProtocolParser")
+	if proto_mgr and proto_mgr.latest_session_data.get("valid", false):
+		var p_name: String = proto_mgr.latest_session_data.get("username", "")
+		if p_name != "" and p_name != "Player":
+			player_username = p_name
+		var p_colors = proto_mgr.latest_session_data.get("avatar_colors")
+		if p_colors is Dictionary and not p_colors.is_empty():
+			avatar_colors = p_colors
+
+	# Check local user_profile.json
+	if (player_username == "" or player_username == "Player" or player_username == "LuaniPlayer") and FileAccess.file_exists("user://user_profile.json"):
 		var file := FileAccess.open("user://user_profile.json", FileAccess.READ)
 		if file:
 			var parsed = JSON.parse_string(file.get_as_text())

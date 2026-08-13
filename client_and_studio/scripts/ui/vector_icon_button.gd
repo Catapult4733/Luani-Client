@@ -9,6 +9,8 @@ enum IconType { MENU, CHAT, MIC }
 @export var is_muted: bool = false
 
 func _ready() -> void:
+	text = ""
+	icon = null
 	custom_minimum_size = Vector2(40, 40)
 	flat = false
 	

@@ -13,11 +13,47 @@ extends Node3D
 
 var current_place_id: String = "place_default_01"
 
+const VECTOR_ICON_SCRIPT := preload("res://scripts/ui/vector_icon_button.gd")
+
 func _ready() -> void:
-	if settings_button:
-		settings_button.pressed.connect(_on_menu_button_pressed)
-	if chat_toggle_button:
-		chat_toggle_button.pressed.connect(_on_chat_toggle_pressed)
+	var top_left_bar := get_node_or_null("UI/HUD/TopLeftBar")
+	if top_left_bar:
+		for child in top_left_bar.get_children():
+			child.queue_free()
+			
+		# 1. Menu Button (Galaxy Spiral)
+		var menu_btn := Button.new()
+		menu_btn.set_script(VECTOR_ICON_SCRIPT)
+		menu_btn.set("icon_type", 0) # MENU
+		menu_btn.tooltip_text = "Pause Menu (ESC)"
+		menu_btn.pressed.connect(_on_menu_button_pressed)
+		top_left_bar.add_child(menu_btn)
+
+		# 2. Mic Button
+		var mic_btn := Button.new()
+		mic_btn.name = "MicButton"
+		mic_btn.set_script(VECTOR_ICON_SCRIPT)
+		mic_btn.set("icon_type", 2) # MIC
+		mic_btn.set("is_muted", true)
+		mic_btn.tooltip_text = "Toggle Voice Chat Mic"
+		mic_btn.pressed.connect(func():
+			var voice_mgr := get_node_or_null("/root/VoiceChatManager")
+			var is_muted := true
+			if voice_mgr and voice_mgr.has_method("toggle_mic"):
+				is_muted = not voice_mgr.call("toggle_mic")
+			if mic_btn.has_method("set_muted"):
+				mic_btn.call("set_muted", is_muted)
+		)
+		top_left_bar.add_child(mic_btn)
+
+		# 3. Chat Button
+		var chat_btn := Button.new()
+		chat_btn.set_script(VECTOR_ICON_SCRIPT)
+		chat_btn.set("icon_type", 1) # CHAT
+		chat_btn.tooltip_text = "Toggle Chat (T)"
+		chat_btn.pressed.connect(_on_chat_toggle_pressed)
+		top_left_bar.add_child(chat_btn)
+
 	if leaderboard_toggle_button:
 		leaderboard_toggle_button.pressed.connect(_on_leaderboard_toggle_pressed)
 

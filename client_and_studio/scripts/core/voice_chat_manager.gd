@@ -45,9 +45,15 @@ func toggle_mic() -> bool:
 		if not OS.get_granted_permissions().has("android.permission.RECORD_AUDIO"):
 			OS.request_permission("RECORD_AUDIO")
 			print("[Luani VoiceChat] Requested Android RECORD_AUDIO runtime permission.")
+			
 	is_mic_active = not is_mic_active
 	if capture_effect:
 		capture_effect.clear()
+		
+	# Unmute Record bus effect processing when active
+	if record_bus_index >= 0:
+		AudioServer.set_bus_mute(record_bus_index, not is_mic_active)
+		
 	emit_signal("mic_state_changed", is_mic_active)
 	print("[Luani VoiceChat] Microphone toggled: ", is_mic_active)
 	return is_mic_active
@@ -57,7 +63,7 @@ func _process(_delta: float) -> void:
 		return
 		
 	var frames_avail := capture_effect.get_frames_available()
-	if frames_avail >= 512:
+	if frames_avail >= 256:
 		var buffer := capture_effect.get_buffer(frames_avail)
 		if buffer.size() > 0:
 			var sender_id := multiplayer.get_unique_id()
