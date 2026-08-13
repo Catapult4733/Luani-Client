@@ -41,6 +41,10 @@ func _setup_voice_audio_buses() -> void:
 				break
 
 func toggle_mic() -> bool:
+	if OS.has_feature("android"):
+		if not OS.get_granted_permissions().has("android.permission.RECORD_AUDIO"):
+			OS.request_permission("RECORD_AUDIO")
+			print("[Luani VoiceChat] Requested Android RECORD_AUDIO runtime permission.")
 	is_mic_active = not is_mic_active
 	if capture_effect:
 		capture_effect.clear()

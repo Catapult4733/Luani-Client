@@ -149,7 +149,15 @@ func _refresh_players_list() -> void:
 			added_peers[p_peer_id] = true
 			
 			var is_me: bool = (p_peer_id == my_peer_id or p_node.name == str(my_peer_id))
-			var uname: String = p_node.get("username") if p_node.get("username") else (my_name if is_me else p_node.name)
+			var uname: String = ""
+			if p_node.get("player_username"):
+				uname = str(p_node.get("player_username"))
+			elif p_node.get("username"):
+				uname = str(p_node.get("username"))
+				
+			if uname.is_empty() or uname == p_node.name:
+				uname = my_name if is_me else ("Player " + str(p_peer_id))
+				
 			var p_owner: bool = p_node.get("is_owner") if p_node.get("is_owner") != null else false
 			_create_player_card(uname, is_me, p_owner, p_peer_id)
 	else:

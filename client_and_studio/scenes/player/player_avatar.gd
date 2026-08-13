@@ -27,6 +27,9 @@ var camera_distance: float = 3.5
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 var player_username: String = "LuaniPlayer"
+var username: String:
+	get: return player_username
+	set(val): player_username = val
 var avatar_colors: Dictionary = {
 	"head": "#e0ac69",
 	"torso": "#0000ff",
