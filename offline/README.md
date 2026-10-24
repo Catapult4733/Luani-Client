@@ -1,53 +1,50 @@
-# Luani Client — Linux offline preview
+# Luani Client — Figma UI + inventory offline preview
 
-Version: **0.3.0-offline.3**. This compact-UI update has not been gameplay-tested by Hermes: no Godot, exporter or headless game was launched. Gemini must verify these changes on a Linux desktop.
+Version **0.4.0-offline.1**. Runtime **NOT TESTED by Hermes**, by the owner's explicit request. No Godot, editor, import/export, engine version probe, headless game or installer has been executed by Hermes. Source grammar/resource/security checks and archive/public delivery checks are separate from gameplay verification. Gemini must launch and verify this build on the owner's Linux desktop.
 
-## Install / update
+## Install or update
 
-Run as your normal desktop user, **without sudo**:
+Quit the running client. As your normal desktop user, without sudo:
 
 ```bash
 curl -fsSL https://new.luani.fyi/client/install.sh | bash
 ```
 
-Run the same command to update. Installation does not start the game. Launch **Luani Client** from the applications menu or run `~/.local/bin/luani`.
+The same command installs and updates. It never auto-launches. Start **Luani Client** from the applications menu or run `~/.local/bin/luani`.
 
-Requires 64-bit Linux (x86_64 or ARM64), a working graphical desktop/OpenGL driver, Python 3, curl, and normal system libraries required by Godot 4.7.2. A 32-bit OS is unsupported. ARM64 packaging is not a claim that a particular Raspberry Pi graphics setup has been tested.
+Requires 64-bit Linux x86_64 or ARM64, a graphical desktop with working OpenGL drivers, Python3 and curl. The native runtime is pinned official Godot4.7.2, bundled with the source project. No separately installed editor is needed; ARM64 packaging does not imply that a particular Pi/GPU has been runtime-tested.
 
-The installer downloads a pinned native Godot runtime bundled with the project source. This packaging avoids running an exporter or game during delivery; no separate Godot installation is needed. Original menu/chat/list line SVGs are decoded directly at runtime, without editor imports or a preexisting import cache. Reference screenshots are layout inspiration only, not shipped artwork. The baseplate, character, animations and sounds are procedural. No creator scripts or legacy online modules are loaded.
+## Figma UI implementation
 
-## Implemented controls and UI
+The owner-approved design is in Figma file `s2h0NnfLdAFDeYN3WfSBKd`. The refined control study is node `12:373`; reusable control is `12:368`.
 
-- WASD: camera-relative movement. Space: jump. Hold Shift: run.
-- Ctrl: toggle shoulder-camera shift lock, if the Settings permission is enabled.
-- Third person: hold right mouse to look around. Horizontal rotation is unrestricted; vertical look is widened to almost straight up/down (89 degrees each way), retaining a small anti-flip guard.
-- Scroll completely inward to enter first person: eye-height camera, hidden local body/name tag, centered reticle and captured mouse without holding RMB. Scroll outward to return to third person. First person does not depend on the shift-lock setting.
-- Esc/menu and focused chat release mouse capture; closing the overlay restores the active camera mode. Focus loss also releases capture. Esc: menu/resume.
-- Original six-part block humanoid with idle, walk, run and airborne procedural animation, blinking and synthesized movement sounds. No Roblox assets, logos or animation files are used.
-- Empty gridded baseplate; falling off its edge respawns you.
-- Left: compact original menu/chat line icons; right: the list/leaderboard icon. Toolbar hit targets are 36×32 logical pixels with 20px icons. The top Luani/baseplate/camera badge and bottom controls strip are removed.
-- UI stretching is disabled. Resizing the window moves centered/right-anchored panels without scaling their dimensions or fonts. Menu: 560×452; chat: 300×220; leaderboard: 220×76; avatar viewer: 360×420. These fit the supported minimum 800×600 window. Normal operating-system DPI scaling is distinct from automatic window-relative scaling.
-- The neutral dark menu uses Players/Settings tabs with an active underline and a fixed bottom action row: Leave, Respawn, Resume. The compact leaderboard shows one real local name, not fake players, scores or badges.
-- Enter or `/` focuses chat. Messages display `Username : message`. Chat is local-only, unmoderated, non-persistent and capped to recent messages for memory use; text is not interpreted as markup.
-- Right: leaderboard toggle, also available with Tab. It lists the actual single local player, without fake scores or invented users.
-- Menu Settings: shift-lock permission, master game volume, editable offline display name, Resume, Respawn and confirmed Leave.
-- Menu Players: current local player, animated avatar viewer, and explicitly disabled Block / Send friend request / Report controls. Those are online actions and cannot be performed on yourself in an offline build; nothing pretends to reach a server.
+- Actual Figma-exported orbital menu, chat and player-podium glyphs, local Nunito Sans font, charcoal panels and lavender actions.
+- Fixed36×32 HUD controls, 36×30 faces, 20px glyphs and6px gaps. Separate resting, hover, depressed, open/open-hover, keyboard-focus and disabled appearances. No scale-on-hover. Real button callbacks toggle the corresponding views.
+- Menu560×452 with Players/Settings pills, close, shift-lock switch, working volume/name fields and fixed Leave/Respawn/Resume footer. Chat300×220; leaderboard240×112; avatar360×420; custom leave/respawn confirmations416×204.
+- The avatar stage is a live3D view in the same320×244 design slot rather than the static design placeholder. Volume is a native interactive slider, not a screenshot of70% volume.
+- Fixed logical pixels with project stretching disabled. Window resizing repositions panels, not fonts or controls. The top branding/camera badge and old full-width bottom help strip remain absent.
+- Actual local name, one player, no fake scores or online activity. Block/Friend/Report remain disabled and explained offline. Chat remains local-only, unmoderated plain text,100 recent messages, discarded on exit.
 
-Device-local preferences are saved under Godot's `user://` directory for “Luani Client”, outside the installed releases. Updates preserve them. Chat is discarded on exit. There is no website login, multiplayer, voice chat, Studio, publishing, telemetry or runtime network request in this offline project.
+## Inventory and tools
 
-## Installation layout and rollback
+- **I** or the backpack button opens/closes the18-slot inventory. Click a slot, then **Equip / Put away** or **Drop**. The first nine slots form a compact hotbar once you collect an item; **1–9** or slot clicks equip/put away those slots.
+- Approach a floating item and press **E**. Selection is range/line-of-sight checked; a full bag never consumes a pickup. The first pickup auto-equips. **Q** drops the equipped item back onto the baseplate, with a short re-pick cooldown. Empty/invalid slots do nothing.
+- Eighteen tools are scattered in fixed, varied locations around the240×240 baseplate, including one of each kind near spawn. They are finite session objects; pickups do not continuously duplicate or reappear.
+- **Moonsteel Sword:** click to swing. Both third-person arm and first-person view-model animate. Face a nearby wooden practice target to hit it. Each target takes three hits, disappears and resets after five seconds; a0.45-second swing cooldown prevents repeated-frame hits. No PvP, damage to real people or multiplayer is implied.
+- **Trail Lantern:** click to toggle actual warm3D light and the lantern's glow. It has a visible held model in both camera modes.
+- **Spring Coil:** equip to increase jump impulse; put away/drop it to restore normal jumps. Holding a coil is not a permanent saved upgrade.
+- Inventory and remaining world items survive **character respawn** within a session, without granting duplicate starting items. They reset when the game closes. They are not saved to an account or synced to the website.
 
-- `${XDG_DATA_HOME:-$HOME/.local/share}/luani-client/releases/`: versioned bundles.
-- `.../luani-client/current`: atomically switched release symlink.
-- `~/.local/bin/luani`: managed launcher.
-- `${XDG_DATA_HOME:-$HOME/.local/share}/applications/org.luani.Client.desktop`: app-menu entry.
+## Existing movement/camera
 
-The installer checks HTTPS origin, package size/SHA-256, archive paths/types and required files before switching releases. It does not request root or alter system packages. Hashes provide integrity against the published HTTPS manifest; they are not an independent digital signature. Old releases remain available for manual rollback. Running the same command with the same published release refreshes launchers without starting the game.
+WASD movement, Space jump, held Shift run, Ctrl shoulder-camera shift lock when allowed in Settings. Hold RMB to orbit in third person; scroll fully inward for captured-mouse first person, outward to return. Horizontal rotation remains unrestricted with the existing±89-degree vertical guard. Local avatar/name hide only in first person; the independent avatar viewer remains visible.
 
-To uninstall, remove only the managed launcher, app-menu entry and `luani-client` install directory above. This does not remove Godot's separate user settings unless you choose to delete those too.
+Menus, inventory, confirmations and focused chat block movement/tool actions and release capture. Esc closes the active view or opens the menu. Enter or `/` focuses chat; Tab toggles the leaderboard outside typing/modals. Text fields must not trigger I, hotbar, E, Q, movement or tool use. Application focus loss releases capture and gates tool input.
 
-## Source and packaging
+## Data, installation and rollback
 
-This `offline/` project is independent of the historical `client_and_studio/` project. Existing checkouts and attempt-1 deployments are not overwritten.
+Settings stay in the existing separate Godot `user://` directory for “Luani Client”; updates preserve them. No login, HTTP/ENet/WebSocket, telemetry, microphone, creator scripts, Studio, marketplace or backend integration is part of this offline project.
 
-`distribution/package_linux.py` verifies pinned official Godot ZIP hashes and assembles x86_64/ARM64 archives without running an engine. `distribution/install.sh` is the installer served by the website. See `docs/GEMINI_OFFLINE_HANDOFF.md` for the required interactive verification.
+Versioned bundles live under `${XDG_DATA_HOME:-$HOME/.local/share}/luani-client/releases/`; `current` is switched atomically. The managed launcher is `~/.local/bin/luani`; the app-menu entry is under the user's applications directory. Old releases are retained for manual rollback. The installer validates same-origin HTTPS, bounded sizes, SHA256, archive paths/types and managed launcher ownership. HTTPS-manifest hashes are integrity checks, not independent signatures. No sudo or system-package changes are requested.
+
+`distribution/package_linux.py` reads and verifies official runtime archives and assembles source-runtime bundles **without executing the engine**. Local SVG and font bytes are decoded directly at launch, without a pre-existing editor import cache. Asset provenance/hashes are in `assets/ui/figma/asset-manifest.json`; Nunito Sans's licence is in `assets/fonts/OFL.txt`. See `docs/GEMINI_OFFLINE_HANDOFF.md` for required runtime verification.

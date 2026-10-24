@@ -1,0 +1,163 @@
+{
+  "figma_file": "s2h0NnfLdAFDeYN3WfSBKd",
+  "assets": [
+    {
+      "file": "assets/ui/figma/menu.svg",
+      "figma_node": "12:279",
+      "sha256": "b5f67f1b0a76fdbfd153b683f2c3eeed74bcb75c8cdd82ae586d948a537ca26f",
+      "bytes": 1210,
+      "width": "20",
+      "height": "20",
+      "viewBox": "0 0 20 20",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/chat.svg",
+      "figma_node": "12:285",
+      "sha256": "d6e5489d19779d165b09fff5f7bf5f67327e053c3f5c57bdfa1ac1549bec3cab",
+      "bytes": 843,
+      "width": "20",
+      "height": "20",
+      "viewBox": "0 0 20 20",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/leaderboard.svg",
+      "figma_node": "12:289",
+      "sha256": "3e27a258a006d91d31357ab308e19d20d01addd1bf18157f3ee40c20bbb36902",
+      "bytes": 1408,
+      "width": "20",
+      "height": "20",
+      "viewBox": "0 0 20 20",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/players-muted.svg",
+      "figma_node": "6:22",
+      "sha256": "2fc0ccc3182726f8cb866b1bd4e1a93dd396bb97a1be374dca036126bc72525e",
+      "bytes": 908,
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/settings-active.svg",
+      "figma_node": "6:27",
+      "sha256": "75e7c65524e1163483e3fce5a9d9329a489628d41c00f818515188cb0b151be1",
+      "bytes": 768,
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/close.svg",
+      "figma_node": "6:32",
+      "sha256": "e0492d2483132e9aca211b70860773e4a645deed2d0f57489e9ebb8e3a2265ee",
+      "bytes": 337,
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/players-active.svg",
+      "figma_node": "7:63",
+      "sha256": "d5190be97209ebc147d13fdc379ef01f0cd213e9c0a8932063b1dc82a4acf672",
+      "bytes": 908,
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/settings-muted.svg",
+      "figma_node": "7:68",
+      "sha256": "6344ba3719f75d75e5b58f2b610786aaf7afb7025b1c0bf84a954498f4c40c51",
+      "bytes": 768,
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/avatar-roster.svg",
+      "figma_node": "7:106",
+      "sha256": "7291530e0c2b1f90a9d6bc6c400bca414c73eae7ab01e61a4a01eaf87730e668",
+      "bytes": 2355,
+      "width": "40",
+      "height": "55",
+      "viewBox": "0 0 40 55",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/avatar-leaderboard.svg",
+      "figma_node": "7:261",
+      "sha256": "5f5b040f7855243dde592f80914307021e4fcb8347b58c50f574588bc53993c9",
+      "bytes": 2765,
+      "width": "26",
+      "height": "36",
+      "viewBox": "0 0 26 36",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/avatar-design-reference.svg",
+      "figma_node": "7:378",
+      "sha256": "84bcd39524ba64ce70123f1065e7c69fd02a0e53ee60240d44a6ab50d4420623",
+      "bytes": 2085,
+      "width": "160",
+      "height": "220",
+      "viewBox": "0 0 160 220",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/send.svg",
+      "figma_node": "9:253",
+      "sha256": "190f8b73c720044f9d53d25daa97fb07c7d8c0c3a98831ed1b3db7d04a6e70b3",
+      "bytes": 373,
+      "width": "18",
+      "height": "18",
+      "viewBox": "0 0 18 18",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/toggle-on.svg",
+      "figma_node": "6:41",
+      "sha256": "8571637ea8cdf7f8d5afb5b14d74a15b13c0130972516110292aa34a770db432",
+      "bytes": 313,
+      "width": "36",
+      "height": "20",
+      "viewBox": "0 0 36 20",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/ui/figma/volume-design-reference.svg",
+      "figma_node": "6:48",
+      "sha256": "e475723c18ac942fb62b50d87a3d4711497c2767156baeb2ce3558888754e0d7",
+      "bytes": 420,
+      "width": "520",
+      "height": "20",
+      "viewBox": "0 0 520 20",
+      "css_variables": 0
+    },
+    {
+      "file": "assets/fonts/NunitoSans.ttf",
+      "source_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/nunitosans/NunitoSans%5BYTLC,opsz,wdth,wght%5D.ttf",
+      "sha256": "f934d7142fb4784bf828da485b7dcbd90c0c80d514e9d49a5da0ed3a1ae2491d",
+      "bytes": 571240
+    },
+    {
+      "file": "assets/fonts/OFL.txt",
+      "source_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/nunitosans/OFL.txt",
+      "sha256": "efbb0c9e864cef973982d9a17567e6be5c3d1759695574586f3f18c7ecca064b",
+      "bytes": 4393
+    }
+  ],
+  "ui_images_are_reference_only": false,
+  "dynamic_equivalents": {
+    "avatar-design-reference.svg": "Live 3D avatar in the same 320x244 stage",
+    "volume-design-reference.svg": "Native interactive HSlider with matching 4px rail and 12px knob"
+  },
+  "game_executed": false
+}

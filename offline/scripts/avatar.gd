@@ -6,6 +6,8 @@ var motion_speed: float = 0.0
 var airborne: bool = false
 var vertical_speed: float = 0.0
 var running: bool = false
+var holding_tool: bool = false
+var tool_swing: float = 0.0
 var _phase: float = 0.0
 var _clock: float = 0.0
 var _blend: float = 0.0
@@ -23,7 +25,7 @@ func _ready() -> void:
 	var trousers := _material(Color("33384c"))
 	var skin := _material(Color("d6b49a"))
 	var ink := _material(Color("292b39"))
-	var accent := _material(Color("a98aff"))
+	var accent := _material(Color("c1adff"))
 	torso = _part("Torso", Vector3(0, 1.70, 0), Vector3(1.02, 1.12, 0.58), Vector3.ZERO, cloth)
 	head = _part("Head", Vector3(0, 2.66, 0), Vector3(0.74, 0.74, 0.70), Vector3.ZERO, skin)
 	left_arm = _part("LeftArm", Vector3(-0.75, 2.19, 0), Vector3(0.43, 1.14, 0.52), Vector3(0, -0.52, 0), sleeves)
@@ -89,6 +91,12 @@ func _process(delta: float) -> void:
 		target_right_arm = target_left_arm
 		target_left_leg = 0.20
 		target_right_leg = -0.25
+	tool_swing = maxf(0.0, tool_swing - delta)
+	if holding_tool:
+		target_right_arm = 0.65
+	if tool_swing > 0:
+		var progress := 1.0 - tool_swing / 0.32
+		target_right_arm = lerpf(1.45, -0.25, progress)
 	var blend := minf(delta * 14.0, 1.0)
 	left_arm.rotation.x = lerpf(left_arm.rotation.x, target_left_arm, blend)
 	right_arm.rotation.x = lerpf(right_arm.rotation.x, target_right_arm, blend)
@@ -96,6 +104,8 @@ func _process(delta: float) -> void:
 	right_leg.rotation.x = lerpf(right_leg.rotation.x, target_right_leg, blend)
 	left_arm.rotation.z = 0.06 + idle
 	right_arm.rotation.z = -0.06 - idle
+	if tool_swing > 0:
+		right_arm.rotation.z = -0.35 + sin((1.0 - tool_swing / 0.32) * PI) * 0.65
 	torso.position.y = 1.70 + absf(sin(_phase)) * _blend * 0.035 + idle * 0.25
 	torso.rotation.x = lerpf(torso.rotation.x, -0.06 if running and motion_speed > 1 else 0.0, blend)
 	head.rotation.z = idle * 0.5

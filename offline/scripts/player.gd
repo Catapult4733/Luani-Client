@@ -4,6 +4,7 @@ extends CharacterBody3D
 signal shift_lock_changed(active: bool)
 signal camera_mode_changed(first_person_active: bool)
 const AvatarScript = preload("res://scripts/avatar.gd")
+const Visual = preload("res://scripts/item_visual.gd")
 const WALK_SPEED := 7.0
 const RUN_SPEED := 12.0
 const JUMP_SPEED := 9.0
@@ -28,6 +29,11 @@ var camera: Camera3D
 var _footstep: AudioStreamPlayer
 var _step_clock: float = 0.0
 var _name_tag: Label3D
+var equipped_item_id: String = ""
+var _held_model: Node3D
+var _view_model: Node3D
+var _swing_remaining: float = 0.0
+var _lantern_on: bool = true
 
 func _ready() -> void:
 	collision_layer = 2
@@ -94,6 +100,7 @@ func set_first_person(value: bool) -> void:
 	# The independent Players avatar viewer remains visible.
 	avatar.visible = not first_person
 	_name_tag.visible = not first_person
+	_sync_tool_visibility()
 	orbit_dragging = false
 	_update_camera()
 	update_mouse_mode()
@@ -141,13 +148,13 @@ func _physics_process(delta: float) -> void:
 	if not grounded:
 		velocity.y -= GRAVITY * delta
 	var movement := Vector2.ZERO
-	if not input_blocked:
+	if not input_blocked and _window_focused:
 		movement = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 		if grounded and Input.is_action_just_pressed("jump"):
-			velocity.y = JUMP_SPEED
+			velocity.y = JUMP_SPEED * (1.5 if equipped_item_id == "spring_coil" else 1.0)
 			_play_step(1.5)
 	var direction := Vector3(movement.x, 0, movement.y).rotated(Vector3.UP, camera_yaw)
-	var sprinting := not input_blocked and Input.is_action_pressed("sprint") and movement.length() > 0.1
+	var sprinting := not input_blocked and _window_focused and Input.is_action_pressed("sprint") and movement.length() > 0.1
 	var speed := RUN_SPEED if sprinting else WALK_SPEED
 	var acceleration := 38.0 if direction.is_zero_approx() else 28.0
 	velocity.x = move_toward(velocity.x, direction.x * speed, acceleration * delta)
@@ -185,6 +192,74 @@ func respawn() -> void:
 	velocity = Vector3.ZERO
 	avatar.motion_speed = 0.0
 	_step_clock = 0.0
+	_swing_remaining = 0.0
+	avatar.tool_swing = 0.0
+
+func can_use_tools() -> bool:
+	return _window_focused and not input_blocked
+
+func set_equipped_item(id: String) -> void:
+	equipped_item_id = id
+	for old in [_held_model, _view_model]:
+		if is_instance_valid(old):
+			old.hide()
+			old.queue_free()
+	_held_model = null
+	_view_model = null
+	avatar.holding_tool = not id.is_empty()
+	avatar.tool_swing = 0.0
+	_swing_remaining = 0.0
+	_lantern_on = true
+	if id.is_empty():
+		return
+	_held_model = Visual.make(id)
+	avatar.right_arm.add_child(_held_model)
+	_held_model.position = Vector3(0, -1.0, -0.10)
+	_held_model.rotation.x = -PI * 0.5
+	if id == "lantern":
+		_held_model.position = Vector3(0, -1.8, -0.03)
+		_held_model.rotation = Vector3.ZERO
+	_view_model = Visual.make(id)
+	camera.add_child(_view_model)
+	_view_model.position = Vector3(0.40, -0.52, -0.85)
+	_view_model.scale = Vector3.ONE * 0.5
+	_view_model.rotation.z = -0.25
+	_sync_tool_visibility()
+
+func swing_tool() -> void:
+	_swing_remaining = 0.32
+	avatar.tool_swing = 0.32
+	avatar.rotation.y = camera_yaw
+
+func toggle_lantern() -> bool:
+	_lantern_on = not _lantern_on
+	for model in [_held_model, _view_model]:
+		if not is_instance_valid(model):
+			continue
+		for node in model.find_children("LanternLight", "OmniLight3D", true, false):
+			var light := node as OmniLight3D
+			if light != null:
+				light.visible = _lantern_on
+		for node in model.find_children("LanternGlow", "MeshInstance3D", true, false):
+			var mesh := node as MeshInstance3D
+			if mesh != null:
+				var material := mesh.material_override as StandardMaterial3D
+				material.emission_enabled = _lantern_on
+				material.albedo_color = Color("f0cd8d") if _lantern_on else Color("685c49")
+	return _lantern_on
+
+func _sync_tool_visibility() -> void:
+	if is_instance_valid(_held_model):
+		_held_model.visible = not first_person
+	if is_instance_valid(_view_model):
+		_view_model.visible = first_person and not input_blocked and _window_focused
+
+func _process(delta: float) -> void:
+	_swing_remaining = maxf(0.0, _swing_remaining - delta)
+	_sync_tool_visibility()
+	if is_instance_valid(_view_model):
+		var phase := 1.0 - _swing_remaining / 0.32
+		_view_model.rotation.z = -0.25 - (sin(phase * PI) * 0.85 if _swing_remaining > 0 else 0.0)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:

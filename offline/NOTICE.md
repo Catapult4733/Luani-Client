@@ -1,11 +1,13 @@
 # Notices
 
-The character geometry, face details, baseplate, UI composition, procedural animations, icon and synthesized sounds in this offline Luani project are original implementations. No Roblox mesh, texture, logo or animation file is included. “Six-part” describes a generic rigid-body rig arrangement; it is not a claim of compatibility with another platform's assets or games.
+The six-part Luani character, original face/uniform details, baseplate, procedural animations/sounds, item models, practice targets and new inventory/item glyphs are original implementations. Generic rigid-body block geometry is not a claim of compatibility with another platform. No Roblox meshes, screenshots, textures, logos or animation files are included.
 
-The bundled runtime is Godot Engine 4.7.2, distributed under its MIT licence. Bundles include the matching upstream `GODOT-LICENSE.txt` and `GODOT-COPYRIGHT.txt`, including third-party notices. Godot's licence does not automatically set the licence of Luani-specific source code or assets.
+The current overlay/control design and glyphs were created for Luani in the owner's Figma file `s2h0NnfLdAFDeYN3WfSBKd`. Exact exports are bundled locally under `assets/ui/figma/`; the manifest records source node IDs, intrinsic dimensions and SHA256 hashes. The main avatar design illustration and70%-volume bar are reference assets; their production counterparts are a live3D avatar and an interactive slider. Other static icons/thumbnails are displayed in their design slots. No temporary Figma URLs are used at runtime.
 
-The menu, chat and leaderboard SVGs in `assets/ui/` were supplied by the Luani owner through Drive file `1BIU8rpqiMKj_Go7UB9z-lvnTamVQT0pz`. Original files `1.svg`, `2.svg` and `3.svg` are included unchanged as `menu.svg`, `chat.svg` and `leaderboard.svg`. They are not claimed as Hermes-created artwork, and no third-party licence grant is inferred.
+Nunito Sans is bundled under the SIL Open Font License1.1. Copyright and complete licence: `assets/fonts/OFL.txt`. This licence applies to the font, not automatically to Luani code or artwork.
 
-The active compact toolbar uses newly authored line icons in `assets/ui/compact/`. The earlier owner-supplied assets above are retained but no longer displayed. Reference screenshots supplied for version 0.3.0-offline.3 guided only general spacing and layout: no Roblox logo, screenshot crop, proprietary icon or platform branding is shipped as a UI asset.
+Earlier owner-supplied menu/chat/leaderboard files remain archived under `assets/ui/`, and the previous compact icons under `assets/ui/compact/`; they are no longer the active toolbar. The owner supplied the original three SVGs through Drive file `1BIU8rpqiMKj_Go7UB9z-lvnTamVQT0pz`; no third-party licence or authorship is inferred for those archived files.
 
-This is an unverified offline preview, not a production multiplayer platform. Local chat does not send messages to anyone else. The client does not load untrusted creator content or establish an account connection.
+Godot Engine4.7.2 is distributed under its MIT licence. Bundles include the exact matching upstream `GODOT-LICENSE.txt` and `GODOT-COPYRIGHT.txt`, including third-party notices. Godot's licence does not set the licence of Luani-specific code/assets.
+
+This is a runtime-untested offline preview, not a production multiplayer release. Local chat and inventory do not reach a server or account, and the client does not load untrusted creator content.
