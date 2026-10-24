@@ -2,14 +2,22 @@ class_name LuaniPlayer
 extends CharacterBody3D
 
 signal shift_lock_changed(active: bool)
+signal camera_mode_changed(first_person_active: bool)
 const AvatarScript = preload("res://scripts/avatar.gd")
 const WALK_SPEED := 7.0
 const RUN_SPEED := 12.0
 const JUMP_SPEED := 9.0
 const GRAVITY := 25.0
+const MIN_ORBIT_DISTANCE := 1.8
+const MAX_ORBIT_DISTANCE := 16.0
+const ZOOM_STEP := 0.6
+const PITCH_LIMIT := deg_to_rad(89.0)
+const FIRST_PERSON_EYE_HEIGHT := 2.70
 var input_blocked: bool = false
 var shift_locked: bool = false
 var orbit_dragging: bool = false
+var first_person: bool = false
+var _window_focused: bool = true
 var camera_yaw: float = 0.0
 var camera_pitch: float = -0.25
 var camera_distance: float = 7.0
@@ -52,6 +60,7 @@ func _ready() -> void:
 	camera_pivot.add_child(arm)
 	camera = Camera3D.new()
 	camera.fov = 72.0
+	camera.near = 0.05
 	camera.current = true
 	arm.add_child(camera)
 	_footstep = AudioStreamPlayer.new()
@@ -74,11 +83,40 @@ func set_shift_lock(value: bool) -> void:
 func update_mouse_mode() -> void:
 	if input_blocked:
 		orbit_dragging = false
-	var capture := not input_blocked and (shift_locked or orbit_dragging)
+	var capture := _window_focused and not input_blocked and (first_person or shift_locked or orbit_dragging)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if capture else Input.MOUSE_MODE_VISIBLE
 
+func set_first_person(value: bool) -> void:
+	if first_person == value:
+		return
+	first_person = value
+	camera_distance = 0.0 if first_person else MIN_ORBIT_DISTANCE
+	# The independent Players avatar viewer remains visible.
+	avatar.visible = not first_person
+	_name_tag.visible = not first_person
+	orbit_dragging = false
+	_update_camera()
+	update_mouse_mode()
+	camera_mode_changed.emit(first_person)
+
+func _zoom(inward: bool) -> void:
+	if inward:
+		if first_person:
+			return
+		var next_distance := camera_distance - ZOOM_STEP
+		if next_distance < MIN_ORBIT_DISTANCE - 0.001:
+			set_first_person(true)
+		else:
+			camera_distance = maxf(MIN_ORBIT_DISTANCE, next_distance)
+	else:
+		if first_person:
+			set_first_person(false)
+		else:
+			camera_distance = minf(MAX_ORBIT_DISTANCE, camera_distance + ZOOM_STEP)
+	_update_camera()
+
 func _unhandled_input(event: InputEvent) -> void:
-	if input_blocked:
+	if input_blocked or not _window_focused:
 		return
 	if event.is_action_pressed("shift_lock") and not event.is_echo():
 		if SessionState.shift_lock_enabled:
@@ -89,12 +127,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			orbit_dragging = event.pressed
 			update_mouse_mode()
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			camera_distance = maxf(2.8, camera_distance - 0.6)
+			_zoom(true)
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			camera_distance = minf(16.0, camera_distance + 0.6)
-	elif event is InputEventMouseMotion and (shift_locked or orbit_dragging):
-		camera_yaw -= event.relative.x * 0.003
-		camera_pitch = clampf(camera_pitch - event.relative.y * 0.003, -1.15, 0.45)
+			_zoom(false)
+	elif event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		# Horizontal rotation is unlimited; only prevent a vertical upside-down flip.
+		camera_yaw = wrapf(camera_yaw - event.screen_relative.x * 0.003, -PI, PI)
+		camera_pitch = clampf(camera_pitch - event.screen_relative.y * 0.003, -PITCH_LIMIT, PITCH_LIMIT)
+		_update_camera()
 
 func _physics_process(delta: float) -> void:
 	var grounded := is_on_floor()
@@ -115,7 +155,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if global_position.y < -35.0:
 		respawn()
-	if shift_locked:
+	if shift_locked or first_person:
 		avatar.rotation.y = lerp_angle(avatar.rotation.y, camera_yaw, minf(delta * 16.0, 1.0))
 	elif direction.length_squared() > 0.01:
 		var facing := atan2(-direction.x, -direction.z)
@@ -134,10 +174,11 @@ func _physics_process(delta: float) -> void:
 	_update_camera()
 
 func _update_camera() -> void:
-	var shoulder := Vector3(0.8, 0, 0).rotated(Vector3.UP, camera_yaw) if shift_locked else Vector3.ZERO
-	camera_pivot.position = Vector3(0, 2.1, 0) + shoulder
+	var shoulder := Vector3(0.8, 0, 0).rotated(Vector3.UP, camera_yaw) if shift_locked and not first_person else Vector3.ZERO
+	var height := FIRST_PERSON_EYE_HEIGHT if first_person else 2.1
+	camera_pivot.position = Vector3(0, height, 0) + shoulder
 	camera_pivot.rotation = Vector3(camera_pitch, camera_yaw, 0)
-	arm.spring_length = camera_distance
+	arm.spring_length = 0.0 if first_person else camera_distance
 
 func respawn() -> void:
 	global_position = Vector3(0, 0.2, 0)
@@ -147,9 +188,11 @@ func respawn() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_window_focused = false
 		orbit_dragging = false
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN and is_node_ready():
+		_window_focused = true
 		update_mouse_mode()
 
 func _play_step(pitch: float) -> void:

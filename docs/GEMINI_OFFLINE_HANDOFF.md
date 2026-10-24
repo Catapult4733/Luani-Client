@@ -1,5 +1,18 @@
 # Gemini 3.8 Flash High — Luani Linux offline verification handoff
 
+## Current update: 0.3.0-offline.2 — camera and owner-supplied icons
+
+The owner reported the preceding preview working. This update itself has not been executed by Hermes. In addition to the full checklist below, prioritize:
+
+- Verify unlimited horizontal rotation and approximately 89-degree up/down look in orbit and first person. Keep the anti-flip guard; do not restore the old asymmetric pitch limits.
+- Scroll fully inward: enter first person at head height, hide the local body/name tag, show a centered reticle and capture the mouse without RMB. Looking must continue after releasing RMB. Scroll outward once: restore third person and the body/name, preserving yaw/pitch and any enabled shift-lock state.
+- Disable the shift-lock setting, then enter first person again: first-person capture must still work. Ctrl must not disable first person or release its mouse capture.
+- In first person, open Esc/menu, focus/submit/cancel chat, use Leave confirmation/cancel, respawn and switch application focus. UI must release capture while interacting and restore it only when gameplay regains focus. No movement/camera input may leak through text fields or overlays.
+- Confirm the owner's exact SVGs display on menu/chat/leaderboard buttons with hover/open highlights. They are loaded directly with Image.load_svg_from_string, not imported textures: check fresh source-runtime installation without editor caches. Menu is the galaxy, chat is the speech bubbles, leaderboard is the trophy/podium.
+- Inspect the redesigned HUD at 800×600, 1280×720 and a larger desktop: top-left icons, top-right leaderboard, centered mode badge, bottom controls strip, readable chat/leaderboard, dimmed menu, styled tabs and settings. Resume/Respawn/Leave must stay visible outside the scrolling settings page. Check that menu/avatar/confirmation overlays remain above gameplay HUD.
+- Preserve existing local settings and chat behavior. Test updating from the previous installed release using the SAME installer command, without deleting user settings or old releases. Record real results; do not claim a cross-version update passed if no old installation was available.
+
+
 You are testing a deliberately runtime-untested Luani offline client on the owner's development computer. Hermes implemented and published it but, at the user's explicit request, DID NOT run Godot, an exporter, the game, headless execution or gameplay tests. Do not treat static syntax/package checks as runtime evidence.
 
 ## Source and scope
