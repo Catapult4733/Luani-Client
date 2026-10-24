@@ -1,6 +1,6 @@
 # Luani Client — Linux offline preview
 
-Version: **0.3.0-offline.2**. The owner reported the previous preview working. This camera/UI update has not been gameplay-tested by Hermes: no Godot, exporter or headless game was launched. Gemini must verify these changes on a Linux desktop.
+Version: **0.3.0-offline.3**. This compact-UI update has not been gameplay-tested by Hermes: no Godot, exporter or headless game was launched. Gemini must verify these changes on a Linux desktop.
 
 ## Install / update
 
@@ -14,7 +14,7 @@ Run the same command to update. Installation does not start the game. Launch **L
 
 Requires 64-bit Linux (x86_64 or ARM64), a working graphical desktop/OpenGL driver, Python 3, curl, and normal system libraries required by Godot 4.7.2. A 32-bit OS is unsupported. ARM64 packaging is not a claim that a particular Raspberry Pi graphics setup has been tested.
 
-The installer downloads a pinned native Godot runtime bundled with the project source. This packaging avoids running an exporter or game during delivery; no separate Godot installation is needed. The supplied menu/chat/leaderboard SVGs are decoded directly at runtime, without editor imports or a preexisting import cache. The baseplate, character, animations and sounds are procedural. No creator scripts or legacy online modules are loaded.
+The installer downloads a pinned native Godot runtime bundled with the project source. This packaging avoids running an exporter or game during delivery; no separate Godot installation is needed. Original menu/chat/list line SVGs are decoded directly at runtime, without editor imports or a preexisting import cache. Reference screenshots are layout inspiration only, not shipped artwork. The baseplate, character, animations and sounds are procedural. No creator scripts or legacy online modules are loaded.
 
 ## Implemented controls and UI
 
@@ -25,7 +25,9 @@ The installer downloads a pinned native Godot runtime bundled with the project s
 - Esc/menu and focused chat release mouse capture; closing the overlay restores the active camera mode. Focus loss also releases capture. Esc: menu/resume.
 - Original six-part block humanoid with idle, walk, run and airborne procedural animation, blinking and synthesized movement sounds. No Roblox assets, logos or animation files are used.
 - Empty gridded baseplate; falling off its edge respawns you.
-- Left: the owner's supplied galaxy/menu and chat SVG buttons, with hover/open-state outlines. The supplied leaderboard SVG sits on the right. The HUD has a camera-mode badge, compact controls strip, translucent rounded panels, clearer settings groups and persistent Resume/Respawn/Leave actions outside the scrolling tabs.
+- Left: compact original menu/chat line icons; right: the list/leaderboard icon. Toolbar hit targets are 36×32 logical pixels with 20px icons. The top Luani/baseplate/camera badge and bottom controls strip are removed.
+- UI stretching is disabled. Resizing the window moves centered/right-anchored panels without scaling their dimensions or fonts. Menu: 560×452; chat: 300×220; leaderboard: 220×76; avatar viewer: 360×420. These fit the supported minimum 800×600 window. Normal operating-system DPI scaling is distinct from automatic window-relative scaling.
+- The neutral dark menu uses Players/Settings tabs with an active underline and a fixed bottom action row: Leave, Respawn, Resume. The compact leaderboard shows one real local name, not fake players, scores or badges.
 - Enter or `/` focuses chat. Messages display `Username : message`. Chat is local-only, unmoderated, non-persistent and capped to recent messages for memory use; text is not interpreted as markup.
 - Right: leaderboard toggle, also available with Tab. It lists the actual single local player, without fake scores or invented users.
 - Menu Settings: shift-lock permission, master game volume, editable offline display name, Resume, Respawn and confirmed Leave.

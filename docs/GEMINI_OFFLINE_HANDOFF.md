@@ -1,59 +1,50 @@
-# Gemini 3.8 Flash High — Luani Linux offline verification handoff
+# Gemini 3.8 Flash High — Luani 0.3.0-offline.3 verification
 
-## Current update: 0.3.0-offline.2 — camera and owner-supplied icons
+Hermes implemented and published this compact-UI update WITHOUT launching Godot, an exporter, the installer or a headless game. Source parsing and distribution checks are not runtime evidence. You may run the client on the owner's development computer; do not access Pi/Vaultwarden, Docker, backend, Cloudflare, production website settings or credentials, and do not push/deploy.
 
-The owner reported the preceding preview working. This update itself has not been executed by Hermes. In addition to the full checklist below, prioritize:
-
-- Verify unlimited horizontal rotation and approximately 89-degree up/down look in orbit and first person. Keep the anti-flip guard; do not restore the old asymmetric pitch limits.
-- Scroll fully inward: enter first person at head height, hide the local body/name tag, show a centered reticle and capture the mouse without RMB. Looking must continue after releasing RMB. Scroll outward once: restore third person and the body/name, preserving yaw/pitch and any enabled shift-lock state.
-- Disable the shift-lock setting, then enter first person again: first-person capture must still work. Ctrl must not disable first person or release its mouse capture.
-- In first person, open Esc/menu, focus/submit/cancel chat, use Leave confirmation/cancel, respawn and switch application focus. UI must release capture while interacting and restore it only when gameplay regains focus. No movement/camera input may leak through text fields or overlays.
-- Confirm the owner's exact SVGs display on menu/chat/leaderboard buttons with hover/open highlights. They are loaded directly with Image.load_svg_from_string, not imported textures: check fresh source-runtime installation without editor caches. Menu is the galaxy, chat is the speech bubbles, leaderboard is the trophy/podium.
-- Inspect the redesigned HUD at 800×600, 1280×720 and a larger desktop: top-left icons, top-right leaderboard, centered mode badge, bottom controls strip, readable chat/leaderboard, dimmed menu, styled tabs and settings. Resume/Respawn/Leave must stay visible outside the scrolling settings page. Check that menu/avatar/confirmation overlays remain above gameplay HUD.
-- Preserve existing local settings and chat behavior. Test updating from the previous installed release using the SAME installer command, without deleting user settings or old releases. Record real results; do not claim a cross-version update passed if no old installation was available.
-
-
-You are testing a deliberately runtime-untested Luani offline client on the owner's development computer. Hermes implemented and published it but, at the user's explicit request, DID NOT run Godot, an exporter, the game, headless execution or gameplay tests. Do not treat static syntax/package checks as runtime evidence.
-
-## Source and scope
+## Source and installation
 
 Repository: https://github.com/Catapult4733/Luani-Client
-Branch: `feat/linux-offline-client` (record exact commit before testing).
-New project: `offline/project.godot`; entry scene `offline/main.tscn`.
-Code: `offline/scripts/{session_state,avatar,player,hud,world}.gd`.
-Distribution: `distribution/{install.sh,luani,package_linux.py,release.json,icon.svg}`.
-Do not modify or launch historical `client_and_studio/`, `server_daemon/`, `web_backend/`, nested clones or old production-linked scripts.
+Branch: `feat/linux-offline-client`; record the exact SHA before testing.
+Project: `offline/project.godot`, entry `offline/main.tscn`.
+Changed code: `offline/scripts/hud.gd`, `offline/project.godot`, `offline/assets/ui/compact/`.
+Camera implementation: `offline/scripts/player.gd` is unchanged from the preceding release.
+Do not launch historical client/Studio, daemon or web_backend code.
 
-## Permissions / boundaries
+Record actual Linux distribution, architecture, GPU/driver and desktop session. Ask before installing system dependencies, modifying graphics drivers or deleting existing installations. Do not call Windows-only checks Linux verification.
 
-The user explicitly delegates game execution/testing to you on this development computer. Prefer a real Linux graphical desktop; do not call Windows-only testing “Linux passed”. Ask before installing system dependencies, changing graphics drivers or deleting any existing installation. Do not access Pi/Vaultwarden, configure Docker/firewalls/tunnels, alter Supabase, publish GitHub releases, change the website or use credentials. Hermes owns privileged publishing/deployment.
+Quit the old client, inspect the installer, then update as the normal desktop user:
 
-## Installation and initial launch
+```bash
+curl -fsSL https://new.luani.fyi/client/install.sh | bash
+```
 
-1. Record Linux distribution, CPU architecture, desktop session, GPU/driver, exact source SHA and published manifest/version. Never invent hardware or output.
-2. Inspect `https://new.luani.fyi/client/install.sh`, then install as the normal desktop user using:
-   `curl -fsSL https://new.luani.fyi/client/install.sh | bash`
-3. Confirm that the installer DOES NOT launch Godot or a game. Check the app-menu entry, `~/.local/bin/luani`, current symlink, package receipt, architecture and executable permissions.
-4. Launch the app-menu entry or `~/.local/bin/luani` and capture actual game output/errors. This preview uses a bundled official Godot 4.7.2 binary with `--path` to a source-runtime project; it was not exported/PCK-packed. Confirm a fresh installation can load all GDScript classes/resources without editor imports or a preexisting `.godot` cache. If not, report and fix the source/runtime packaging; do not claim success based on a warmed editor cache.
-5. For source-only fixes, run the matching bundled engine against the checkout's `offline/` directory, or use a confirmed matching Godot installation. Record exact commands. Do not silently replace the official runtime with a different version.
+Confirm installation never auto-launches; then launch Luani Client from the app menu or `~/.local/bin/luani`. The bundled runtime is official Godot 4.7.2 with a source-runtime project, not an exported PCK. Test fresh resource/script loading without relying on editor import caches.
 
-## Acceptance checklist (real execution required)
+## Priority: compact fixed-size UI
 
-- Launch opens an empty gridded baseplate directly, not the old launcher/Studio or an invented online game.
-- Original six-part humanoid is visible, standing above the baseplate with correctly attached head/torso/arms/legs and face. Check idle, walk, run, jumping and falling animation; no detached body pieces or upside-down motion.
-- WASD is camera-relative. Space jumps only from the ground. Holding Shift runs faster and releasing it restores walking. Diagonal movement is not faster. Falling off respawns.
-- RMB orbit, wheel zoom, camera collision and pitch limits work. Ctrl toggles shoulder-camera shift lock and crosshair, without changing the run key.
-- Settings shift-lock toggle controls whether Ctrl is allowed. Disabling it while locked immediately unlocks. Merely enabling the setting does not force lock on.
-- Menu galaxy emoji and Chat button are on the left; Leaderboard button is on the right. Check window resize, 1280×720 and minimum-size layout, fonts/glyph fallback and keyboard focus.
-- Escape opens/resumes menu. Settings and Players tabs work. Resume, Respawn and Leave confirmation work. Cancelling Leave returns to the menu. Mouse capture returns correctly after overlays close and after focus loss/regain.
-- Menu/avatar overlays and focused text inputs prevent WASD, jump, run and camera motion from accidentally controlling the player. Shift lock must not make the menu unusable.
-- Volume changes actual synthesized footsteps/jump audio; zero mutes and restore works. Display name and shift-lock/volume preferences persist across restart, without credentials or network use.
-- Chat button toggles chat; Enter or `/` focuses it. Send by Enter and button. `Hello World` appears as `Username : Hello World`. Empty messages do not send. Text resembling BBCode/HTML is displayed literally. Closing/submitting chat releases keyboard capture. It is clearly local-only and has no profanity moderation; no remote message delivery is claimed.
-- Leaderboard toggles via button/Tab and shows only the one actual local player, without fake scores.
-- Players page shows the current local name; View avatar opens an animated independent preview and Back returns to Players. Block/Friend/Report are visibly disabled with truthful offline/self-action explanations. Do not fabricate peers to make them appear functional.
-- Confirm no gameplay HTTP, ENet, account login, voice capture, telemetry, daemon calls or old-domain requests originate from this project.
-- Run the same installer command again and confirm idempotence, preserved preferences and no auto-launch. Inspect safe archive extraction and atomic update logic; do NOT manufacture a fake live release or modify the production channel to simulate an update. If a true cross-version update cannot be tested, mark that explicitly unverified.
+The owner rejected the previous large circular icons, centered Luani/camera badge, bottom control strip and large purple menu/leaderboard. The new layout uses original neutral line icons and general screenshot-inspired hierarchy, NOT copied Roblox logos/assets.
 
-## Deliverables
+1. Confirm the Luani/offline-baseplate/camera badge and bottom control strip are completely absent. The center aiming dot may remain in first person/shift lock.
+2. Confirm original 20px menu/chat/list line icons in compact 36×32 logical-pixel hit targets. Old owner-designed circular icons must not display. Hover/open state should remain readable.
+3. Compare actual control rectangles at 800×600, 1280×720 and 1920×1080, while keeping OS DPI settings constant. Window resize must NOT scale fonts, icons, buttons or panel sizes. Anchored panels may move; text fields/sliders may fill their fixed parent. Normal OS DPI scaling is not the window-relative scaling the owner rejected.
+4. Intended fixed sizes: menu 560×452, chat 300×220, leaderboard 220×76, avatar viewer 360×420. Verify actual minimum-size/container behavior does not force them larger. Check long 24-character names; the leaderboard must clip/ellipsize rather than widen.
+5. Menu: flat neutral translucent dark panel, Players then Settings tabs with selected underline; default Settings page; compact Leave / Respawn / blue Resume bottom row always visible. No decorative heading, slogan or version footer. Test both tabs, settings scroll, keyboard focus and Escape/resume.
+6. Players: only the actual local name, View avatar, and truthful disabled Block/Friend/Report. Do not fabricate online players, cards, scores or friend activity. Back from the avatar viewer must select Players, now tab index 0.
+7. Leaderboard: compact top-right panel with Players header, count 1 and the local name, not the previous large card. Tab and the list icon must toggle it. Chat should stay compact with readable plain text and usable input/Send controls.
+8. Capture actual native-game screenshots at the tested sizes. Do not substitute an HTML mockup for a Godot screenshot. Report clipping, overlap, low contrast, platform font issues and mismatches to the requested compact style.
 
-Return: exact OS/hardware and source SHA; PASS/FAIL/NOT TESTED per checklist; reproduction steps and real logs for failures; screenshots at desktop/minimum sizes; minimal patches for straightforward fixes; changed-file list; remaining complex blockers; and what still needs Hermes publication. Do not push/deploy without the user's separate instruction. Preserve existing user data and old releases. Never synthesize passing logs or claim tests that were not executed.
+## Functional regression checks
+
+- Original six-part humanoid, procedural animations, empty baseplate, WASD, grounded Space jump, held Shift run and fall/respawn remain functional.
+- Camera: unrestricted horizontal look, approximately ±89° vertical guard, RMB orbit and collision. Full inward zoom enters eye-height first person, hides local avatar/name and captures mouse without RMB. Scroll outward returns to third person; Ctrl permission is independent of first-person capture.
+- Menus/chat/dialogs and application focus loss release mouse capture appropriately. Closing/resuming restores gameplay capture. No movement/look input should leak through text fields or overlays. Keep the reticle centered after window resize.
+- Settings: shift-lock permission, actual sound volume/mute, editable offline name and persistence across restart. Resume, Respawn and Leave confirmation/cancel work.
+- Chat: Enter or `/` focuses, button toggles, Enter/Send adds `Username : message`, empty messages ignored, markup literal. It is local-only, unmoderated and non-persistent. Closing/submitting must release typing focus correctly.
+- Avatar viewer remains animated and independent of the hidden local character in first person.
+- No runtime HTTP, ENet, login, telemetry, voice capture or legacy daemon integration is introduced.
+- Same-command reinstallation is idempotent; a real update from a previous installed version preserves preferences and old releases. If unavailable, mark cross-version update NOT TESTED rather than inventing a result.
+
+## Return
+
+Provide exact OS/hardware, source SHA/version, PASS/FAIL/NOT TESTED per item, measured UI sizes, real logs/screenshots, reproducible failures, minimal straightforward patches and a changed-file list. Leave privileged publication/deployment to Hermes. Never claim execution or a passing result that did not happen.
