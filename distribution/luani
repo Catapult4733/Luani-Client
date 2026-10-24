@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Bundle launcher; intentionally does not enable editor, server or URI modes.
+set -eu
+HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+exec "$HERE/engine/godot" --path "$HERE/game" -- "$@"
