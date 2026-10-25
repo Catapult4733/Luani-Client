@@ -24,4 +24,12 @@ Installer-only changes are published at the moving website installer URL and on 
 
 These are installer-function/MIME-backend checks, **not** an executed full installer, browser launch or gameplay test. Gemini owns actual owner-desktop acceptance.
 
+### Older xdg-utils versus GIO
+
+Some Ubuntu/GNOME installations can report the new `org.luani.Client.desktop` through `gio mime`, but still select the attempt-1 `luani-protocol.desktop` through `xdg-mime`. Older xdg-utils checks `Exec` with a `first_word` helper that does not parse quotes. Our previously generated `Exec="/absolute/path/to/luani" %u` was valid for GIO but failed that older executable lookup, which then fell through to the legacy `mimeinfo.cache`.
+
+The installer now generates `Exec=/usr/bin/env "/absolute/path/to/luani" %u` (or `/bin/env`): the first executable token is unquoted and valid for older xdg-utils, while the actual launcher argument stays safely quoted. This does not use shell evaluation or change authentication. The regression test generates the real desktop entry from installer source, includes an attempt-1 cache, and queries both GIO and an actual xdg-mime script. Set `LUANI_TEST_XDG_MIME` to its path when it is outside PATH. No URL/client is opened.
+
+After reinstalling, both `xdg-mime query default x-scheme-handler/luani` and `gio mime x-scheme-handler/luani` should identify `org.luani.Client.desktop`. A disagreement is diagnostic evidence, not a reason to keep logging out or blindly remove old programs.
+
 Reference: https://specifications.freedesktop.org/mime-apps/latest/

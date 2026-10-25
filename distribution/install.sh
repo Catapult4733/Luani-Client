@@ -152,6 +152,17 @@ def configure_luani_protocol(applications):
     return {'removed_handlers': sorted(handlers), 'changed_files': [str(path) for path, _, _ in changes]}
 
 
+def desktop_exec_line(executable):
+    # Older xdg-utils first_word cannot parse a quoted executable. An unquoted
+    # fixed env path works there; GIO still parses the launcher as a quoted arg.
+    env = next((path for path in ('/usr/bin/env', '/bin/env')
+                if os.path.isfile(path) and os.access(path, os.X_OK)), None)
+    if env is None:
+        raise RuntimeError('The Linux env utility is required to register the desktop launcher.')
+    quoted = '"' + executable.replace('\\','\\\\').replace('"','\\"').replace('`','\\`').replace('$','\\$').replace('%','%%') + '"'
+    return env + ' ' + quoted
+
+
 def main():
     if len(sys.argv) != 1:
         raise RuntimeError('No arguments are needed. Run the same command to install or update.')
@@ -301,7 +312,7 @@ def main():
     executable = str(launcher)
     if any(c in executable for c in '\n\r'):
         raise RuntimeError('Unsupported newline in installation path.')
-    desktop_exec = '"' + executable.replace('\\','\\\\').replace('"','\\"').replace('`','\\`').replace('$','\\$').replace('%','%%') + '"'
+    desktop_exec = desktop_exec_line(executable)
     desktop_text = '[Desktop Entry]\nType=Application\nName=Luani Client\nComment=Luani multiplayer client\nExec=' + desktop_exec + ' %u\nIcon=' + str(current / 'icon.svg') + '\nTerminal=false\nCategories=Game;\nMimeType=x-scheme-handler/luani;\nStartupWMClass=Luani Client\nX-Luani-Managed=true\n'
     atomic_text(desktop, desktop_text)
     # Reset on BOTH install and update, including an already-installed release.
@@ -313,8 +324,9 @@ def main():
         result = subprocess.run(['xdg-mime', 'query', 'default', 'x-scheme-handler/luani'], check=False,
                                 capture_output=True, text=True, timeout=15)
         if result.returncode == 0 and result.stdout.strip() != 'org.luani.Client.desktop':
-            raise RuntimeError('Client installed, but the desktop still reports another luani:// handler. '
-                               'Restart your desktop session and rerun this command.')
+            raise RuntimeError('Client installed, but xdg-mime did not select org.luani.Client.desktop. '
+                               'Compare xdg-mime query default x-scheme-handler/luani with '
+                               'gio mime x-scheme-handler/luani; report the handler names, not a launch ticket.')
         if result.returncode:
             print('Protocol settings were written, but xdg-mime could not verify the desktop association.')
     print('Configured luani:// for this user; removed ' + str(len(association['removed_handlers'])) + ' competing associations.')

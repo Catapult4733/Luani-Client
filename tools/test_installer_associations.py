@@ -161,6 +161,49 @@ print(json.dumps({'default':default,'choices':sorted(choices)}))
         self.reset()
         self.assertEqual(query(), {'default': DESKTOP, 'choices': [DESKTOP]})
 
+    def test_xdg_mime_accepts_generated_launcher_instead_of_legacy_cache(self):
+        import ctypes
+        import shutil
+        import subprocess
+        xdg_mime = os.environ.get('LUANI_TEST_XDG_MIME') or shutil.which('xdg-mime')
+        if not xdg_mime:
+            self.skipTest('xdg-mime is not installed; set LUANI_TEST_XDG_MIME to its shell script')
+        launcher = self.home / '.local/bin/luani'
+        launcher.parent.mkdir(parents=True)
+        launcher.write_text('#!/bin/sh\nexit 99\n')
+        launcher.chmod(0o755)
+        source = SOURCE.read_text().split("<<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
+        main = next(node for node in ast.parse(source).body
+                    if isinstance(node, ast.FunctionDef) and node.name == 'main')
+        assignments: list[ast.stmt] = [node for node in main.body if isinstance(node, ast.Assign)
+                                      and any(isinstance(target, ast.Name) and target.id in ('desktop_exec', 'desktop_text')
+                                              for target in node.targets)]
+        namespace = dict(self.functions)
+        namespace.update(executable=str(launcher), launcher=launcher,
+                         current=self.home / '.local/share/luani-client/current')
+        exec(compile(ast.Module(body=assignments, type_ignores=[]), str(SOURCE), 'exec'), namespace)
+        (self.apps / DESKTOP).write_text(namespace['desktop_text'])
+        (self.apps / 'luani-protocol.desktop').write_text(
+            '[Desktop Entry]\nType=Application\nName=Attempt 1 client\nExec=/bin/true %u\nMimeType=' + MIME + ';\n')
+        (self.apps / 'mimeinfo.cache').write_text('[MIME Cache]\n' + MIME + '=luani-protocol.desktop;\n')
+        os.environ['XDG_CURRENT_DESKTOP'] = 'ubuntu:GNOME'
+        os.environ['XDG_SESSION_DESKTOP'] = 'ubuntu'
+        self.reset()
+        # Match the user's split: GIO accepts a quoted path, old xdg-utils may not.
+        gio = ctypes.CDLL('libgio-2.0.so.0')
+        gio.g_app_info_get_default_for_uri_scheme.argtypes = [ctypes.c_char_p]
+        gio.g_app_info_get_default_for_uri_scheme.restype = ctypes.c_void_p
+        gio.g_app_info_get_id.argtypes = [ctypes.c_void_p]
+        gio.g_app_info_get_id.restype = ctypes.c_char_p
+        app = gio.g_app_info_get_default_for_uri_scheme(b'luani')
+        self.assertTrue(app, 'Generated desktop entry must be valid for GIO')
+        self.assertEqual(gio.g_app_info_get_id(app).decode(), DESKTOP)
+        query = subprocess.run(['/bin/sh', xdg_mime, 'query', 'default', MIME],
+                               capture_output=True, text=True, timeout=15)
+        self.assertEqual(query.returncode, 0, query.stderr)
+        self.assertEqual(query.stdout.strip(), DESKTOP,
+                         'xdg-mime rejected our generated launcher and selected the attempt-1 cache')
+
     def test_install_and_reinstall_path_calls_the_reset(self):
         source = SOURCE.read_text().split("<<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
         tree = ast.parse(source)
