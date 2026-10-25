@@ -67,7 +67,7 @@ def main():
         target = args.cache / (tag + '-' + filename)
         download(f'https://raw.githubusercontent.com/godotengine/godot/{tag}/{filename}', target)
         notices[filename] = target
-    manifest = {'schema':1,'version':version,'channel':'offline-preview','runtime_verification':'not-run-by-request','engine':tag,'linux':{}}
+    manifest = {'schema':1,'version':version,'channel':'multiplayer-preview','runtime_verification':'not-run-by-request','client_gameplay_verification':'not-run-by-request','engine':tag,'linux':{}}
     for arch, definition in CONFIG['linux'].items():
         asset = assets[definition['asset']]
         expected = definition['sha256']
@@ -97,6 +97,7 @@ def main():
             shutil.copy2(ROOT / 'distribution/luani', bundle / 'luani')
             (bundle / 'luani').chmod(0o755)
             shutil.copy2(ROOT / 'distribution/icon.svg', bundle / 'icon.svg')
+            shutil.copy2(ROOT / 'distribution/protocol_launch.py', bundle / 'protocol_launch.py')
             shutil.copy2(ROOT / 'offline/README.md', bundle / 'README.md')
             for filename, source in notices.items():
                 shutil.copy2(source, bundle / ('GODOT-' + filename))

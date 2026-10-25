@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Approved Figma overlays + native HUD controls. Inventory is session-only and offline.
+## Fixed-size Figma UI; online identity, roster and inventory are server-owned.
 const UI = preload("res://scripts/ui_theme.gd")
 const Widgets = preload("res://scripts/ui_controls.gd")
 const AvatarScript = preload("res://scripts/avatar.gd")
@@ -17,7 +17,7 @@ var leaderboard_panel: Panel
 var avatar_panel: Panel
 var inventory_panel: Panel
 var dialog_panel: Panel
-var avatar_preview: Node3D
+var avatar_preview: AvatarScript
 var crosshair: Label
 var _menu_button: Button
 var _chat_button: Button
@@ -27,7 +27,9 @@ var _settings_page: Control
 var _players_page: Control
 var _players_tab: Button
 var _settings_tab: Button
-var _name_input: LineEdit
+var _roster_list: VBoxContainer
+var _leaderboard_list: VBoxContainer
+var _leaderboard_count: Label
 var _volume_label: Label
 var _roster_name: Label
 var _leaderboard_name: Label
@@ -80,6 +82,7 @@ func _ready() -> void:
 	SessionState.preferences_changed.connect(_preferences_updated)
 	inventory.changed.connect(_refresh_inventory)
 	world.status_changed.connect(_show_status)
+	world.roster_changed.connect(_refresh_roster)
 	player.shift_lock_changed.connect(func(_active: bool) -> void: _update_controls())
 	player.camera_mode_changed.connect(func(_active: bool) -> void: _update_controls())
 	root.resized.connect(_layout)
@@ -87,6 +90,7 @@ func _ready() -> void:
 	_refresh_inventory()
 	_layout()
 	_update_controls()
+	_refresh_roster()
 
 func _place(node: Control, parent: Control, rect: Rect2) -> void:
 	parent.add_child(node)
@@ -197,15 +201,11 @@ func _build_chat() -> void:
 	send.add_theme_stylebox_override("normal", UI.style(UI.ACCENT_SOFT, 6, Color.TRANSPARENT))
 
 func _build_leaderboard() -> void:
-	leaderboard_panel = _panel(root, "LeaderboardPanel", Vector2(240, 112))
+	leaderboard_panel = _panel(root, "LeaderboardPanel", Vector2(240, 280))
 	_text(leaderboard_panel, "Players", Rect2(12, 12, 180, 18), 13, UI.INK, 600)
-	var count := _text(leaderboard_panel, "1", Rect2(210, 12, 18, 18), 11, UI.MUTED)
-	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_asset(leaderboard_panel, "avatar-leaderboard", Rect2(12, 43, 26, 36))
-	_leaderboard_name = _text(leaderboard_panel, SessionState.display_name, Rect2(48, 43, 126, 19), 13, UI.INK, 600)
-	_bounded(_leaderboard_name)
-	_text(leaderboard_panel, "Local player", Rect2(48, 62, 126, 17), 11, UI.MUTED)
-	_text(leaderboard_panel, "YOU", Rect2(184, 54, 34, 16), 10, UI.ACCENT, 700)
+	_leaderboard_count = _text(leaderboard_panel, "0", Rect2(202, 12, 26, 18), 11, UI.MUTED)
+	_leaderboard_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_leaderboard_list = _scroll_roster(leaderboard_panel, Rect2(12, 42, 216, 224))
 
 func _build_menu() -> void:
 	menu_panel = _panel(root, "MenuPanel", Vector2(560, 452), true)
@@ -260,31 +260,41 @@ func _build_settings() -> void:
 		_volume_label.text = "%d%%" % int(value)
 	)
 	slider.drag_ended.connect(func(_changed: bool) -> void: SessionState.save_preferences())
-	_text(_settings_page, "Display name", Rect2(20, 192, 520, 20), 14, UI.INK, 600)
-	_name_input = LineEdit.new()
-	_name_input.text = SessionState.display_name
-	_name_input.max_length = 24
-	_place(_name_input, _settings_page, Rect2(20, 218, 520, 36))
-	_name_input.text_submitted.connect(SessionState.set_display_name)
-	_name_input.focus_exited.connect(func() -> void: SessionState.set_display_name(_name_input.text))
-	_text(_settings_page, "Saved on this device. No account needed.", Rect2(20, 260, 520, 17), 11, UI.MUTED)
+	_text(_settings_page, "ACCOUNT" if SessionState.online else "OFFLINE PRACTICE", Rect2(20, 194, 520, 18), 10, UI.MUTED, 700)
+	var identity := _text(_settings_page, SessionState.display_name, Rect2(20, 222, 520, 26), 16, UI.INK, 600)
+	_bounded(identity)
+	_text(_settings_page, "Your name comes from your Luani account.\nManage your account on new.luani.fyi." if SessionState.online else "Join from the website to use your account.\nOnly controls and audio are saved on this device.", Rect2(20, 262, 520, 38), 12, UI.MUTED)
 
 func _build_players() -> void:
 	_text(_players_page, "IN THIS SESSION", Rect2(20, 20, 520, 16), 10, UI.MUTED, 700)
-	_surface(_players_page, Rect2(20, 52, 520, 86), 10)
-	_asset(_players_page, "avatar-roster", Rect2(34, 67, 40, 55))
-	_roster_name = _text(_players_page, SessionState.display_name, Rect2(88, 74, 278, 21), 15, UI.INK, 600)
-	_bounded(_roster_name)
-	_text(_players_page, "You · Local player", Rect2(88, 97, 278, 17), 11, UI.MUTED)
-	_button(_players_page, "View avatar", Rect2(386, 77, 140, 36), _show_avatar)
-	var labels := ["Friend request", "Block", "Report"]
-	for index in range(labels.size()):
-		var b := _button(_players_page, labels[index], Rect2(20 + index * 176, 154, 168, 36), func() -> void: pass)
-		b.disabled = true
-		b.add_theme_color_override("font_disabled_color", UI.INK)
-		b.modulate.a = 0.38
-		b.tooltip_text = "Unavailable offline. You cannot use this on yourself."
-	_text(_players_page, "Online actions are unavailable in this offline preview.\nOnly your local player is here.", Rect2(20, 206, 520, 40), 12, UI.MUTED)
+	_roster_list = _scroll_roster(_players_page, Rect2(20, 52, 520, 192))
+	_button(_players_page, "Your avatar", Rect2(20, 260, 140, 36), _show_avatar)
+	_text(_players_page, "Manage friends on the website.\nIn-game reporting is not implemented.", Rect2(180, 260, 360, 36), 11, UI.MUTED)
+
+func _scroll_roster(parent: Control, rect: Rect2) -> VBoxContainer:
+	var scroll := ScrollContainer.new()
+	_place(scroll, parent, rect)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 6)
+	scroll.add_child(list)
+	return list
+
+func _refresh_roster() -> void:
+	if _roster_list == null or _leaderboard_list == null: return
+	var people: Array = world.roster()
+	_leaderboard_count.text = str(people.size())
+	for list in [_roster_list, _leaderboard_list]:
+		for child in list.get_children(): list.remove_child(child); child.queue_free()
+		for person in people:
+			var row := HBoxContainer.new(); row.custom_minimum_size.y = 34
+			var name_label := UI.label(str(person.get("username", "Player")), 13, UI.INK, 600)
+			name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_bounded(name_label); row.add_child(name_label)
+			if not SessionState.online or str(person.get("key", "")) == str(SessionState.profile.get("public_id", "")):
+				row.add_child(UI.label("YOU", 10, UI.ACCENT, 700))
+			list.add_child(row)
 
 func _select_page(settings: bool) -> void:
 	_settings_page.visible = settings
@@ -327,6 +337,7 @@ func _build_avatar_view() -> void:
 	light.light_energy = 1.3
 	preview_root.add_child(light)
 	avatar_preview = AvatarScript.new()
+	avatar_preview.appearance = SessionState.avatar
 	preview_root.add_child(avatar_preview)
 	var camera := Camera3D.new()
 	camera.position = Vector3(0, 1.55, -6.4)
@@ -350,7 +361,7 @@ func _build_inventory() -> void:
 	inventory_panel = _panel(root, "InventoryPanel", Vector2(560, 452), true)
 	_text(inventory_panel, "Inventory", Rect2(20, 16, 480, 26), 20, UI.INK, 700)
 	_small_icon(inventory_panel, "close", Rect2(520, 12, 32, 32), _close_panels)
-	_text(inventory_panel, "YOUR ITEMS · SESSION ONLY", Rect2(20, 76, 420, 16), 10, UI.MUTED, 700)
+	_text(inventory_panel, "YOUR ITEMS · SAVED TO THIS GAME" if SessionState.online else "YOUR ITEMS · SESSION ONLY", Rect2(20, 76, 420, 16), 10, UI.MUTED, 700)
 	_item_count = _text(inventory_panel, "0 / 18", Rect2(470, 76, 70, 18), 12, UI.MUTED)
 	_item_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	for index in range(inventory.CAPACITY):
@@ -472,7 +483,6 @@ func _release_focus() -> void:
 
 func _close_panels() -> void:
 	_release_focus()
-	SessionState.set_display_name(_name_input.text)
 	for panel in [menu_panel, avatar_panel, inventory_panel, dialog_panel]: panel.hide()
 	menu_dimmer.hide()
 	_update_controls()
@@ -482,7 +492,6 @@ func _toggle_menu() -> void:
 		_close_panels()
 	else:
 		_close_panels()
-		_name_input.text = SessionState.display_name
 		menu_panel.show()
 		_update_controls()
 
@@ -534,7 +543,7 @@ func _show_dialog(action: String) -> void:
 	menu_panel.hide()
 	_dialog_action = action
 	_dialog_title.text = "Leave this game?" if action == "leave" else "Start fresh?"
-	_dialog_copy.text = "Your settings are saved. Local chat and items\nclear when you leave." if action == "leave" else "Your character returns to the center\nof the baseplate. Items stay in your bag."
+	_dialog_copy.text = ("Your game inventory is saved by the server.\nLocal notes clear when you leave." if SessionState.online else "Your settings are saved. Local chat and items\nclear when you leave.") if action == "leave" else "Your character returns to the center\nof the baseplate. Items stay in your bag."
 	_dialog_confirm.text = "Leave game" if action == "leave" else "Respawn"
 	var fill := UI.DANGER if action == "leave" else UI.ACCENT
 	for state: String in ["normal", "hover", "pressed"]:
@@ -552,14 +561,14 @@ func _cancel_dialog() -> void:
 func _confirm_dialog() -> void:
 	if _dialog_action == "leave":
 		SessionState.save_preferences()
+		await world.leave_game()
 		get_tree().quit()
 	else:
 		player.respawn()
 		_close_panels()
 
 func _preferences_updated() -> void:
-	_roster_name.text = SessionState.display_name
-	_leaderboard_name.text = SessionState.display_name
+	_refresh_roster()
 	_avatar_name.text = SessionState.display_name
 
 func _inspect_slot(index: int) -> void:

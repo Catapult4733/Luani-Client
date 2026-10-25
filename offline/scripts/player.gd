@@ -34,6 +34,9 @@ var _held_model: Node3D
 var _view_model: Node3D
 var _swing_remaining: float = 0.0
 var _lantern_on: bool = true
+var network_driver
+var _network_clock: float = 0.0
+var _network_jump: bool = false
 
 func _ready() -> void:
 	collision_layer = 2
@@ -47,6 +50,7 @@ func _ready() -> void:
 	collision.position.y = 1.53
 	add_child(collision)
 	avatar = AvatarScript.new()
+	avatar.appearance = SessionState.avatar
 	add_child(avatar)
 	_name_tag = Label3D.new()
 	_name_tag.text = SessionState.display_name
@@ -151,11 +155,17 @@ func _physics_process(delta: float) -> void:
 	if not input_blocked and _window_focused:
 		movement = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 		if grounded and Input.is_action_just_pressed("jump"):
+			_network_jump = true
 			velocity.y = JUMP_SPEED * (1.5 if equipped_item_id == "spring_coil" else 1.0)
 			_play_step(1.5)
 	var direction := Vector3(movement.x, 0, movement.y).rotated(Vector3.UP, camera_yaw)
 	var sprinting := not input_blocked and _window_focused and Input.is_action_pressed("sprint") and movement.length() > 0.1
 	var speed := RUN_SPEED if sprinting else WALK_SPEED
+	_network_clock -= delta
+	if network_driver != null and _network_clock <= 0:
+		_network_clock = 1.0 / 30.0
+		network_driver.send_input(direction, camera_yaw, sprinting, _network_jump)
+		_network_jump = false
 	var acceleration := 38.0 if direction.is_zero_approx() else 28.0
 	velocity.x = move_toward(velocity.x, direction.x * speed, acceleration * delta)
 	velocity.z = move_toward(velocity.z, direction.z * speed, acceleration * delta)
@@ -188,6 +198,9 @@ func _update_camera() -> void:
 	arm.spring_length = 0.0 if first_person else camera_distance
 
 func respawn() -> void:
+	if network_driver != null:
+		network_driver.action("respawn")
+		return
 	global_position = Vector3(0, 0.2, 0)
 	velocity = Vector3.ZERO
 	avatar.motion_speed = 0.0
@@ -247,6 +260,16 @@ func toggle_lantern() -> bool:
 				material.emission_enabled = _lantern_on
 				material.albedo_color = Color("f0cd8d") if _lantern_on else Color("685c49")
 	return _lantern_on
+
+func set_lantern_state(value: bool) -> void:
+	if _lantern_on != value: toggle_lantern()
+
+func reconcile(position_value: Vector3, velocity_value: Vector3) -> void:
+	if global_position.distance_to(position_value) > 2.0:
+		global_position = position_value
+		velocity = velocity_value
+	else:
+		global_position = global_position.lerp(position_value, 0.15)
 
 func _sync_tool_visibility() -> void:
 	if is_instance_valid(_held_model):

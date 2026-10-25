@@ -6,6 +6,7 @@ var motion_speed: float = 0.0
 var airborne: bool = false
 var vertical_speed: float = 0.0
 var running: bool = false
+var appearance: Dictionary = {}
 var holding_tool: bool = false
 var tool_swing: float = 0.0
 var _phase: float = 0.0
@@ -20,12 +21,12 @@ var right_leg: Node3D
 var _eyes: Array[MeshInstance3D] = []
 
 func _ready() -> void:
-	var cloth := _material(Color("424b69"))
-	var sleeves := _material(Color("e6e8ef"))
-	var trousers := _material(Color("33384c"))
-	var skin := _material(Color("d6b49a"))
+	var cloth := _material(_appearance_color("cloth", "424b69"))
+	var sleeves := _material(_appearance_color("sleeves", "e6e8ef"))
+	var trousers := _material(_appearance_color("trousers", "33384c"))
+	var skin := _material(_appearance_color("skin", "d6b49a"))
 	var ink := _material(Color("292b39"))
-	var accent := _material(Color("c1adff"))
+	var accent := _material(_appearance_color("accent", "c1adff"))
 	torso = _part("Torso", Vector3(0, 1.70, 0), Vector3(1.02, 1.12, 0.58), Vector3.ZERO, cloth)
 	head = _part("Head", Vector3(0, 2.66, 0), Vector3(0.74, 0.74, 0.70), Vector3.ZERO, skin)
 	left_arm = _part("LeftArm", Vector3(-0.75, 2.19, 0), Vector3(0.43, 1.14, 0.52), Vector3(0, -0.52, 0), sleeves)
@@ -57,6 +58,10 @@ func _material(color: Color) -> StandardMaterial3D:
 	material.albedo_color = color
 	material.roughness = 0.9
 	return material
+
+func _appearance_color(key: String, fallback: String) -> Color:
+	var value := str(appearance.get(key, fallback))
+	return Color.from_string("#" + value, Color(fallback)) if value.length() == 6 else Color(fallback)
 
 func _box(size: Vector3, material: Material) -> MeshInstance3D:
 	var piece := MeshInstance3D.new()

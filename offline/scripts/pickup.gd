@@ -1,4 +1,5 @@
 extends Node3D
+var network_id: String = ""
 ## Non-solid pickup: selection is distance/line-of-sight based, collection is explicit E.
 const Visual = preload("res://scripts/item_visual.gd")
 const Catalog = preload("res://scripts/item_catalog.gd")

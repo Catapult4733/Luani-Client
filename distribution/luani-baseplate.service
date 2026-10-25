@@ -1,0 +1,31 @@
+[Unit]
+Description=Luani first-party Baseplate multiplayer
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/username/luani-multiplayer/current/game
+EnvironmentFile=/home/username/luani-multiplayer/server.env
+ExecStart=/home/username/luani-multiplayer/current/engine/godot --headless --path /home/username/luani-multiplayer/current/game -- --server
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=tmpfs
+BindReadOnlyPaths=/home/username/luani-multiplayer
+BindPaths=/home/username/luani-multiplayer/state
+ReadWritePaths=/home/username/luani-multiplayer/state
+InaccessiblePaths=-/run/user/1000/docker.sock -/var/run/docker.sock -/run/tailscale -/etc/playit
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+TasksMax=64
+MemoryMax=768M
+CPUQuota=150%
+LimitNOFILE=512
+
+[Install]
+WantedBy=default.target

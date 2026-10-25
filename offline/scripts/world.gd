@@ -1,6 +1,7 @@
 extends Node3D
 ## A single offline world. Pickups and practice props are session-local, not server entities.
 signal status_changed(message: String)
+signal roster_changed
 const PlayerScript = preload("res://scripts/player.gd")
 const HudScript = preload("res://scripts/hud.gd")
 const InventoryScript = preload("res://scripts/inventory.gd")
@@ -25,6 +26,12 @@ var _pickup_requested := false
 var _use_requested := false
 var _drop_requested := false
 var _use_cooldown: float = 0.0
+
+func roster() -> Array:
+	return [{"key":"offline","username":SessionState.display_name,"avatar":SessionState.avatar}]
+
+func leave_game() -> void:
+	pass
 
 func _ready() -> void:
 	_build_environment()

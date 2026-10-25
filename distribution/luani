@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Bundle launcher; intentionally does not enable editor, server or URI modes.
+# Bundle launcher; URI validation and HTTPS redemption happen before Godot starts.
 set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
-exec "$HERE/engine/godot" --path "$HERE/game" -- "$@"
+exec python3 "$HERE/protocol_launch.py" "$@"

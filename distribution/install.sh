@@ -14,6 +14,7 @@ import platform
 import re
 import shlex
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -118,11 +119,11 @@ def main():
     if destination.is_dir() and not destination.is_symlink() and receipt.is_file():
         try:
             saved = json.loads(receipt.read_text())
-            reusable = saved.get('sha256') == checksum and all((destination / p).is_file() for p in ['luani','engine/godot','game/project.godot'])
+            reusable = saved.get('sha256') == checksum and all((destination / p).is_file() for p in ['luani','engine/godot','game/project.godot','protocol_launch.py'])
         except (ValueError, OSError):
             reusable = False
     print('Luani Client ' + version + ' · Linux ' + arch)
-    print('Offline preview. Runtime verification is pending; the installer never starts the game.')
+    print('Multiplayer preview. Desktop gameplay verification is pending; the installer never starts the game.')
     if not reusable:
         with tempfile.TemporaryDirectory(prefix='.stage-', dir=base) as temporary:
             temporary = Path(temporary)
@@ -175,7 +176,7 @@ def main():
                     with source, open(target, 'xb') as output:
                         shutil.copyfileobj(source, output, 1024 * 1024)
                     target.chmod(0o755 if str(relative) in ['luani','engine/godot'] else 0o644)
-            for required in ['luani','engine/godot','game/project.godot','game/main.tscn','icon.svg']:
+            for required in ['luani','engine/godot','game/project.godot','game/main.tscn','icon.svg','protocol_launch.py']:
                 if not (staging / required).is_file():
                     raise RuntimeError('Incomplete package: ' + required)
             atomic_text(staging / 'install-receipt.json', json.dumps({'version':version,'arch':arch,'sha256':checksum}, indent=2) + '\n')
@@ -206,8 +207,17 @@ def main():
     if any(c in executable for c in '\n\r'):
         raise RuntimeError('Unsupported newline in installation path.')
     desktop_exec = '"' + executable.replace('\\','\\\\').replace('"','\\"').replace('`','\\`').replace('$','\\$').replace('%','%%') + '"'
-    desktop_text = '[Desktop Entry]\nType=Application\nName=Luani Client\nComment=Offline baseplate preview\nExec=' + desktop_exec + '\nIcon=' + str(current / 'icon.svg') + '\nTerminal=false\nCategories=Game;\nStartupWMClass=Luani Client\nX-Luani-Managed=true\n'
+    desktop_text = '[Desktop Entry]\nType=Application\nName=Luani Client\nComment=Luani multiplayer client\nExec=' + desktop_exec + ' %u\nIcon=' + str(current / 'icon.svg') + '\nTerminal=false\nCategories=Game;\nMimeType=x-scheme-handler/luani;\nStartupWMClass=Luani Client\nX-Luani-Managed=true\n'
     atomic_text(desktop, desktop_text)
+    # Per-user desktop association only. Do not run the game or invoke a URI.
+    if shutil.which('update-desktop-database'):
+        subprocess.run(['update-desktop-database', str(applications)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if shutil.which('xdg-mime'):
+        result = subprocess.run(['xdg-mime', 'default', 'org.luani.Client.desktop', 'x-scheme-handler/luani'], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if result.returncode:
+            print('Automatic luani:// association failed. Set Luani Client as the handler in your desktop settings.')
+    else:
+        print('xdg-mime was not found. Set Luani Client as the luani:// handler in your desktop settings.')
     print('Installed. Launch “Luani Client” from your applications menu, or run:')
     print('  ' + shlex.quote(str(launcher)))
     print('Run the same install command again to update. Device-local settings and older releases are retained.')

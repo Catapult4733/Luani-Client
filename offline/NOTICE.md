@@ -10,4 +10,4 @@ Earlier owner-supplied menu/chat/leaderboard files remain archived under `assets
 
 Godot Engine4.7.2 is distributed under its MIT licence. Bundles include the exact matching upstream `GODOT-LICENSE.txt` and `GODOT-COPYRIGHT.txt`, including third-party notices. Godot's licence does not set the licence of Luani-specific code/assets.
 
-This is a runtime-untested offline preview, not a production multiplayer release. Local chat and inventory do not reach a server or account, and the client does not load untrusted creator content.
+This is a multiplayer preview pending independent desktop gameplay verification, not a claim of production readiness for a public creator platform. Online identities/inventories are server-authoritative; the clearly labelled chat remains local-only notes. The client does not load untrusted creator content, and no Roblox assets or services are used.

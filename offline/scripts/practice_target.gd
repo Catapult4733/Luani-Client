@@ -62,3 +62,11 @@ func _process(delta: float) -> void:
 
 func _update_label() -> void:
 	_label.text = "Practice target · %d/%d" % [hits_remaining, MAX_HITS] if hits_remaining > 0 else "Target resetting…"
+
+func apply_server_hits(value: int) -> void:
+	if value < hits_remaining: _flash = 0.18
+	hits_remaining = clampi(value, 0, MAX_HITS)
+	_reset_remaining = 0.0
+	_mesh.visible = hits_remaining > 0
+	body.collision_layer = 1 if hits_remaining > 0 else 0
+	_update_label()
