@@ -156,7 +156,7 @@ func _hud_button(asset: String, title: String, shortcut: String, action: Callabl
 	b.name = title + "Button"
 	b.glyph = UI.texture(asset, figma)
 	b.title = title
-	b.shortcut = shortcut
+	b.shortcut_hint = shortcut
 	b.tooltip_text = title
 	b.pressed.connect(action)
 	b.z_index = 30

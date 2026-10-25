@@ -1,6 +1,6 @@
 # Luani Client — Figma UI + inventory offline preview
 
-Version **0.4.0-offline.1**. Runtime **NOT TESTED by Hermes**, by the owner's explicit request. No Godot, editor, import/export, engine version probe, headless game or installer has been executed by Hermes. Source grammar/resource/security checks and archive/public delivery checks are separate from gameplay verification. Gemini must launch and verify this build on the owner's Linux desktop.
+Version **0.4.0-offline.2**. Runtime **NOT TESTED by Hermes**, by the owner's explicit request. No Godot, editor, import/export, engine version probe, headless game or installer has been executed by Hermes. Source grammar/resource/security checks and archive/public delivery checks are separate from gameplay verification. Gemini must launch and verify this build on the owner's Linux desktop.
 
 ## Install or update
 

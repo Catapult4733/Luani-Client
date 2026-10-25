@@ -1,11 +1,11 @@
-# Gemini 3.8 Flash High — Luani0.4.0-offline.1 runtime verification
+# Gemini 3.8 Flash High — Luani0.4.0-offline.2 runtime verification
 
 Hermes implemented this source and distributed an explicitly runtime-untested preview. **Hermes has not launched Godot, the editor, imports/exports, a headless game, an engine version probe or the installer.** Source grammar/resource/security and distribution-byte checks are not runtime evidence. You are the desktop runtime verifier.
 
 ## Source / provenance
 
 - Repository: https://github.com/Catapult4733/Luani-Client
-- Branch: `feat/figma-inventory-client`, release tag `v0.4.0-offline.1`. Resolve the tag to its exact commit SHA, check the checkout and report it before testing. Do not use `feat/linux-offline-client`: that checkout had overlapping edits and is not this implementation.
+- Branch: `feat/figma-inventory-client`, release tag `v0.4.0-offline.2`. Resolve the tag to its exact commit SHA, check the checkout and report it before testing. Do not use `feat/linux-offline-client`: that checkout had overlapping edits and is not this implementation.
 - Project: `offline/project.godot`, entry: `offline/main.tscn`; bundled/pinned native runtime: official Godot4.7.2.
 - Main code: `hud.gd`, `ui_theme.gd`, `ui_controls.gd`, `item_catalog.gd`, `inventory.gd`, `item_visual.gd`, `pickup.gd`, `practice_target.gd`, `world.gd`, `player.gd`, `avatar.gd` under `offline/scripts/`.
 - Actual Figma exports/hashes: `offline/assets/ui/figma/asset-manifest.json`; font in `offline/assets/fonts/`, new inventory/item icons in `offline/assets/ui/items/`.
@@ -23,9 +23,30 @@ Record real OS/distribution, CPU architecture, GPU/driver and desktop session. Q
 curl -fsSL https://new.luani.fyi/client/install.sh | bash
 ```
 
-Check installed manifest/version is0.4.0-offline.1. Verify installation does not auto-launch. Launch from app menu or `~/.local/bin/luani`; capture real logs. This is a source-runtime bundle, not a PCK. Test with no pre-existing `.godot` import cache and ensure local SVG/font/script preloads load on a fresh installation. Do not substitute a browser mockup for a native screenshot.
+Check installed manifest/version is0.4.0-offline.2. Verify installation does not auto-launch. Launch from app menu or `~/.local/bin/luani`; capture real logs. This is a source-runtime bundle, not a PCK. Test with no pre-existing `.godot` import cache and ensure local SVG/font/script preloads load on a fresh installation. Do not substitute a browser mockup for a native screenshot.
 
 If testing source directly, use your installed Godot4.7.2 with `--path offline`. The installer supplies a native binary under the installed release's `engine/godot`, with project at `game/`. Do not require a system editor solely to run the bundle.
+
+## Startup hotfix regression — verify first
+
+The owner reported that 0.4.0-offline.1 installed but failed before world startup:
+`Could not resolve external class member "shortcut"` at hud.gd:159, followed by
+world.gd dependency compilation and `.new()` failures. The custom HudButton
+String field shadowed native BaseButton.shortcut (a Shortcut resource).
+This version renames only the custom field and its two consumers to
+`shortcut_hint`; do not change GPU drivers or the installer to treat this bug.
+
+Run `python3 tools/test_ui_member_names.py` for the source-only collision guard.
+On YOUR desktop, also run the actual Godot dependency/tooltip contract:
+
+```bash
+godot --headless --path offline --script res://tests/test_ui_controls.gd
+```
+
+Use the bundled executable if no matching system Godot is installed. Then
+perform a fresh native launch, capture the complete log and verify that the
+HUD and world load. Hermes has not executed this runtime contract. A passing
+Python source guard does not prove Godot compilation or gameplay correctness.
 
 ## Source checks / inventory contracts
 

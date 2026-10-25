@@ -5,7 +5,7 @@ const UI = preload("res://scripts/ui_theme.gd")
 class HudButton extends Button:
 	var glyph: Texture2D
 	var title: String = ""
-	var shortcut: String = ""
+	var shortcut_hint: String = ""
 	var _held := false
 	var _color := UI.FIELD
 	var _face: StyleBoxFlat
@@ -70,7 +70,7 @@ class HudButton extends Button:
 			draw_style_box(_focus_inner, Rect2(-2, -2, 40, 36))
 
 	func _make_custom_tooltip(_for_text: String) -> Object:
-		return UI.tooltip(title, shortcut)
+		return UI.tooltip(title, shortcut_hint)
 
 class Toggle extends Button:
 	func _get_minimum_size() -> Vector2:
