@@ -57,6 +57,101 @@ def atomic_text(path, text, mode=0o644):
     finally:
         temporary.unlink(missing_ok=True)
 
+def mime_values(text, section, key):
+    values, current = [], ''
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith('[') and stripped.endswith(']'):
+            current = stripped[1:-1]
+        elif current == section and '=' in stripped and not stripped.startswith(('#', ';')):
+            name, value = stripped.split('=', 1)
+            if name.strip() == key:
+                values.extend(item.strip() for item in value.split(';') if item.strip())
+    return values
+
+
+def with_mime_entry(text, section, value):
+    # Preserve every unrelated setting/comment; normalize only this protocol's key.
+    key, current, found, output = 'x-scheme-handler/luani', '', False, []
+    for line in text.splitlines(keepends=True):
+        stripped = line.strip()
+        if stripped.startswith('[') and stripped.endswith(']'):
+            current = stripped[1:-1]
+            output.append(line)
+            if current == section and not found:
+                if not line.endswith('\n'):
+                    output.append('\n')
+                output.append(key + '=' + value + '\n')
+                found = True
+        elif current == section and '=' in stripped and stripped.split('=', 1)[0].strip() == key:
+            continue
+        else:
+            output.append(line)
+    if not found:
+        if output and not output[-1].endswith('\n'):
+            output.append('\n')
+        output.append('\n[' + section + ']\n' + key + '=' + value + '\n')
+    return ''.join(output)
+
+
+def configure_luani_protocol(applications):
+    """Reclaim only this user's luani scheme, never delete another application."""
+    mime, desktop = 'x-scheme-handler/luani', 'org.luani.Client.desktop'
+    home = Path.home()
+    config_home = Path(os.environ.get('XDG_CONFIG_HOME') or home / '.config').expanduser()
+    if not config_home.is_absolute():
+        raise RuntimeError('XDG_CONFIG_HOME must be an absolute path.')
+    def directories(variable, fallback):
+        return [Path(item) for item in (os.environ.get(variable) or fallback).split(':')
+                if item and Path(item).is_absolute()]
+    configs = [config_home] + directories('XDG_CONFIG_DIRS', '/etc/xdg')
+    app_dirs = [applications] + [path / 'applications' for path in
+                                directories('XDG_DATA_DIRS', '/usr/local/share:/usr/share')]
+    handlers = set()
+    for directory in dict.fromkeys(configs + app_dirs):
+        candidates = [directory / 'mimeapps.list', directory / 'defaults.list']
+        candidates.extend(sorted(directory.glob('*-mimeapps.list')))
+        for path in candidates:
+            if path.is_file():
+                text = path.read_text(encoding='utf-8')
+                for section in ('Default Applications', 'Added Associations', 'Removed Associations'):
+                    handlers.update(mime_values(text, section, mime))
+    for directory in dict.fromkeys(app_dirs):
+        for path in directory.rglob('*.desktop'):
+            if path.is_file() and mime in mime_values(path.read_text(encoding='utf-8'), 'Desktop Entry', 'MimeType'):
+                identifier = '-'.join(path.relative_to(directory).parts)
+                if not any(ord(char) < 32 or char == ';' for char in identifier):
+                    handlers.add(identifier)
+    handlers.discard(desktop)
+    removed = ''.join(identifier + ';' for identifier in sorted(handlers))
+    changes = []
+    generic = [config_home / 'mimeapps.list', applications / 'mimeapps.list']
+    targets = list(generic)
+    for directory in (config_home, applications):
+        targets.extend(sorted(directory.glob('*-mimeapps.list')))
+        if (directory / 'defaults.list').exists():
+            targets.append(directory / 'defaults.list')
+    for name in os.environ.get('XDG_CURRENT_DESKTOP', '').split(':'):
+        if re.fullmatch(r'[A-Za-z0-9_-]+', name):
+            targets.append(config_home / (name.lower() + '-mimeapps.list'))
+    for path in dict.fromkeys(targets):
+        if path.is_symlink() or (path.exists() and (not path.is_file() or path.stat().st_uid != os.getuid())):
+            raise RuntimeError('Refusing an unmanaged or symlinked protocol configuration: ' + str(path))
+        original = path.read_text(encoding='utf-8') if path.exists() else ''
+        updated = with_mime_entry(original, 'Default Applications', desktop + ';')
+        if path in generic:
+            # Freedesktop permits Added/Removed only in generic mimeapps.list.
+            updated = with_mime_entry(updated, 'Added Associations', desktop + ';')
+            updated = with_mime_entry(updated, 'Removed Associations', removed)
+        if updated != original:
+            changes.append((path, original, updated))
+    for path, original, updated in changes:
+        if path.exists():
+            atomic_text(path.with_name('.' + path.name + '.luani-backup-' + uuid.uuid4().hex), original, 0o600)
+        atomic_text(path, updated, 0o600)
+    return {'removed_handlers': sorted(handlers), 'changed_files': [str(path) for path, _, _ in changes]}
+
+
 def main():
     if len(sys.argv) != 1:
         raise RuntimeError('No arguments are needed. Run the same command to install or update.')
@@ -209,15 +304,20 @@ def main():
     desktop_exec = '"' + executable.replace('\\','\\\\').replace('"','\\"').replace('`','\\`').replace('$','\\$').replace('%','%%') + '"'
     desktop_text = '[Desktop Entry]\nType=Application\nName=Luani Client\nComment=Luani multiplayer client\nExec=' + desktop_exec + ' %u\nIcon=' + str(current / 'icon.svg') + '\nTerminal=false\nCategories=Game;\nMimeType=x-scheme-handler/luani;\nStartupWMClass=Luani Client\nX-Luani-Managed=true\n'
     atomic_text(desktop, desktop_text)
-    # Per-user desktop association only. Do not run the game or invoke a URI.
+    # Reset on BOTH install and update, including an already-installed release.
+    # Mask competing handlers per user; never delete/disable other applications.
     if shutil.which('update-desktop-database'):
         subprocess.run(['update-desktop-database', str(applications)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    association = configure_luani_protocol(applications)
     if shutil.which('xdg-mime'):
-        result = subprocess.run(['xdg-mime', 'default', 'org.luani.Client.desktop', 'x-scheme-handler/luani'], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        result = subprocess.run(['xdg-mime', 'query', 'default', 'x-scheme-handler/luani'], check=False,
+                                capture_output=True, text=True, timeout=15)
+        if result.returncode == 0 and result.stdout.strip() != 'org.luani.Client.desktop':
+            raise RuntimeError('Client installed, but the desktop still reports another luani:// handler. '
+                               'Restart your desktop session and rerun this command.')
         if result.returncode:
-            print('Automatic luani:// association failed. Set Luani Client as the handler in your desktop settings.')
-    else:
-        print('xdg-mime was not found. Set Luani Client as the luani:// handler in your desktop settings.')
+            print('Protocol settings were written, but xdg-mime could not verify the desktop association.')
+    print('Configured luani:// for this user; removed ' + str(len(association['removed_handlers'])) + ' competing associations.')
     print('Installed. Launch “Luani Client” from your applications menu, or run:')
     print('  ' + shlex.quote(str(launcher)))
     print('Run the same install command again to update. Device-local settings and older releases are retained.')
