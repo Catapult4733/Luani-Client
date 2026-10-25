@@ -204,6 +204,60 @@ print(json.dumps({'default':default,'choices':sorted(choices)}))
         self.assertEqual(query.stdout.strip(), DESKTOP,
                          'xdg-mime rejected our generated launcher and selected the attempt-1 cache')
 
+    def test_reset_clears_only_luani_portal_choice_with_backup_and_readback(self):
+        import json
+        import subprocess
+        namespace = self.functions
+        self.assertIn('reset_portal_luani_choice', list(namespace),
+                      'Installer does not reset the portal choice that overrides all MIME defaults')
+        base = self.home / '.local/share/luani-client'
+        base.mkdir(mode=0o700)
+        original = "({'org.chromium.Chromium': ['luani-protocol', '3', '3']}, <byte 0x00>)"
+        state = {'cached': True}
+        methods = []
+        def bus(args, **kwargs):
+            self.assertEqual(args[-2:], ['desktop-used-apps', MIME], 'Never reset another protocol/table')
+            method = args[args.index('--method') + 1].rsplit('.', 1)[-1]
+            methods.append(method)
+            if method == 'Lookup':
+                if state['cached']:
+                    return subprocess.CompletedProcess(args, 0, original + '\n', '')
+                return subprocess.CompletedProcess(args, 1, '', 'org.freedesktop.portal.Error.NotFound: No entry')
+            self.assertEqual(method, 'Delete', 'Never launch a URI or change another application')
+            state['cached'] = False
+            return subprocess.CompletedProcess(args, 0, '()\n', '')
+        with patch.object(namespace['shutil'], 'which', return_value='/usr/bin/gdbus'), \
+             patch.object(namespace['subprocess'], 'run', side_effect=bus), \
+             patch.dict(os.environ, {'DBUS_SESSION_BUS_ADDRESS': 'unix:path=' + str(self.root / 'fixture-bus')}):
+            outcome = namespace['reset_portal_luani_choice'](base)
+            self.assertEqual(outcome['status'], 'cleared')
+            self.assertEqual(methods, ['Lookup', 'Delete', 'Lookup'])
+            backup = Path(outcome['backup'])
+            self.assertEqual(json.loads(backup.read_text())['lookup_reply'], original)
+            self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(namespace['reset_portal_luani_choice'](base)['status'], 'not-found')
+            self.assertEqual(len(list(backup.parent.glob('*.json'))), 1)
+
+    def test_portal_delete_failure_keeps_backup_and_never_claims_success(self):
+        import subprocess
+        base = self.home / '.local/share/luani-client'
+        base.mkdir(mode=0o700)
+        replies = [subprocess.CompletedProcess([], 0,
+                   "({'org.chromium.Chromium': ['luani-protocol', '3', '3']}, <byte 0x00>)", ''),
+                   subprocess.CompletedProcess([], 1, '', 'org.freedesktop.DBus.Error.AccessDenied')]
+        with patch.object(self.functions['shutil'], 'which', return_value='/usr/bin/gdbus'), \
+             patch.object(self.functions['subprocess'], 'run', side_effect=replies), \
+             patch.dict(os.environ, {'DBUS_SESSION_BUS_ADDRESS': 'unix:path=' + str(self.root / 'fixture-bus')}):
+            with self.assertRaisesRegex(RuntimeError, 'Could not clear'):
+                self.functions['reset_portal_luani_choice'](base)
+        self.assertEqual(len(list((base / 'protocol-backups').glob('portal-luani-*.json'))), 1)
+
+    def test_missing_gdbus_reports_unavailable_without_touching_settings(self):
+        base = self.home / '.local/share/luani-client'
+        with patch.object(self.functions['shutil'], 'which', return_value=None):
+            self.assertEqual(self.functions['reset_portal_luani_choice'](base)['status'], 'unavailable')
+        self.assertFalse(base.exists())
+
     def test_install_and_reinstall_path_calls_the_reset(self):
         source = SOURCE.read_text().split("<<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
         tree = ast.parse(source)
@@ -212,6 +266,10 @@ print(json.dumps({'default':default,'choices':sorted(choices)}))
                  and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name)
                  and node.value.func.id == 'configure_luani_protocol']
         self.assertTrue(calls, 'The installer must reset associations after both install and reusable-release refresh')
+        portal_calls = [node for node in main.body if isinstance(node, ast.Assign)
+                        and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name)
+                        and node.value.func.id == 'reset_portal_luani_choice']
+        self.assertTrue(portal_calls, 'Install/update must reset the separate portal override too')
 
 
 if __name__ == '__main__':

@@ -13,8 +13,9 @@ It registers `org.luani.Client.desktop`, then:
 - Refreshes user desktop-specific default overrides and existing legacy defaults files. It only writes Added/Removed groups in generic `mimeapps.list`, as required by the Freedesktop specification.
 - Preserves other protocols, application files, comments, client settings and immutable game releases. Existing preference files receive hidden `.FILENAME.luani-backup-...` backups before changes. Rerunning without changes is idempotent; rerunning after a newly installed competing handler reclaims the protocol again.
 - Uses `xdg-mime query default x-scheme-handler/luani` to check the result when that command exists. It never opens a URL or starts the game. A conflicting desktop result is reported as an error rather than silent success.
+- Backs up and clears only `desktop-used-apps` / `x-scheme-handler/luani` from the current user's desktop-portal PermissionStore, then verifies its absence. This is a separate remembered browser app choice that can override correct MIME defaults. Other protocols, portal permissions and browser profile files are left alone. A missing portal utility/session is reported; a failed reset of an existing entry is an error, not silent success.
 
-Run without sudo. This is a **per-user Linux desktop association reset**, not an uninstall of competing applications and not a system-wide change for other users. Unmanaged/symlinked target preference files are rejected rather than overwritten unsafely. It cannot erase browser-private remembered choices, session/portal caches, sandbox-specific preferences or prevent an app installed later from registering the protocol again. Restart the browser/session or reset its saved external-protocol choice if it continues to offer an old app.
+Run without sudo. This is a **per-user Linux desktop association reset**, not an uninstall of competing applications and not a system-wide change for other users. Unmanaged/symlinked target preference files are rejected rather than overwritten unsafely. It clears only the named Luani desktop-portal entry, not browser-private profile choices or other sandbox preferences. It cannot stop an app installed later from registering the protocol again. If the browser still selects an old app, inspect its actual routing rather than deleting browser profiles or repeating logout blindly.
 
 Installer-only changes are published at the moving website installer URL and on the client source branch. They do not rewrite an already-published native archive/tag or require rebuilding/restarting the game server.
 
@@ -32,4 +33,11 @@ The installer now generates `Exec=/usr/bin/env "/absolute/path/to/luani" %u` (or
 
 After reinstalling, both `xdg-mime query default x-scheme-handler/luani` and `gio mime x-scheme-handler/luani` should identify `org.luani.Client.desktop`. A disagreement is diagnostic evidence, not a reason to keep logging out or blindly remove old programs.
 
+### Desktop-portal choice overrides
+
+Brave/Chromium can open custom schemes through xdg-desktop-portal. Its PermissionStore is independent of MIME defaults: for example, `desktop-used-apps` / `x-scheme-handler/luani` can contain `org.chromium.Chromium: [luani-protocol, 3, 3]`. The portal can automatically prefer that existing old application after its remembered-choice threshold, even when xdg-mime, xdg-settings and GIO all identify the new client.
+
+The installer uses the session PermissionStore API to save the exact Luani `Lookup` reply under `luani-client/protocol-backups` with mode0600, `Delete` only that MIME key, then verify `NotFound`. It never opens a URI, edits browser profiles, clears cookies or deletes the old application. Missing service/tool/session and denied deletion are distinguished. Tests cover the scoped call sequence, backup, idempotence, permission failure and missing utility; real owner-machine portal readback remains separate evidence from fixtures.
+
 Reference: https://specifications.freedesktop.org/mime-apps/latest/
+Portal selection logic: https://github.com/flatpak/xdg-desktop-portal/blob/1.21.1/src/open-uri.c

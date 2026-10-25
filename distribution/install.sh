@@ -163,6 +163,57 @@ def desktop_exec_line(executable):
     return env + ' ' + quoted
 
 
+def reset_portal_luani_choice(base):
+    """Clear only the per-user portal's remembered luani choice, not browser data."""
+    gdbus = shutil.which('gdbus')
+    if not gdbus:
+        return {'status': 'unavailable', 'reason': 'gdbus is not installed'}
+    environment = os.environ.copy()
+    environment['LC_ALL'] = 'C'
+    if not environment.get('DBUS_SESSION_BUS_ADDRESS'):
+        runtime = Path(environment.get('XDG_RUNTIME_DIR') or '/run/user/' + str(os.getuid()))
+        bus = runtime / 'bus'
+        if not runtime.is_absolute() or not bus.is_socket() or runtime.stat().st_uid != os.getuid():
+            return {'status': 'unavailable', 'reason': 'no running desktop session bus'}
+        environment['XDG_RUNTIME_DIR'] = str(runtime)
+        environment['DBUS_SESSION_BUS_ADDRESS'] = 'unix:path=' + str(bus)
+    command = [gdbus, 'call', '--session', '--dest', 'org.freedesktop.impl.portal.PermissionStore',
+               '--object-path', '/org/freedesktop/impl/portal/PermissionStore', '--method']
+    table, identifier = 'desktop-used-apps', 'x-scheme-handler/luani'
+    def invoke(method):
+        try:
+            return subprocess.run(command + ['org.freedesktop.impl.portal.PermissionStore.' + method,
+                                             table, identifier],
+                                  capture_output=True, text=True, check=False, timeout=10, env=environment)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError('The desktop portal did not respond while resetting luani://.') from None
+    def absent(reply):
+        return reply.returncode != 0 and 'org.freedesktop.portal.Error.NotFound' in reply.stderr
+    previous = invoke('Lookup')
+    if absent(previous):
+        return {'status': 'not-found'}
+    if previous.returncode:
+        if any(error in previous.stderr for error in ('org.freedesktop.DBus.Error.ServiceUnknown',
+                                                      'org.freedesktop.DBus.Error.NameHasNoOwner')):
+            return {'status': 'unavailable', 'reason': 'no desktop permission-store service'}
+        raise RuntimeError('Could not inspect the desktop portal luani:// choice; no cache entry was changed.')
+    backup_dir = base / 'protocol-backups'
+    if backup_dir.is_symlink() or (backup_dir.exists() and
+            (not backup_dir.is_dir() or backup_dir.stat().st_uid != os.getuid())):
+        raise RuntimeError('Refusing an unmanaged portal backup directory.')
+    backup_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    backup_dir.chmod(0o700)
+    backup = backup_dir / ('portal-luani-' + uuid.uuid4().hex + '.json')
+    atomic_text(backup, json.dumps({'table': table, 'id': identifier,
+                                   'lookup_reply': previous.stdout.strip()}, indent=2) + '\n', 0o600)
+    deleted = invoke('Delete')
+    if deleted.returncode:
+        raise RuntimeError('Could not clear the saved desktop-portal luani:// choice; its backup was retained.')
+    if not absent(invoke('Lookup')):
+        raise RuntimeError('The desktop portal still has a luani:// override after reset; cannot confirm registration.')
+    return {'status': 'cleared', 'backup': str(backup)}
+
+
 def main():
     if len(sys.argv) != 1:
         raise RuntimeError('No arguments are needed. Run the same command to install or update.')
@@ -320,6 +371,11 @@ def main():
     if shutil.which('update-desktop-database'):
         subprocess.run(['update-desktop-database', str(applications)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     association = configure_luani_protocol(applications)
+    portal = reset_portal_luani_choice(base)
+    if portal['status'] == 'cleared':
+        print('Cleared the saved luani:// browser/desktop-portal choice (backup retained).')
+    elif portal['status'] == 'unavailable':
+        print('Warning: desktop-portal choice was not checked: ' + portal['reason'] + '.')
     if shutil.which('xdg-mime'):
         result = subprocess.run(['xdg-mime', 'query', 'default', 'x-scheme-handler/luani'], check=False,
                                 capture_output=True, text=True, timeout=15)
