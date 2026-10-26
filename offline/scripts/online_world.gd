@@ -21,6 +21,7 @@ func _ready() -> void:
 	connection.poses_received.connect(_poses)
 	connection.status.connect(func(message: String) -> void: status_changed.emit(message))
 	var hud := HudScript.new(); hud.player=player; hud.inventory=inventory; hud.world=self; add_child(hud)
+	_attach_mobile_controls()
 
 func roster() -> Array:
 	return connection.roster

@@ -9,6 +9,9 @@ var profile: Dictionary = {}
 var game: Dictionary = {}
 var shift_lock_enabled: bool = true
 var game_volume: float = 0.7
+var mobile_move: Vector2 = Vector2.ZERO
+var mobile_jump: bool = false
+var mobile_sprint: bool = false
 
 func _ready() -> void:
 	var config := ConfigFile.new()

@@ -55,6 +55,17 @@ func _ready() -> void:
 	hud.inventory = inventory
 	hud.world = self
 	add_child(hud)
+	_attach_mobile_controls()
+
+func _attach_mobile_controls() -> void:
+	if not OS.has_feature("android"): return
+	var layer := CanvasLayer.new()
+	layer.layer = 2
+	var controls: Control = load("res://scripts/mobile_controls.gd").new()
+	controls.player = player
+	controls.world = self
+	layer.add_child(controls)
+	add_child(layer)
 
 func _spawn_pickup(id: String, point: Vector3, cooldown: float = 0.0) -> PickupScript:
 	var pickup := PickupScript.new()
@@ -66,6 +77,8 @@ func _spawn_pickup(id: String, point: Vector3, cooldown: float = 0.0) -> PickupS
 	return pickup
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Emulated mouse clicks still operate GUI, never use a tool from a camera swipe.
+	if OS.has_feature("android") and event is InputEventMouseButton and event.device == -1: return
 	if not player.can_use_tools():
 		return
 	if event is InputEventKey and event.pressed and not event.echo:

@@ -18,6 +18,12 @@ func _ready() -> void:
 		add_child(Server.new())
 		return
 	_build_launcher()
+	if OS.has_feature("android"):
+		var android: Node = load("res://scripts/android_launch.gd").new()
+		android.connect("launch_ready", _begin_network)
+		android.connect("failed", _lost)
+		add_child(android)
+		return
 	if args.is_empty(): return
 	if args.size()!=2 or args[0]!="--launch-fd" or not args[1].is_valid_int(): _status.text="Invalid launch arguments. Join from new.luani.fyi."; return
 	var descriptor := int(args[1])
@@ -26,7 +32,12 @@ func _ready() -> void:
 	if file==null or file.get_length()>65536: _status.text="Launch handoff unavailable."; return
 	var data: Variant = JSON.parse_string(file.get_as_text()); file.close()
 	if not data is Dictionary or data.get("protocol")!=1: _status.text="Launch expired. Join again from the website."; return
+	_begin_network(data)
+
+func _begin_network(data: Dictionary) -> void:
+	if is_instance_valid(_network): _network.queue_free()
 	_status.text="Authenticating with the game server…"
+	_screen.show()
 	_network=Network.new(); add_child(_network)
 	_network.entered.connect(_entered)
 	_network.lost.connect(_lost)

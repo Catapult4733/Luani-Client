@@ -91,6 +91,9 @@ func set_shift_lock(value: bool) -> void:
 	update_mouse_mode()
 
 func update_mouse_mode() -> void:
+	if OS.has_feature("android"):
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		return
 	if input_blocked:
 		orbit_dragging = false
 	var capture := _window_focused and not input_blocked and (first_person or shift_locked or orbit_dragging)
@@ -153,13 +156,14 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= GRAVITY * delta
 	var movement := Vector2.ZERO
 	if not input_blocked and _window_focused:
-		movement = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-		if grounded and Input.is_action_just_pressed("jump"):
+		movement = (Input.get_vector("move_left", "move_right", "move_forward", "move_back") + SessionState.mobile_move).limit_length(1.0)
+		if grounded and (Input.is_action_just_pressed("jump") or SessionState.mobile_jump):
 			_network_jump = true
 			velocity.y = JUMP_SPEED * (1.5 if equipped_item_id == "spring_coil" else 1.0)
 			_play_step(1.5)
+	SessionState.mobile_jump = false
 	var direction := Vector3(movement.x, 0, movement.y).rotated(Vector3.UP, camera_yaw)
-	var sprinting := not input_blocked and _window_focused and Input.is_action_pressed("sprint") and movement.length() > 0.1
+	var sprinting := not input_blocked and _window_focused and (Input.is_action_pressed("sprint") or SessionState.mobile_sprint) and movement.length() > 0.1
 	var speed := RUN_SPEED if sprinting else WALK_SPEED
 	_network_clock -= delta
 	if network_driver != null and _network_clock <= 0:

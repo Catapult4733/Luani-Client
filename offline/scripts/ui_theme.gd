@@ -1,5 +1,5 @@
 extends RefCounted
-## Shared Figma tokens. Raw font/SVG decoding avoids a Godot editor import pass.
+## Shared Figma tokens. Android uses exported imports; loose Linux files retain raw decoding.
 const INK := Color("f5f4fa")
 const MUTED := Color("adb1c0")
 const ACCENT := Color("c1adff")
@@ -19,8 +19,11 @@ static func font(weight: int = 400) -> Font:
 	if _fonts.has(weight):
 		return _fonts[weight]
 	if _font_file == null:
-		_font_file = FontFile.new()
-		_font_file.data = FileAccess.get_file_as_bytes("res://assets/fonts/NunitoSans.ttf")
+		if OS.has_feature("android"):
+			_font_file = ResourceLoader.load("res://assets/fonts/NunitoSans.ttf", "FontFile") as FontFile
+		else:
+			_font_file = FontFile.new()
+			_font_file.data = FileAccess.get_file_as_bytes("res://assets/fonts/NunitoSans.ttf")
 	var face := FontVariation.new()
 	face.base_font = _font_file
 	face.variation_opentype = {"wght": float(weight), "wdth": 100.0, "YTLC": 500.0}
@@ -31,6 +34,11 @@ static func texture(name: String, figma: bool = true) -> Texture2D:
 	var path := "res://assets/ui/" + ("figma/" if figma else "items/") + name + ".svg"
 	if _textures.has(path):
 		return _textures[path]
+	if OS.has_feature("android"):
+		var imported := ResourceLoader.load(path, "Texture2D") as Texture2D
+		if imported == null: push_error("Packaged Luani texture unavailable: " + path)
+		_textures[path] = imported
+		return imported
 	var image := Image.new()
 	var source := FileAccess.get_file_as_string(path)
 	if source.is_empty() or image.load_svg_from_string(source) != OK:
