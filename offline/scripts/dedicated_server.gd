@@ -3,6 +3,7 @@ extends Node
 const Transport = preload("res://scripts/secure_transport.gd")
 const Bag = preload("res://scripts/inventory.gd")
 const Catalog = preload("res://scripts/item_catalog.gd")
+const Facing = preload("res://scripts/facing.gd")
 const SCATTER = [
  ["sword",4,-5],["lantern",-5,-4],["spring_coil",2,6],
  ["sword",14,-13],["lantern",-17,8],["spring_coil",15,15],
@@ -97,6 +98,10 @@ func _receive(id: int, message: Dictionary) -> void:
 		member.seq=sequence
 		member.move=Vector2(float(move[0]),float(move[1])).limit_length(1.0)
 		member.yaw=wrapf(float(message.yaw),-PI,PI)
+		if message.has("look_locked") and not message.look_locked is bool:
+			_transport.disconnect_peer(id); return
+		# Legacy clients did not transmit mode: keep their original aim-facing contract.
+		member.look_locked=message.get("look_locked", true)==true
 		member.sprint=message.get("sprint")==true
 		member.jump=member.jump or message.get("jump")==true
 		member.input_at=_clock()
@@ -131,7 +136,7 @@ func _authorize(id: int, admission: String) -> void:
 	add_child(body)
 	body.global_position=_rooms[room].origin+Vector3(population*2,0.2,0)
 	var member: Dictionary = _peers[id]
-	member.merge({"phase":"admitted","room":room,"admission_id":str(data.admission_id),"profile":data.profile,"body":body,"bag":bag,"seq":0,"move":Vector2.ZERO,"yaw":0.0,"sprint":false,"jump":false,"input_at":_clock(),"use_at":0.0,"action_at":0.0,"lantern":true,"swing":0},true)
+	member.merge({"phase":"admitted","room":room,"admission_id":str(data.admission_id),"profile":data.profile,"body":body,"bag":bag,"seq":0,"move":Vector2.ZERO,"yaw":0.0,"facing":0.0,"look_locked":false,"sprint":false,"jump":false,"input_at":_clock(),"use_at":0.0,"action_at":0.0,"lantern":true,"swing":0},true)
 	_transport.send_message(id,{"type":"welcome","player_key":str(data.profile.public_id),"profile":data.profile,"instance_id":room,"inventory":_bag_data(bag)})
 	_broadcast_state(room)
 
@@ -181,6 +186,8 @@ func _physics_process(delta: float) -> void:
 		body.velocity.x=move_toward(body.velocity.x,movement.x*speed,acceleration*delta)
 		body.velocity.z=move_toward(body.velocity.z,movement.y*speed,acceleration*delta)
 		body.move_and_slide()
+		var face_target := Facing.target(movement, float(member.yaw), bool(member.look_locked), float(member.facing))
+		member.facing=lerp_angle(float(member.facing), face_target, minf(delta*Facing.rate(bool(member.look_locked)),1.0))
 		if body.position.y< -35.0: body.position=_rooms[member.room].origin+Vector3(0,0.2,0); body.velocity=Vector3.ZERO
 	for action in _actions:
 		if _peers.has(action.peer): _action(int(action.peer),action.message)
@@ -244,6 +251,7 @@ func _action(id: int, message: Dictionary) -> void:
 			if now<float(member.use_at): return
 			if bag.equipped_id()=="sword":
 				member.use_at=now+0.45; member.swing=int(member.swing)+1
+				member.facing=member.yaw
 				var forward := Vector3.FORWARD.rotated(Vector3.UP,float(member.yaw))
 				for target in room.targets:
 					var offset: Vector3 = target.point-point
@@ -293,7 +301,7 @@ func _broadcast_snapshots() -> void:
 			if member.get("room")!=room_id: continue
 			var body := member.body as CharacterBody3D
 			var p: Vector3 = body.global_position-_rooms[room_id].origin
-			poses.append([str(member.profile.public_id),snappedf(p.x,0.001),snappedf(p.y,0.001),snappedf(p.z,0.001),body.velocity.x,body.velocity.y,body.velocity.z,member.yaw,body.is_on_floor(),member.sprint,member.bag.equipped_id(),member.lantern,member.swing,member.seq])
+			poses.append([str(member.profile.public_id),snappedf(p.x,0.001),snappedf(p.y,0.001),snappedf(p.z,0.001),body.velocity.x,body.velocity.y,body.velocity.z,member.facing,body.is_on_floor(),member.sprint,member.bag.equipped_id(),member.lantern,member.swing,member.seq])
 		_broadcast(room_id,{"type":"poses","players":poses},false)
 
 func _broadcast(room_id: String, message: Dictionary, reliable: bool = true) -> void:

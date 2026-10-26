@@ -12,12 +12,17 @@ var game_volume: float = 0.7
 var mobile_move: Vector2 = Vector2.ZERO
 var mobile_jump: bool = false
 var mobile_sprint: bool = false
+var mobile_joystick_mode: String = "fixed"
+var mobile_camera_locked: bool = false
 
 func _ready() -> void:
 	var config := ConfigFile.new()
 	if config.load(SETTINGS_PATH) == OK:
 		shift_lock_enabled = bool(config.get_value("controls", "shift_lock_enabled", true))
 		game_volume = clampf(float(config.get_value("audio", "volume", 0.7)), 0.0, 1.0)
+		var mode := str(config.get_value("controls", "mobile_joystick_mode", "fixed"))
+		mobile_joystick_mode = mode if mode in ["fixed", "floating"] else "fixed"
+		mobile_camera_locked = bool(config.get_value("controls", "mobile_camera_locked", false))
 	_apply_volume()
 	_register_keys()
 
@@ -36,6 +41,17 @@ func set_volume(value: float) -> void:
 	game_volume = clampf(value, 0.0, 1.0)
 	_apply_volume()
 
+func set_mobile_joystick_mode(value: String) -> void:
+	if value not in ["fixed", "floating"]: return
+	mobile_joystick_mode = value
+	save_preferences()
+	preferences_changed.emit()
+
+func set_mobile_camera_locked(value: bool) -> void:
+	mobile_camera_locked = value
+	save_preferences()
+	preferences_changed.emit()
+
 func _apply_volume() -> void:
 	AudioServer.set_bus_mute(0, game_volume < 0.001)
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(game_volume, 0.0001)))
@@ -43,6 +59,8 @@ func _apply_volume() -> void:
 func save_preferences() -> void:
 	var config := ConfigFile.new()
 	config.set_value("controls", "shift_lock_enabled", shift_lock_enabled)
+	config.set_value("controls", "mobile_joystick_mode", mobile_joystick_mode)
+	config.set_value("controls", "mobile_camera_locked", mobile_camera_locked)
 	config.set_value("audio", "volume", game_volume)
 	if config.save(SETTINGS_PATH) != OK: push_warning("Luani could not save local preferences.")
 

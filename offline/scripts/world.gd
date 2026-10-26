@@ -19,6 +19,7 @@ const SCATTER := [
 ]
 var player: PlayerScript
 var inventory: InventoryScript
+var hud
 var _pickups: Array[PickupScript] = []
 var _targets: Array[TargetScript] = []
 var _nearest: PickupScript
@@ -50,7 +51,7 @@ func _ready() -> void:
 		target.position = Vector3(point.x, 0, point.y)
 		add_child(target)
 		_targets.append(target)
-	var hud := HudScript.new()
+	hud = HudScript.new()
 	hud.player = player
 	hud.inventory = inventory
 	hud.world = self

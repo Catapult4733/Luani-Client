@@ -15,12 +15,12 @@ class HudButton extends Button:
 	var _led: StyleBoxFlat
 
 	func _get_minimum_size() -> Vector2:
-		return Vector2(36, 32)
+		return Vector2(64, 56) if OS.has_feature("android") else Vector2(36, 32)
 
 	func _ready() -> void:
 		toggle_mode = true
-		custom_minimum_size = Vector2(36, 32)
-		size = Vector2(36, 32)
+		custom_minimum_size = _get_minimum_size()
+		size = _get_minimum_size()
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		focus_mode = Control.FOCUS_ALL
 		for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
@@ -55,6 +55,7 @@ class HudButton extends Button:
 	func _draw() -> void:
 		if _face == null:
 			return
+		draw_set_transform(Vector2.ZERO, 0, Vector2(size.x / 36.0, size.y / 32.0))
 		draw_style_box(_shell, Rect2(0, 0, 36, 32))
 		_face.bg_color = _color
 		_face.border_color = UI.ACCENT if button_pressed and not _held else UI.EDGE
@@ -70,6 +71,7 @@ class HudButton extends Button:
 			draw_style_box(_focus_inner, Rect2(-2, -2, 40, 36))
 
 	func _make_custom_tooltip(_for_text: String) -> Object:
+		if _for_text.is_empty(): return null
 		return UI.tooltip(title, shortcut_hint)
 
 class Toggle extends Button:

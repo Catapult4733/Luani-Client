@@ -5,6 +5,7 @@ signal shift_lock_changed(active: bool)
 signal camera_mode_changed(first_person_active: bool)
 const AvatarScript = preload("res://scripts/avatar.gd")
 const Visual = preload("res://scripts/item_visual.gd")
+const Facing = preload("res://scripts/facing.gd")
 const WALK_SPEED := 7.0
 const RUN_SPEED := 12.0
 const JUMP_SPEED := 9.0
@@ -78,15 +79,18 @@ func _ready() -> void:
 	_footstep.volume_db = -17.0
 	add_child(_footstep)
 	SessionState.preferences_changed.connect(_preferences_changed)
+	if OS.has_feature("android"): set_shift_lock(SessionState.mobile_camera_locked)
 	_update_camera()
 
 func _preferences_changed() -> void:
 	_name_tag.text = SessionState.display_name
-	if not SessionState.shift_lock_enabled:
+	if OS.has_feature("android"):
+		set_shift_lock(SessionState.mobile_camera_locked)
+	elif not SessionState.shift_lock_enabled:
 		set_shift_lock(false)
 
 func set_shift_lock(value: bool) -> void:
-	shift_locked = value and SessionState.shift_lock_enabled
+	shift_locked = value and (OS.has_feature("android") or SessionState.shift_lock_enabled)
 	shift_lock_changed.emit(shift_locked)
 	update_mouse_mode()
 
@@ -168,7 +172,7 @@ func _physics_process(delta: float) -> void:
 	_network_clock -= delta
 	if network_driver != null and _network_clock <= 0:
 		_network_clock = 1.0 / 30.0
-		network_driver.send_input(direction, camera_yaw, sprinting, _network_jump)
+		network_driver.send_input(direction, camera_yaw, sprinting, _network_jump, shift_locked or first_person)
 		_network_jump = false
 	var acceleration := 38.0 if direction.is_zero_approx() else 28.0
 	velocity.x = move_toward(velocity.x, direction.x * speed, acceleration * delta)
@@ -176,11 +180,9 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if global_position.y < -35.0:
 		respawn()
-	if shift_locked or first_person:
-		avatar.rotation.y = lerp_angle(avatar.rotation.y, camera_yaw, minf(delta * 16.0, 1.0))
-	elif direction.length_squared() > 0.01:
-		var facing := atan2(-direction.x, -direction.z)
-		avatar.rotation.y = lerp_angle(avatar.rotation.y, facing, minf(delta * 12.0, 1.0))
+	var locked := shift_locked or first_person
+	var body_facing := Facing.target(Vector2(direction.x, direction.z), camera_yaw, locked, avatar.rotation.y)
+	avatar.rotation.y = lerp_angle(avatar.rotation.y, body_facing, minf(delta * Facing.rate(locked), 1.0))
 	avatar.motion_speed = Vector2(velocity.x, velocity.z).length()
 	avatar.airborne = not is_on_floor()
 	avatar.vertical_speed = velocity.y

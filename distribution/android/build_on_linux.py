@@ -2,7 +2,8 @@
 from pathlib import Path
 import hashlib,json,os,secrets,shutil,subprocess,tarfile,zipfile
 import xml.etree.ElementTree as ET
-root=Path.home()/'.local/share/luani-build/android-preview-1'
+root=Path.home()/'.local/share/luani-build/android-preview-2'
+root.mkdir(parents=True,exist_ok=True)
 source=root/'source'
 source.mkdir(exist_ok=True)
 with tarfile.open(root/'source.tar.gz') as t:t.extractall(source,filter='data')
@@ -26,12 +27,22 @@ module=android/'build.gradle'
 module.write_text(module.read_text().replace('    ndkVersion versions.ndkVersion\n',''))
 properties=android/'gradle.properties'
 properties.write_text(properties.read_text()+'\ndoNotStrip=true\norg.gradle.java.installations.auto-download=false\n')
+java_source=source/'distribution/android/java'
+shutil.copytree(java_source,android/'src/main/java',dirs_exist_ok=True)
+rules=android/'proguard-rules.pro'
+keep='\n-keep class org.luani.client.LuaniWebsitePlugin { *; }\n'
+old_rules=rules.read_text() if rules.exists() else ''
+if keep not in old_rules:rules.write_text(old_rules+keep)
 # Godot replaces the release activity manifest. A separate alias survives the
 # merge and routes cold/warm VIEW intents to the unchanged stock activity.
 manifest=android/'src/main/AndroidManifest.xml'
 ns='http://schemas.android.com/apk/res/android'; ET.register_namespace('android',ns);ET.register_namespace('tools','http://schemas.android.com/tools')
 tree=ET.parse(manifest);m=tree.getroot();app=m.find('application');assert app is not None
 app.set('{'+ns+'}usesCleartextTraffic','false')
+plugin_name='org.godotengine.plugin.v2.LuaniWebsite'
+for old in list(app.findall('meta-data')):
+    if old.get('{'+ns+'}name')==plugin_name:app.remove(old)
+ET.SubElement(app,'meta-data',{'{'+ns+'}name':plugin_name,'{'+ns+'}value':'org.luani.client.LuaniWebsitePlugin'})
 a=app.find('activity');assert a is not None
 a.set('{'+ns+'}exported','true')
 alias_name='fyi.luani.client.preview.LuaniLaunch'
@@ -54,6 +65,9 @@ if not (data/'4.7.1.stable').exists():(data/'4.7.1.stable').symlink_to(templates
 env=os.environ.copy();env.update(JAVA_HOME=str(jdk),ANDROID_HOME=str(sdk),ANDROID_SDK_ROOT=str(sdk),PATH=str(jdk/'bin')+':'+env['PATH'],GRADLE_USER_HOME=str(root/'gradle'),XDG_CONFIG_HOME=str(root/'config'),XDG_DATA_HOME=str(root/'data'),XDG_CACHE_HOME=str(root/'cache'))
 # No native compilation is needed: the official AAR includes each selected ABI.
 env['GRADLE_OPTS']='-Xmx2048m -Dorg.gradle.workers.max=2'
+policy_tests=root/'policy-tests';policy_tests.mkdir(exist_ok=True)
+subprocess.run([str(jdk/'bin/javac'),'-d',str(policy_tests),str(java_source/'org/luani/client/WebsitePolicy.java'),str(source/'tools/java/WebsitePolicyTest.java')],check=True,env=env)
+subprocess.run([str(jdk/'bin/java'),'-cp',str(policy_tests),'org.luani.client.WebsitePolicyTest'],check=True,env=env)
 artifacts=root/'artifacts';artifacts.mkdir(exist_ok=True)
 unsigned=artifacts/'luani-android-unsigned.apk'
 log=root/'android-export.log'
@@ -75,13 +89,15 @@ if not key.exists():
 tools=sdk/'build-tools/35.0.0'
 aligned=artifacts/'luani-android-aligned.apk'
 subprocess.run([str(tools/'zipalign'),'-P','16','-f','4',str(unsigned),str(aligned)],check=True,env=env)
-apk=artifacts/'luani-client-0.5.0-android.1.apk'
+apk=artifacts/'luani-client-0.5.0-android.2.apk'
 subprocess.run([str(tools/'apksigner'),'sign','--ks',str(key),'--ks-key-alias','luani-preview','--ks-pass','file:'+str(password),'--out',str(apk),str(aligned)],check=True,env=env)
 verified=subprocess.check_output([str(tools/'apksigner'),'verify','--verbose','--print-certs',str(apk)],env=env,text=True)
 badging=subprocess.check_output([str(tools/'aapt'),'dump','badging',str(apk)],env=env,text=True)
 manifest_xml=subprocess.check_output([str(tools/'aapt'),'dump','xmltree',str(apk),'AndroidManifest.xml'],env=env,text=True)
 assert 'android:scheme' in manifest_xml and '"luani"' in manifest_xml and '"launch"' in manifest_xml, 'APK lost the Luani deep-link filter'
-assert "package: name='fyi.luani.client.preview'" in badging and "versionCode='50001'" in badging
+assert "package: name='fyi.luani.client.preview'" in badging and "versionCode='50002'" in badging
+assert 'org.godotengine.plugin.v2.LuaniWebsite' in manifest_xml and 'org.luani.client.LuaniWebsitePlugin' in manifest_xml
+assert '3b2d0f7a69043c6d61a4264f3258ae3fbbb2625678c841c03a42066ffa7b64a2' in verified,'Update signing certificate changed'
 assert 'android.permission.INTERNET' in badging and 'application-debuggable' not in badging
 with zipfile.ZipFile(apk) as z:
     assert any(n.endswith('Godot-LICENSE.txt') for n in z.namelist()), 'Godot license missing'
@@ -89,6 +105,6 @@ with zipfile.ZipFile(apk) as z:
     assert any(n.endswith('OFL.txt') for n in z.namelist()), 'Font license missing'
     assert not any('keystore' in n.lower() or 'export_credentials' in n.lower() or n.endswith('.p12') for n in z.namelist())
     abis=sorted({n.split('/')[1] for n in z.namelist() if n.startswith('lib/') and n.endswith('.so')})
-report={'apk':str(apk),'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'bytes':apk.stat().st_size,'abis':abis,'version':'0.5.0-android.1','version_code':50001,'min_sdk':24,'target_sdk':35,'godot':'4.7.1.stable','signature':verified,'manifest_badging':badging,'gameplay_executed':False,'installed_on_device':False}
+report={'source_archive_sha256':hashlib.sha256((root/'source.tar.gz').read_bytes()).hexdigest(),'apk':str(apk),'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'bytes':apk.stat().st_size,'abis':abis,'version':'0.5.0-android.2','version_code':50002,'min_sdk':24,'target_sdk':35,'godot':'4.7.1.stable','signature':verified,'manifest_badging':badging,'gameplay_executed':False,'installed_on_device':False}
 (artifacts/'build-report.json').write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps(report,indent=2),flush=True)

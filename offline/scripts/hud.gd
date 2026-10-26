@@ -124,6 +124,7 @@ func _surface(parent: Control, rect: Rect2, radius: int = 8) -> Panel:
 	return panel
 
 func _button(parent: Control, text: String, rect: Rect2, action: Callable, kind: String = "neutral") -> Button:
+	if OS.has_feature("android") and rect.size.y == 36: rect.size.y = 44
 	var b := Button.new()
 	b.text = text
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -161,7 +162,7 @@ func _hud_button(asset: String, title: String, shortcut: String, action: Callabl
 	b.glyph = UI.texture(asset, figma)
 	b.title = title
 	b.shortcut_hint = shortcut
-	b.tooltip_text = title
+	b.tooltip_text = "" if OS.has_feature("android") else title
 	b.pressed.connect(action)
 	b.z_index = 30
 	root.add_child(b)
@@ -172,6 +173,7 @@ func _build_topbar() -> void:
 	_menu_button.position = Vector2(16, 16)
 	_chat_button = _hud_button("chat", "Chat", "/", _toggle_chat)
 	_chat_button.position = Vector2(58, 16)
+	if OS.has_feature("android"): _chat_button.position.x = 88
 	_inventory_button = _hud_button("backpack", "Inventory", "I", _toggle_inventory, false)
 	_leaderboard_button = _hud_button("leaderboard", "Leaderboard", "Tab", _toggle_leaderboard)
 
@@ -238,6 +240,9 @@ func _build_menu() -> void:
 	_button(menu_panel, "Resume game", Rect2(364, 398, 178, 36), _close_panels, "primary")
 
 func _build_settings() -> void:
+	if OS.has_feature("android"):
+		_build_mobile_settings()
+		return
 	_text(_settings_page, "CONTROLS", Rect2(20, 20, 500, 16), 10, UI.MUTED, 700)
 	_text(_settings_page, "Shift lock", Rect2(20, 52, 432, 20), 14, UI.INK, 600)
 	_text(_settings_page, "Use Ctrl to keep the camera behind your character.", Rect2(20, 74, 432, 18), 12, UI.MUTED)
@@ -264,6 +269,33 @@ func _build_settings() -> void:
 	var identity := _text(_settings_page, SessionState.display_name, Rect2(20, 222, 520, 26), 16, UI.INK, 600)
 	_bounded(identity)
 	_text(_settings_page, "Your name comes from your Luani account.\nManage your account on new.luani.fyi." if SessionState.online else "Join from the website to use your account.\nOnly controls and audio are saved on this device.", Rect2(20, 262, 520, 38), 12, UI.MUTED)
+
+func _build_mobile_settings() -> void:
+	_text(_settings_page, "TOUCH CONTROLS", Rect2(20, 12, 500, 18), 11, UI.MUTED, 700)
+	_text(_settings_page, "Camera lock", Rect2(20, 44, 300, 22), 14, UI.INK, 600)
+	_text(_settings_page, "Off: face movement. On: face the camera direction.", Rect2(20, 70, 520, 20), 12, UI.MUTED)
+	var lock := CheckButton.new()
+	lock.text = "Enabled"
+	lock.button_pressed = SessionState.mobile_camera_locked
+	_place(lock, _settings_page, Rect2(360, 34, 180, 44))
+	lock.toggled.connect(SessionState.set_mobile_camera_locked)
+	_text(_settings_page, "Joystick", Rect2(20, 114, 200, 24), 14, UI.INK, 600)
+	var mode := OptionButton.new()
+	mode.name = "JoystickMode"
+	mode.add_item("Fixed joystick")
+	mode.add_item("Floating left-side joystick")
+	mode.selected = 1 if SessionState.mobile_joystick_mode == "floating" else 0
+	_place(mode, _settings_page, Rect2(240, 102, 300, 44))
+	mode.item_selected.connect(func(index: int) -> void: SessionState.set_mobile_joystick_mode("floating" if index == 1 else "fixed"))
+	_text(_settings_page, "Floating: touch anywhere on the left, then drag.\nThe thumb can stretch; movement speed stays bounded.", Rect2(20, 156, 520, 40), 12, UI.MUTED)
+	_text(_settings_page, "Game volume", Rect2(20, 210, 460, 22), 14, UI.INK, 600)
+	_volume_label = _text(_settings_page, "%d%%" % int(SessionState.game_volume * 100), Rect2(490, 210, 50, 22), 13, UI.MUTED)
+	var slider := HSlider.new()
+	slider.min_value = 0; slider.max_value = 100; slider.step = 1; slider.value = SessionState.game_volume * 100
+	_place(slider, _settings_page, Rect2(20, 242, 520, 28))
+	slider.value_changed.connect(func(value: float) -> void: SessionState.set_volume(value / 100.0); _volume_label.text = "%d%%" % int(value))
+	slider.drag_ended.connect(func(_changed: bool) -> void: SessionState.save_preferences())
+	_text(_settings_page, SessionState.display_name, Rect2(20, 290, 520, 24), 14, UI.MUTED, 600)
 
 func _build_players() -> void:
 	_text(_players_page, "IN THIS SESSION", Rect2(20, 20, 520, 16), 10, UI.MUTED, 700)
@@ -425,6 +457,11 @@ func _layout() -> void:
 	leaderboard_panel.position = Vector2(screen.x - 256, 64)
 	_leaderboard_button.position = Vector2(screen.x - 52, 16)
 	_inventory_button.position = Vector2(screen.x - 94, 16)
+	if OS.has_feature("android"):
+		_leaderboard_button.position.x = screen.x - 80
+		_inventory_button.position.x = screen.x - 152
+		chat_panel.position.y = 96
+		leaderboard_panel.position.y = 96
 	_hotbar.position = Vector2((screen.x - 408) * 0.5, screen.y - 60)
 	_equipped_caption.position = Vector2((screen.x - _equipped_caption.get_combined_minimum_size().x) * 0.5, screen.y - 84)
 	crosshair.position = screen * 0.5 - crosshair.get_combined_minimum_size() * 0.5
@@ -449,6 +486,13 @@ func _layout_context() -> void:
 
 func _modal_visible() -> bool:
 	return menu_panel.visible or avatar_panel.visible or inventory_panel.visible or dialog_panel.visible
+
+func touch_hits_ui(point: Vector2) -> bool:
+	var controls: Array = [_menu_button, _chat_button, _inventory_button, _leaderboard_button, chat_panel, leaderboard_panel, menu_panel, avatar_panel, inventory_panel, dialog_panel]
+	controls.append_array(_hotbar_slots)
+	for control in controls:
+		if is_instance_valid(control) and control.is_visible_in_tree() and control.get_global_rect().has_point(point): return true
+	return false
 
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.pressed or event.echo: return
@@ -561,6 +605,9 @@ func _cancel_dialog() -> void:
 func _confirm_dialog() -> void:
 	if _dialog_action == "leave":
 		SessionState.save_preferences()
+		if OS.has_feature("android") and get_tree().current_scene.has_method("return_to_website"):
+			get_tree().current_scene.call_deferred("return_to_website")
+			return
 		await world.leave_game()
 		get_tree().quit()
 	else:
@@ -629,5 +676,7 @@ func _update_controls() -> void:
 	_inventory_button.set_pressed_no_signal(inventory_panel.visible)
 
 func _notification(what: int) -> void:
+	if OS.has_feature("android") and what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_toggle_menu()
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		SessionState.save_preferences()

@@ -55,10 +55,10 @@ func _message(id: int, message: Dictionary) -> void:
 			if _entered: poses_received.emit(message.get("players",[]))
 		"status": status.emit(str(message.get("message","")).substr(0,200))
 
-func send_input(direction: Vector3, yaw: float, sprint: bool, jump: bool) -> void:
+func send_input(direction: Vector3, yaw: float, sprint: bool, jump: bool, look_locked: bool = false) -> void:
 	if not _entered: return
 	_sequence+=1
-	_transport.send_message(_server,{"type":"input","seq":_sequence,"move":[direction.x,direction.z],"yaw":yaw,"sprint":sprint,"jump":jump},false)
+	_transport.send_message(_server,{"type":"input","seq":_sequence,"move":[direction.x,direction.z],"yaw":yaw,"look_locked":look_locked,"sprint":sprint,"jump":jump},false)
 
 func action(name_text: String, values: Dictionary = {}) -> void:
 	if not _entered: return
