@@ -2,6 +2,7 @@ extends Node
 ## Android's native activity supplies only an opaque one-use URI, never browser cookies.
 signal launch_ready(data: Dictionary)
 signal failed(message: String)
+signal redemption_started
 const API := "https://ffghvwuuqmvzvjuiynkn.supabase.co/functions/v1/luani-play"
 var _uri_pattern := RegEx.new()
 var _code_pattern := RegEx.new()
@@ -49,6 +50,7 @@ func accept_uri(value: String) -> void:
 
 func _redeem(ticket: String) -> void:
 	_busy = true
+	redemption_started.emit()
 	_generation += 1
 	var generation := _generation
 	var request := HTTPRequest.new()

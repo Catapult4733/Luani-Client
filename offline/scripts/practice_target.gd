@@ -26,8 +26,10 @@ func _ready() -> void:
 	_wood = Visual.material("9d7955")
 	Visual.cylinder(_mesh, 0.13, 1.6, Vector3(0, 0.8, 0), Visual.material("5b4437"))
 	Visual.box(_mesh, Vector3(1.05, 1.15, 0.45), Vector3(0, 1.45, 0), _wood)
-	Visual.box(_mesh, Vector3(0.65, 0.65, 0.04), Vector3(0, 1.45, -0.25), Visual.material("3b324e"))
-	Visual.box(_mesh, Vector3(0.29, 0.29, 0.045), Vector3(0, 1.45, -0.28), Visual.material("c1adff"))
+	var outer := Visual.box(_mesh, Vector3(0.65, 0.65, 0.04), Vector3(0, 1.45, -0.25), Visual.material("3b324e"))
+	var inner := Visual.box(_mesh, Vector3(0.29, 0.29, 0.045), Vector3(0, 1.45, -0.28), Visual.material("c1adff"))
+	outer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	inner.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_label = Label3D.new()
 	_label.position.y = 2.35
 	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -36,12 +38,14 @@ func _ready() -> void:
 	_label.outline_size = 8
 	add_child(_label)
 	_update_label()
+	set_process(false)
 
 func hit() -> bool:
 	if hits_remaining <= 0:
 		return false
 	hits_remaining -= 1
 	_flash = 0.18
+	set_process(true)
 	_update_label()
 	if hits_remaining == 0:
 		_reset_remaining = 5.0
@@ -59,12 +63,16 @@ func _process(delta: float) -> void:
 			_mesh.show()
 			body.collision_layer = 1
 			_update_label()
+	if _flash <= 0.0 and _reset_remaining <= 0.0:
+		set_process(false)
 
 func _update_label() -> void:
 	_label.text = "Practice target · %d/%d" % [hits_remaining, MAX_HITS] if hits_remaining > 0 else "Target resetting…"
 
 func apply_server_hits(value: int) -> void:
-	if value < hits_remaining: _flash = 0.18
+	if value < hits_remaining:
+		_flash = 0.18
+		set_process(true)
 	hits_remaining = clampi(value, 0, MAX_HITS)
 	_reset_remaining = 0.0
 	_mesh.visible = hits_remaining > 0

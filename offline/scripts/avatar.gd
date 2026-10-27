@@ -35,6 +35,7 @@ func _ready() -> void:
 	right_leg = _part("RightLeg", Vector3(0.27, 1.14, 0), Vector3(0.49, 1.10, 0.55), Vector3(0, -0.55, 0), trousers)
 	# Luani's own small uniform accent, not another platform's logo.
 	var stripe := _box(Vector3(0.12, 0.52, 0.018), accent)
+	stripe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	stripe.position = Vector3(-0.25, 0.10, -0.301)
 	stripe.rotation.z = -0.30
 	torso.add_child(stripe)
@@ -43,13 +44,17 @@ func _ready() -> void:
 		var sphere := SphereMesh.new()
 		sphere.radius = 0.038
 		sphere.height = 0.076
+		sphere.radial_segments = 12
+		sphere.rings = 6
 		eye.mesh = sphere
 		eye.material_override = ink
+		eye.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		eye.position = Vector3(side * 0.145, 0.065, -0.355)
 		eye.scale = Vector3(1, 1.15, 0.35)
 		head.add_child(eye)
 		_eyes.append(eye)
 	var mouth := _box(Vector3(0.13, 0.022, 0.014), ink)
+	mouth.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mouth.position = Vector3(0, -0.12, -0.357)
 	head.add_child(mouth)
 
@@ -82,6 +87,7 @@ func _part(label: String, origin: Vector3, size: Vector3, offset: Vector3, mater
 	return pivot
 
 func _process(delta: float) -> void:
+	if not is_visible_in_tree(): return
 	_clock += delta
 	_blend = move_toward(_blend, clampf(motion_speed / 7.0, 0.0, 1.0), delta * 7.0)
 	_phase += delta * (12.0 if running else 8.0) * clampf(motion_speed / 5.0, 0.0, 1.4)

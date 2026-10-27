@@ -1,8 +1,13 @@
 """Build/sign an Android APK in an isolated user folder; never install or run it."""
 from pathlib import Path
-import hashlib,json,os,secrets,shutil,subprocess,tarfile,zipfile
+import argparse,hashlib,json,os,re,shutil,subprocess,tarfile,zipfile
 import xml.etree.ElementTree as ET
-root=Path.home()/'.local/share/luani-build/android-preview-2'
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--build-root',type=Path,default=Path.home()/'.local/share/luani-build/android-preview-3')
+parser.add_argument('--render-profile',action='store_true',help='Build an isolated, non-shipping offline render QA APK')
+args=parser.parse_args()
+root=args.build_root.resolve()
+if args.render_profile:assert root.name.endswith(('-baseline','-profile')),'QA builds require a separate task root'
 root.mkdir(parents=True,exist_ok=True)
 source=root/'source'
 source.mkdir(exist_ok=True)
@@ -16,8 +21,11 @@ if not android.exists():
         for entry in z.infolist():
             if entry.filename.startswith('src/instrumented/') or entry.filename.startswith('src/androidTestInstrumented/'):continue
             z.extract(entry,android)
+(project/'android/.gdignore').write_text('')
 (project/'android/.build_version').write_text('4.7.1.stable')
 (android/'.build_version').write_text('4.7.1.stable')
+for stale in android.rglob('*.import'):stale.unlink()
+shutil.rmtree(project/'.godot',ignore_errors=True)
 (android/'gradlew').chmod(0o755)
 config=android/'config.gradle'
 text=config.read_text().replace('compileSdk         : 36','compileSdk         : 35').replace('targetSdk          : 36','targetSdk          : 35').replace("buildTools         : '36.1.0'","buildTools         : '35.0.0'")
@@ -49,13 +57,29 @@ alias_name='fyi.luani.client.preview.LuaniLaunch'
 for old in list(app.findall('activity-alias')):
     if old.get('{'+ns+'}name')==alias_name:app.remove(old)
 target_activity=a.get('{'+ns+'}name');assert target_activity
-alias=ET.SubElement(app,'activity-alias',{'{'+ns+'}name':alias_name,'{'+ns+'}targetActivity':target_activity,'{'+ns+'}exported':'true'})
-f=ET.SubElement(alias,'intent-filter')
-for tag,value in [('action','android.intent.action.VIEW'),('category','android.intent.category.DEFAULT'),('category','android.intent.category.BROWSABLE')]:
-    ET.SubElement(f,tag,{'{'+ns+'}name':value})
-ET.SubElement(f,'data',{'{'+ns+'}scheme':'luani','{'+ns+'}host':'launch'})
+if not args.render_profile:
+    alias=ET.SubElement(app,'activity-alias',{'{'+ns+'}name':alias_name,'{'+ns+'}targetActivity':target_activity,'{'+ns+'}exported':'true'})
+    f=ET.SubElement(alias,'intent-filter')
+    for tag,value in [('action','android.intent.action.VIEW'),('category','android.intent.category.DEFAULT'),('category','android.intent.category.BROWSABLE')]:
+        ET.SubElement(f,tag,{'{'+ns+'}name':value})
+    ET.SubElement(f,'data',{'{'+ns+'}scheme':'luani','{'+ns+'}host':'launch'})
 tree.write(manifest,encoding='utf-8',xml_declaration=True)
 preset=(source/'distribution/android/export_presets.cfg').read_text()
+if args.render_profile:
+    profile=root/'render-profile.gd';assert profile.is_file(),'Explicit non-shipping QA fixture required'
+    (project/'qa_render_profile.gd').write_bytes(profile.read_bytes())
+    (project/'qa_render_profile.tscn').write_text('[gd_scene load_steps=2 format=3]\n[ext_resource type="Script" path="res://qa_render_profile.gd" id="1"]\n[node name="RenderQA" type="Node"]\nscript=ExtResource("1")\n')
+    config_file=project/'project.godot';text=config_file.read_text();assert text.count('run/main_scene="res://main.tscn"')==1
+    config_file.write_text(text.replace('run/main_scene="res://main.tscn"','run/main_scene="res://qa_render_profile.tscn"'))
+    preset=preset.replace('package/unique_name="fyi.luani.client.preview"','package/unique_name="fyi.luani.client.preview.renderqa"').replace('package/name="Luani Client"','package/name="Luani Render QA"')
+    preset=preset.replace('architectures/armeabi-v7a=true','architectures/armeabi-v7a=false').replace('architectures/arm64-v8a=true','architectures/arm64-v8a=false')
+version_match=re.search(r'^version/name="([^"]+)"$',preset,re.M)
+code_match=re.search(r'^version/code=(\d+)$',preset,re.M)
+package_match=re.search(r'^package/unique_name="([^"]+)"$',preset,re.M)
+assert version_match is not None and code_match is not None and package_match is not None
+version=version_match.group(1)
+version_code=int(code_match.group(1))
+package_name=package_match.group(1)
 (project/'export_presets.cfg').write_text(preset)
 settings=root/'config/godot'; settings.mkdir(parents=True,exist_ok=True)
 jdk=root/'tools/jdk-17.0.21+9';sdk=Path.home()/'Android/Sdk'
@@ -78,33 +102,37 @@ with log.open('w') as output:
 if result.returncode or not unsigned.exists() or 'SCRIPT ERROR:' in log.read_text(errors='replace'):
     print('\n'.join(log.read_text(errors='replace').splitlines()[-100:]),flush=True)
     raise SystemExit('Android export failed; complete log retained in build folder')
-private=Path.home()/'.local/share/luani-build/private';private.mkdir(mode=0o700,exist_ok=True);private.chmod(0o700)
+private=Path.home()/'.local/share/luani-build/private'
 password=private/'android-preview.password';key=private/'android-preview.p12'
-if not password.exists():password.write_text(secrets.token_urlsafe(48));password.chmod(0o600)
-if not key.exists():
-    keyenv=env.copy();keyenv['LUANI_ANDROID_SIGNING_PASSWORD']=password.read_text()
-    r=subprocess.run([str(jdk/'bin/keytool'),'-genkeypair','-keystore',str(key),'-storetype','PKCS12','-storepass:env','LUANI_ANDROID_SIGNING_PASSWORD','-keypass:env','LUANI_ANDROID_SIGNING_PASSWORD','-alias','luani-preview','-keyalg','RSA','-keysize','3072','-validity','3650','-dname','CN=Luani Android Preview,O=Luani'],env=keyenv,capture_output=True,text=True)
-    assert r.returncode==0,'Signing-key generation failed (private output suppressed)'
-    key.chmod(0o600)
+assert key.is_file() and password.is_file(),'Original update-signing material is required; do not generate a replacement'
 tools=sdk/'build-tools/35.0.0'
 aligned=artifacts/'luani-android-aligned.apk'
 subprocess.run([str(tools/'zipalign'),'-P','16','-f','4',str(unsigned),str(aligned)],check=True,env=env)
-apk=artifacts/'luani-client-0.5.0-android.2.apk'
+apk=artifacts/('luani-client-'+version+('-renderqa' if args.render_profile else '')+'.apk')
 subprocess.run([str(tools/'apksigner'),'sign','--ks',str(key),'--ks-key-alias','luani-preview','--ks-pass','file:'+str(password),'--out',str(apk),str(aligned)],check=True,env=env)
 verified=subprocess.check_output([str(tools/'apksigner'),'verify','--verbose','--print-certs',str(apk)],env=env,text=True)
 badging=subprocess.check_output([str(tools/'aapt'),'dump','badging',str(apk)],env=env,text=True)
 manifest_xml=subprocess.check_output([str(tools/'aapt'),'dump','xmltree',str(apk),'AndroidManifest.xml'],env=env,text=True)
-assert 'android:scheme' in manifest_xml and '"luani"' in manifest_xml and '"launch"' in manifest_xml, 'APK lost the Luani deep-link filter'
-assert "package: name='fyi.luani.client.preview'" in badging and "versionCode='50002'" in badging
+if not args.render_profile:assert 'android:scheme' in manifest_xml and '"luani"' in manifest_xml and '"launch"' in manifest_xml, 'APK lost the Luani deep-link filter'
+assert "package: name='"+package_name+"'" in badging and "versionCode='"+str(version_code)+"'" in badging
 assert 'org.godotengine.plugin.v2.LuaniWebsite' in manifest_xml and 'org.luani.client.LuaniWebsitePlugin' in manifest_xml
 assert '3b2d0f7a69043c6d61a4264f3258ae3fbbb2625678c841c03a42066ffa7b64a2' in verified,'Update signing certificate changed'
 assert 'android.permission.INTERNET' in badging and 'application-debuggable' not in badging
+with zipfile.ZipFile(templates/'android_source.zip') as z:
+    stock_icons={n:hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist() if n.startswith('res/') and n.endswith('.webp')}
+branded_hashes=set()
+for rel in ('mipmap-xxxhdpi-v4/icon.webp','mipmap-xxxhdpi-v4/icon_foreground.webp','mipmap-xxxhdpi-v4/icon_background.webp','mipmap-xxxhdpi-v4/icon_monochrome.webp','drawable/splash_icon.webp'):
+    icon_file=android/'res'/rel;assert icon_file.is_file(),'Missing exported Luani branding resource: '+rel
+    digest=hashlib.sha256(icon_file.read_bytes()).hexdigest();assert digest!=stock_icons.get('res/'+rel),'Stock Godot branding remained in '+rel
+    branded_hashes.add(digest)
 with zipfile.ZipFile(apk) as z:
     assert any(n.endswith('Godot-LICENSE.txt') for n in z.namelist()), 'Godot license missing'
     assert any(n.endswith('Godot-COPYRIGHT.txt') for n in z.namelist()), 'Third-party notices missing'
     assert any(n.endswith('OFL.txt') for n in z.namelist()), 'Font license missing'
     assert not any('keystore' in n.lower() or 'export_credentials' in n.lower() or n.endswith('.p12') for n in z.namelist())
+    apk_webp_hashes={hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist() if n.startswith('res/') and n.endswith('.webp')}
+    assert branded_hashes.issubset(apk_webp_hashes),'Packaged APK is missing exported Luani icon/splash resources'
     abis=sorted({n.split('/')[1] for n in z.namelist() if n.startswith('lib/') and n.endswith('.so')})
-report={'source_archive_sha256':hashlib.sha256((root/'source.tar.gz').read_bytes()).hexdigest(),'apk':str(apk),'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'bytes':apk.stat().st_size,'abis':abis,'version':'0.5.0-android.2','version_code':50002,'min_sdk':24,'target_sdk':35,'godot':'4.7.1.stable','signature':verified,'manifest_badging':badging,'gameplay_executed':False,'installed_on_device':False}
+report={'source_archive_sha256':hashlib.sha256((root/'source.tar.gz').read_bytes()).hexdigest(),'apk':str(apk),'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'bytes':apk.stat().st_size,'abis':abis,'version':version,'version_code':version_code,'package':package_name,'nonshipping_render_qa':args.render_profile,'min_sdk':24,'target_sdk':35,'godot':'4.7.1.stable','signature':verified,'manifest_badging':badging,'gameplay_executed':False,'installed_on_device':False}
 (artifacts/'build-report.json').write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps(report,indent=2),flush=True)

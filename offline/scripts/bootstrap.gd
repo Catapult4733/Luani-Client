@@ -6,6 +6,8 @@ const OnlineWorld = preload("res://scripts/online_world.gd")
 const OfflineWorld = preload("res://scripts/world.gd")
 const UI = preload("res://scripts/ui_theme.gd")
 const MobileUI = preload("res://scripts/mobile_ui.gd")
+const Connecting = preload("res://scripts/connecting_screen.gd")
+const MobilePerformance = preload("res://scripts/mobile_performance.gd")
 var _screen: CanvasLayer
 var _status: Label
 var _network: Network
@@ -28,14 +30,15 @@ func _ready() -> void:
 		_android = load("res://scripts/android_launch.gd").new()
 		_android.connect("launch_ready", _begin_network)
 		_android.connect("failed", _lost)
+		_android.connect("redemption_started", _show_connecting)
 		add_child(_android)
 		if Engine.has_singleton("LuaniWebsite"):
 			_website = Engine.get_singleton("LuaniWebsite")
 			_website.connect("launch_requested", Callable(_android, "accept_uri"))
-			_website.connect("practice_requested", _practice)
+
 			if _android.current_uri().is_empty(): _open_website()
 		else:
-			_status.text = "Android website component is unavailable. Please update Luani."
+			_screen.show_error("Could not start the Luani website. Reopen the app or install the latest update.")
 		return
 	if args.is_empty(): return
 	if args.size()!=2 or args[0]!="--launch-fd" or not args[1].is_valid_int(): _status.text="Invalid launch arguments. Join from new.luani.fyi."; return
@@ -48,7 +51,10 @@ func _ready() -> void:
 	_begin_network(data)
 
 func _open_website() -> void:
-	if _website != null: _website.call("showWebsite")
+	if _website != null:
+		MobilePerformance.set_website_visible(true); _screen.hide(); _website.call("showWebsite")
+	elif OS.has_feature("android"):
+		_screen.show_error("Could not start the Luani website. Reopen the app or install the latest update.")
 	else: OS.shell_open("https://new.luani.fyi/games/baseplate")
 
 func _hide_website() -> void:
@@ -62,15 +68,20 @@ func _discard_network() -> void:
 
 func _begin_network(data: Dictionary) -> void:
 	_discard_network()
-	_hide_website()
-	_status.text="Authenticating with the game server…"
-	_screen.show()
+	if OS.has_feature("android"): _show_connecting()
+	else:
+		_status.text="Authenticating with the game server…"
+		_screen.show()
 	_network=Network.new(); add_child(_network)
 	_network.entered.connect(_entered)
 	_network.lost.connect(_lost)
 	_network.start(data)
 
 func _build_launcher() -> void:
+	if OS.has_feature("android"):
+		_screen=Connecting.new(); add_child(_screen)
+		_screen.connect("retry_requested",_retry_android)
+		return
 	_screen=CanvasLayer.new(); add_child(_screen)
 	var root := Control.new(); root.theme=UI.make_theme(); _screen.add_child(root); root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var background := ColorRect.new(); background.color=UI.DARK; root.add_child(background); background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -79,14 +90,20 @@ func _build_launcher() -> void:
 	var box := VBoxContainer.new(); box.add_theme_constant_override("separation",18); panel.add_child(box)
 	box.add_child(UI.label("Luani",28,UI.INK,700))
 	_status=UI.label("Log in on new.luani.fyi and choose Join game.\nYour account name and avatar load automatically.",14,UI.MUTED)
-	if OS.has_feature("android"):
-		_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_status.custom_minimum_size.x = 416
 	box.add_child(_status)
-	var website := Button.new(); website.text="Open Luani website" if OS.has_feature("android") else "Open Baseplate on the website"; website.pressed.connect(_open_website); box.add_child(website)
+	var website := Button.new(); website.text="Open Baseplate on the website"; website.pressed.connect(_open_website); box.add_child(website)
 	var practice := Button.new(); practice.text="Offline practice (not an account session)"; practice.pressed.connect(_practice); box.add_child(practice)
-	if OS.has_feature("android"):
-		website.custom_minimum_size.y=48; practice.custom_minimum_size.y=48
+
+func _show_connecting() -> void:
+	MobilePerformance.set_website_visible(false)
+	_hide_website()
+	_screen.show_connecting()
+
+func _retry_android() -> void:
+	if _website != null:
+		_screen.show_connecting(); _open_website()
+	else:
+		_screen.show_error("Could not start the Luani website. Reopen the app or install the latest update.")
 
 func _entered() -> void:
 	if is_instance_valid(_world): _world.queue_free()
@@ -101,7 +118,8 @@ func _lost(message: String) -> void:
 	Input.mouse_mode=Input.MOUSE_MODE_VISIBLE
 	if is_instance_valid(_world): _world.queue_free(); _world=null
 	SessionState.online=false
-	_status.text=message; _screen.show()
+	if OS.has_feature("android"): _screen.show_error(message)
+	else: _status.text=message; _screen.show()
 	if _website != null:
 		_open_website(); _website.call("showMessage", message)
 

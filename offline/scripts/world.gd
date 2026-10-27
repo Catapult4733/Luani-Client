@@ -206,6 +206,9 @@ func _build_environment() -> void:
 	sun.light_color = Color("fff1d9")
 	sun.light_energy = 1.25
 	sun.shadow_enabled = true
+	if OS.has_feature("android"):
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+		sun.directional_shadow_max_distance = 42.0
 	add_child(sun)
 
 func _build_baseplate() -> void:
@@ -223,6 +226,7 @@ func _build_baseplate() -> void:
 	mesh.size = shape.size
 	var floor_mesh := MeshInstance3D.new()
 	floor_mesh.mesh = mesh
+	floor_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var material := StandardMaterial3D.new()
 	material.albedo_color = Color("a8b2be")
 	material.roughness = 1.0
@@ -230,6 +234,7 @@ func _build_baseplate() -> void:
 	floor_body.add_child(floor_mesh)
 	add_child(floor_body)
 	var grid := MultiMeshInstance3D.new()
+	grid.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var instances := MultiMesh.new()
 	instances.transform_format = MultiMesh.TRANSFORM_3D
 	var line := BoxMesh.new()

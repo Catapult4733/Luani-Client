@@ -22,17 +22,25 @@ func _ready() -> void:
 		if light != null:
 			light.visible = false
 	var base_mat := Visual.material("202229")
-	Visual.cylinder(self, 0.60, 0.04, Vector3(0, 0.025, 0), base_mat)
+	var pad := Visual.cylinder(self, 0.60, 0.04, Vector3(0, 0.025, 0), base_mat)
+	pad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ring = MeshInstance3D.new()
 	var mesh := TorusMesh.new()
 	mesh.inner_radius = 0.54
 	mesh.outer_radius = 0.59
-	mesh.rings = 24
+	mesh.rings = 16 if OS.has_feature("android") else 24
 	mesh.ring_segments = 6
 	_ring.mesh = mesh
+	_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ring.material_override = Visual.material(str(Catalog.item(item_id).get("color", "c1adff")), 0, true)
 	_ring.position.y = 0.05
 	add_child(_ring)
+	if OS.has_feature("android"):
+		Visual.compact_for_mobile(self, "pickup_pedestal_" + item_id)
+		for child in find_children("*", "MeshInstance3D", true, false):
+			var instance := child as MeshInstance3D
+			if instance != null:
+				instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_label = Label3D.new()
 	_label.text = Catalog.title(item_id)
 	_label.position.y = 2.35

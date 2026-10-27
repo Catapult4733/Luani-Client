@@ -1,5 +1,6 @@
 extends RefCounted
 ## Original primitive-built game items. Never loads third-party meshes or scripts.
+static var _mobile_meshes: Dictionary = {}
 
 static func material(color: String, metallic: float = 0.0, glow: bool = false) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -94,4 +95,30 @@ static func make(id: String) -> Node3D:
 				ring.material_override = mint
 				ring.position.y = float(index) * 0.10
 				root.add_child(ring)
+	if OS.has_feature("android"): compact_for_mobile(root,id)
 	return root
+
+static func compact_for_mobile(root: Node3D, id: String) -> void:
+	## Rigid pieces share one cached mesh with material surfaces; named lamp controls stay separate.
+	var pieces: Array[MeshInstance3D] = []
+	for child in root.get_children():
+		if child is MeshInstance3D and child.name != "LanternGlow" and child.get_child_count()==0:
+			pieces.append(child)
+	if pieces.is_empty(): return
+	var merged: ArrayMesh = _mobile_meshes.get(id) as ArrayMesh
+	if merged == null:
+		merged=ArrayMesh.new()
+		var surfaces: Dictionary = {}
+		for piece in pieces:
+			for index in range(piece.mesh.get_surface_count()):
+				var mat: Material=piece.get_active_material(index)
+				var key: int=mat.get_instance_id() if mat != null else 0
+				if not surfaces.has(key):
+					var surface:=SurfaceTool.new();surface.begin(Mesh.PRIMITIVE_TRIANGLES);surface.set_material(mat);surfaces[key]=surface
+				var surface: SurfaceTool=surfaces[key]
+				surface.append_from(piece.mesh,index,piece.transform)
+		for surface: SurfaceTool in surfaces.values():surface.commit(merged)
+		_mobile_meshes[id]=merged
+	for piece in pieces:
+		root.remove_child(piece);piece.free()
+	var batch:=MeshInstance3D.new();batch.name="MobileBatch";batch.mesh=merged;root.add_child(batch)
