@@ -103,6 +103,11 @@ public final class LuaniWebsitePlugin extends GodotPlugin {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String target = request.getUrl().toString();
                 if (!request.isForMainFrame()) return !WebsitePolicy.isSafeHttps(target);
+                if (request.hasGesture() && WebsitePolicy.isTrustedPage(view.getUrl()) && WebsitePolicy.isSupportMail(target)) {
+                    try { host.startActivity(new Intent(Intent.ACTION_SENDTO,Uri.parse(target))); }
+                    catch (RuntimeException e) { message("Email help@luani.fyi from your mail app. Never send your password."); }
+                    return true;
+                }
                 if (WebsitePolicy.canLaunchFrom(view.getUrl(), target, request.isForMainFrame())) {
                     hideNow(); emitSignal("launch_requested", target); return true;
                 }

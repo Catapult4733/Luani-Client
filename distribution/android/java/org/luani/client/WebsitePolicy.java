@@ -9,6 +9,9 @@ public final class WebsitePolicy {
     public static final String HOME = "https://new.luani.fyi/";
     private static final Pattern LAUNCH = Pattern.compile("\\Aluani://launch\\?ticket=[A-Za-z0-9_-]{43}\\z");
     private WebsitePolicy() {}
+    public static boolean isSupportMail(String value) {
+        return "mailto:help@luani.fyi".equals(value);
+    }
     public static boolean isSafeHttps(String value) {
         if (value == null || value.length() > 16384) return false;
         try {
