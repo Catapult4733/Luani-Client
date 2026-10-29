@@ -29,9 +29,13 @@ func roster() -> Array:
 func _room_state(data: Dictionary) -> void:
 	var present: Dictionary = {}
 	for person in data.get("players",[]):
+		if not person is Dictionary: continue
 		var key := str(person.get("key","")); present[key]=true
-		if key!=connection.player_key and not _remotes.has(key):
+		if key==connection.player_key:
+			player.avatar.apply_appearance(SessionState.avatar)
+		elif not _remotes.has(key):
 			var remote := Remote.new(); remote.profile=person; add_child(remote); _remotes[key]=remote
+		else: _remotes[key].apply_profile(person)
 	for key in _remotes.keys():
 		if not present.has(key): _remotes[key].queue_free(); _remotes.erase(key)
 	var wanted: Dictionary = {}

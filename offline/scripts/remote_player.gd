@@ -2,6 +2,7 @@ extends Node3D
 ## Visual-only remote replica; server snapshots own all gameplay state.
 const Avatar = preload("res://scripts/avatar.gd")
 const Visual = preload("res://scripts/item_visual.gd")
+const AvatarData = preload("res://scripts/avatar_data.gd")
 var profile: Dictionary = {}
 var rig: Avatar
 var _target: Vector3
@@ -15,12 +16,21 @@ var _item := ""
 var _lantern := true
 var _last_swing: int = 0
 var _has_pose := false
+var _name_tag: Label3D
 
 func _ready() -> void:
 	rig=Avatar.new(); rig.appearance=profile.get("avatar",{}); add_child(rig)
-	var label := Label3D.new(); label.text=str(profile.get("username","Player")); label.position.y=3.4
-	label.billboard=BaseMaterial3D.BILLBOARD_ENABLED; label.font_size=40; label.pixel_size=0.004
-	add_child(label)
+	_name_tag = Label3D.new(); _name_tag.text=str(profile.get("username","Player")).substr(0,50); _name_tag.position.y=3.4
+	_name_tag.billboard=BaseMaterial3D.BILLBOARD_ENABLED; _name_tag.font_size=40; _name_tag.pixel_size=0.004
+	add_child(_name_tag)
+
+func apply_profile(value: Dictionary) -> void:
+	if str(value.get("key","")) != str(profile.get("key","")) or not value.get("avatar") is Dictionary: return
+	var next: Dictionary = value.avatar
+	if AvatarData.revision(next) < AvatarData.revision(profile.get("avatar",{})): return
+	profile = value.duplicate(true)
+	if is_instance_valid(rig): rig.apply_appearance(next)
+	if is_instance_valid(_name_tag): _name_tag.text=str(profile.get("username","Player")).substr(0,50)
 
 func apply_pose(pose: Array) -> void:
 	if pose.size()!=14: return

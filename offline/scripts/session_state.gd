@@ -1,6 +1,7 @@
 extends Node
 ## Local controls/audio only; online identity comes exclusively from verified admission.
 signal preferences_changed
+const AvatarData = preload("res://scripts/avatar_data.gd")
 const SETTINGS_PATH := "user://offline_settings.cfg"
 var display_name: String = "Explorer"
 var avatar: Dictionary = {}
@@ -31,6 +32,12 @@ func set_identity(value: Dictionary) -> void:
 	display_name = str(value.get("username", "Explorer")).substr(0, 50)
 	avatar = value.get("avatar", {}).duplicate(true)
 	preferences_changed.emit()
+
+func apply_server_avatar(value: Dictionary) -> void:
+	if AvatarData.revision(value) <= AvatarData.revision(avatar): return
+	avatar = value.duplicate(true)
+	profile["avatar"] = avatar.duplicate(true)
+	# Cosmetic hot refresh must not emit the controls/audio preference signal.
 
 func set_shift_lock_enabled(value: bool) -> void:
 	shift_lock_enabled = value

@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "units": "Luani body units; Y up, forward -Z; Euler XYZ degrees",
+  "maxAccessories": 6,
+  "positionLimit": 2,
+  "rotationLimit": 180,
+  "defaultAccent": "c1adff",
+  "parts": [
+    {"id":"head","label":"Head","legacy":"skin","color":"d6b49a","origin":[0,2.66,0],"size":[0.74,0.74,0.70],"offset":[0,0,0]},
+    {"id":"torso","label":"Torso","legacy":"cloth","color":"424b69","origin":[0,1.70,0],"size":[1.02,1.12,0.58],"offset":[0,0,0]},
+    {"id":"left_arm","label":"Left arm","legacy":"sleeves","color":"e6e8ef","origin":[-0.75,2.19,0],"size":[0.43,1.14,0.52],"offset":[0,-0.52,0]},
+    {"id":"right_arm","label":"Right arm","legacy":"sleeves","color":"e6e8ef","origin":[0.75,2.19,0],"size":[0.43,1.14,0.52],"offset":[0,-0.52,0]},
+    {"id":"left_leg","label":"Left leg","legacy":"trousers","color":"33384c","origin":[-0.27,1.14,0],"size":[0.49,1.10,0.55],"offset":[0,-0.55,0]},
+    {"id":"right_leg","label":"Right leg","legacy":"trousers","color":"33384c","origin":[0.27,1.14,0],"size":[0.49,1.10,0.55],"offset":[0,-0.55,0]}
+  ],
+  "catalog": [
+    {"id":"orbit-cap","name":"Orbit cap","kind":"Headwear","anchor":"head","price":0,"description":"A purple cap with a clean, low brim.","primitives":[
+      {"shape":"box","size":[0.94,0.20,0.82],"position":[0,0.43,0],"color":"a98aff"},
+      {"shape":"box","size":[0.92,0.06,0.42],"position":[0,0.36,-0.55],"color":"7961c7"}
+    ]},
+    {"id":"mint-visor","name":"Mint visor","kind":"Face","anchor":"head","price":0,"description":"A mint frame and dark lenses for your next world.","primitives":[
+      {"shape":"box","size":[0.84,0.22,0.10],"position":[0,0.10,-0.40],"color":"70e0b1"},
+      {"shape":"box","size":[0.67,0.12,0.04],"position":[0,0.10,-0.47],"color":"263b48"}
+    ]},
+    {"id":"signal-antenna","name":"Signal antenna","kind":"Headwear","anchor":"head","price":0,"description":"A tiny signal for a big adventure.","primitives":[
+      {"shape":"cylinder","radius":0.035,"height":0.40,"position":[0,0.57,0],"color":"e6e8ef"},
+      {"shape":"sphere","radius":0.11,"position":[0,0.84,0],"color":"70e0b1"}
+    ]},
+    {"id":"trail-pack","name":"Trail pack","kind":"Back","anchor":"torso","price":0,"description":"A small pack. Cosmetic only; it does not add inventory space.","primitives":[
+      {"shape":"box","size":[0.70,0.76,0.30],"position":[0,0,0.48],"color":"7961c7"},
+      {"shape":"box","size":[0.08,0.87,0.08],"position":[-0.23,0,0.32],"color":"70e0b1"},
+      {"shape":"box","size":[0.08,0.87,0.08],"position":[0.23,0,0.32],"color":"70e0b1"}
+    ]},
+    {"id":"mint-cuff","name":"Mint cuff","kind":"Arm","anchor":"right_arm","price":0,"description":"A simple mint band. Move it along the arm to find your fit.","primitives":[
+      {"shape":"box","size":[0.49,0.16,0.58],"position":[0,-0.74,0],"color":"70e0b1"},
+      {"shape":"box","size":[0.22,0.10,0.05],"position":[0,-0.74,-0.32],"color":"f5f4fa"}
+    ]},
+    {"id":"orbit-badge","name":"Orbit badge","kind":"Front","anchor":"torso","price":0,"description":"Luani's orbital colours in a small original badge.","primitives":[
+      {"shape":"torus","radius":0.13,"tube":0.024,"position":[0.25,0.15,-0.32],"rotation":[90,0,-25],"color":"a98aff"},
+      {"shape":"sphere","radius":0.05,"position":[0.25,0.15,-0.35],"color":"70e0b1"}
+    ]}
+  ]
+}

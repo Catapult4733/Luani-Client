@@ -1,6 +1,7 @@
 class_name LuaniAvatar
 extends Node3D
 ## Original six-piece block humanoid. No Roblox meshes, textures or animation files.
+const AvatarData = preload("res://scripts/avatar_data.gd")
 
 var motion_speed: float = 0.0
 var airborne: bool = false
@@ -19,20 +20,24 @@ var right_arm: Node3D
 var left_leg: Node3D
 var right_leg: Node3D
 var _eyes: Array[MeshInstance3D] = []
+var _body_materials: Dictionary = {}
+var _pivots: Dictionary = {}
+var _accessory_nodes: Array[Node3D] = []
 
 func _ready() -> void:
-	var cloth := _material(_appearance_color("cloth", "424b69"))
-	var sleeves := _material(_appearance_color("sleeves", "e6e8ef"))
-	var trousers := _material(_appearance_color("trousers", "33384c"))
-	var skin := _material(_appearance_color("skin", "d6b49a"))
+	var spec: Dictionary = AvatarData.definition()
+	if spec.is_empty(): set_process(false); return
+	appearance = AvatarData.normalize(appearance)
+	for part: Dictionary in spec.parts:
+		var body_material := _material(Color.from_string("#" + str(appearance.colors[part.id]), Color(str(part.color))))
+		_body_materials[part.id] = body_material
+		_pivots[part.id] = _part(str(part.id).to_pascal_case(), _vector(part.origin), _vector(part.size), _vector(part.offset), body_material)
+	torso = _pivots.torso; head = _pivots.head
+	left_arm = _pivots.left_arm; right_arm = _pivots.right_arm
+	left_leg = _pivots.left_leg; right_leg = _pivots.right_leg
 	var ink := _material(Color("292b39"))
-	var accent := _material(_appearance_color("accent", "c1adff"))
-	torso = _part("Torso", Vector3(0, 1.70, 0), Vector3(1.02, 1.12, 0.58), Vector3.ZERO, cloth)
-	head = _part("Head", Vector3(0, 2.66, 0), Vector3(0.74, 0.74, 0.70), Vector3.ZERO, skin)
-	left_arm = _part("LeftArm", Vector3(-0.75, 2.19, 0), Vector3(0.43, 1.14, 0.52), Vector3(0, -0.52, 0), sleeves)
-	right_arm = _part("RightArm", Vector3(0.75, 2.19, 0), Vector3(0.43, 1.14, 0.52), Vector3(0, -0.52, 0), sleeves)
-	left_leg = _part("LeftLeg", Vector3(-0.27, 1.14, 0), Vector3(0.49, 1.10, 0.55), Vector3(0, -0.55, 0), trousers)
-	right_leg = _part("RightLeg", Vector3(0.27, 1.14, 0), Vector3(0.49, 1.10, 0.55), Vector3(0, -0.55, 0), trousers)
+	var accent := _material(Color.from_string("#" + str(appearance.accent), Color("c1adff")))
+	_body_materials["accent"] = accent
 	# Luani's own small uniform accent, not another platform's logo.
 	var stripe := _box(Vector3(0.12, 0.52, 0.018), accent)
 	stripe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -57,6 +62,63 @@ func _ready() -> void:
 	mouth.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mouth.position = Vector3(0, -0.12, -0.357)
 	head.add_child(mouth)
+	_rebuild_accessories()
+
+func apply_appearance(value: Dictionary) -> void:
+	var normalized: Dictionary = AvatarData.normalize(value)
+	if normalized == appearance: return
+	appearance = normalized
+	if not is_node_ready() or _body_materials.is_empty(): return
+	for part: String in appearance.colors:
+		(_body_materials[part] as StandardMaterial3D).albedo_color = Color.from_string("#" + str(appearance.colors[part]), Color.WHITE)
+	(_body_materials.accent as StandardMaterial3D).albedo_color = Color.from_string("#" + str(appearance.accent), Color("c1adff"))
+	# Keep body pivots, eyes, animation phase and any held game tool intact.
+	_rebuild_accessories()
+
+func _vector(value: Array) -> Vector3:
+	return Vector3(float(value[0]), float(value[1]), float(value[2]))
+
+func _rebuild_accessories() -> void:
+	for node: Node3D in _accessory_nodes:
+		if is_instance_valid(node):
+			node.get_parent().remove_child(node)
+			node.queue_free()
+	_accessory_nodes.clear()
+	for saved: Dictionary in appearance.get("accessories", []):
+		var item: Dictionary = AvatarData.catalog_item(str(saved.id))
+		if item.is_empty() or not _pivots.has(item.anchor): continue
+		var attachment := Node3D.new()
+		attachment.name = "Accessory_" + str(item.id)
+		attachment.position = _vector(saved.position)
+		attachment.rotation_order = EULER_ORDER_XYZ
+		attachment.rotation_degrees = _vector(saved.rotation)
+		(_pivots[item.anchor] as Node3D).add_child(attachment)
+		_accessory_nodes.append(attachment)
+		for definition: Dictionary in item.primitives:
+			var mesh: Mesh = _accessory_mesh(definition)
+			if mesh == null: continue
+			var piece := MeshInstance3D.new()
+			piece.mesh = mesh
+			piece.material_override = _material(Color.from_string("#" + str(definition.color), Color.WHITE))
+			piece.position = _vector(definition.position)
+			piece.rotation_order = EULER_ORDER_XYZ
+			piece.rotation_degrees = _vector(definition.get("rotation", [0,0,0]))
+			attachment.add_child(piece)
+
+func _accessory_mesh(definition: Dictionary) -> Mesh:
+	match str(definition.shape):
+		"box":
+			var box := BoxMesh.new(); box.size = _vector(definition.size); return box
+		"sphere":
+			var sphere := SphereMesh.new(); sphere.radius = float(definition.radius); sphere.height = sphere.radius * 2.0
+			sphere.radial_segments = 16; sphere.rings = 8; return sphere
+		"cylinder":
+			var cylinder := CylinderMesh.new(); cylinder.top_radius = float(definition.radius); cylinder.bottom_radius = float(definition.radius)
+			cylinder.height = float(definition.height); cylinder.radial_segments = 16; return cylinder
+		"torus":
+			var torus := TorusMesh.new(); torus.inner_radius = float(definition.radius) - float(definition.tube); torus.outer_radius = float(definition.radius) + float(definition.tube)
+			torus.rings = 24; torus.ring_segments = 8; return torus
+	return null
 
 func _material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
@@ -64,9 +126,6 @@ func _material(color: Color) -> StandardMaterial3D:
 	material.roughness = 0.9
 	return material
 
-func _appearance_color(key: String, fallback: String) -> Color:
-	var value := str(appearance.get(key, fallback))
-	return Color.from_string("#" + value, Color(fallback)) if value.length() == 6 else Color(fallback)
 
 func _box(size: Vector3, material: Material) -> MeshInstance3D:
 	var piece := MeshInstance3D.new()

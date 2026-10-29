@@ -48,6 +48,9 @@ func _message(id: int, message: Dictionary) -> void:
 		"world":
 			if _entered:
 				roster=message.get("players",[])
+				for person: Variant in roster:
+					if person is Dictionary and str(person.get("key",""))==player_key and person.get("avatar") is Dictionary:
+						SessionState.apply_server_avatar(person.avatar)
 				room_changed.emit(message)
 		"inventory":
 			if _entered: inventory_received.emit(message.get("data",{}))

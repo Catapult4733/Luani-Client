@@ -4,6 +4,8 @@ const Transport = preload("res://scripts/secure_transport.gd")
 const Bag = preload("res://scripts/inventory.gd")
 const Catalog = preload("res://scripts/item_catalog.gd")
 const Facing = preload("res://scripts/facing.gd")
+const AvatarSync = preload("res://scripts/avatar_sync.gd")
+const AvatarData = preload("res://scripts/avatar_data.gd")
 const SCATTER = [
  ["sword",4,-5],["lantern",-5,-4],["spring_coil",2,6],
  ["sword",14,-13],["lantern",-17,8],["spring_coil",15,15],
@@ -323,11 +325,12 @@ func _pulse() -> void:
 	_pulsing=true
 	var outgoing: Array[Dictionary] = _leaving.duplicate(true)
 	for member in _peers.values():
-		if member.get("phase")=="admitted": outgoing.append({"admission_id":member.admission_id,"data":_bag_data(member.bag)})
-	var answer: Dictionary = await _control({"action":"pulse","boot_id":_boot,"players":outgoing})
+		if member.get("phase")=="admitted": outgoing.append({"admission_id":member.admission_id,"data":_bag_data(member.bag),"avatar_revision":AvatarData.revision(member.profile.get("avatar",{}))})
+	var answer: Dictionary = await _control({"action":"pulse","boot_id":_boot,"players":outgoing,"avatar_updates":true})
 	if answer.get("ok")==true:
 		if _last_ok == 0.0: print("Luani control heartbeat accepted; host is ready for admissions.")
 		_last_ok=_clock()
+		for room: String in AvatarSync.apply_updates(_peers,answer.get("avatars",[])): _broadcast_state(room)
 		for entry in outgoing:
 			if entry.get("leaving")==true: _leaving.erase(entry)
 	_pulsing=false
