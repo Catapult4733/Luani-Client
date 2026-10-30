@@ -2,20 +2,30 @@ extends "res://scripts/world.gd"
 ## Client-side map/visuals. Server decides movement, claims, items, targets and identity.
 
 const Remote = preload("res://scripts/remote_player.gd")
+const StudioRuntime = preload("res://scripts/studio_runtime.gd")
 var connection
 var _remotes: Dictionary = {}
 var _local_swing: int = 0
+var _studio_runtime: StudioRuntime
 
 func _ready() -> void:
-	_build_environment(); _build_baseplate()
+	_build_environment()
+	if not connection.world_data.is_empty():
+		_studio_runtime = StudioRuntime.new(); add_child(_studio_runtime)
+		var error: String = _studio_runtime.build(connection.world_data,"client")
+		if not error.is_empty(): connection._fail("Invalid game world"); return
+		connection.parts_received.connect(_studio_runtime.apply_dynamic)
+	else: _build_baseplate()
 	inventory=InventoryScript.new(); inventory.server_owned=true
 	player=PlayerScript.new(); player.network_driver=connection; player.name="AuthenticatedPlayer"
 	add_child(player)
+	if _studio_runtime != null: player.position = _studio_runtime.spawn_position(); player.respawn_floor = _studio_runtime.kill_height()
 	inventory.equipped_changed.connect(player.set_equipped_item)
 	inventory.equip_requested.connect(func(index: int) -> void: connection.action("equip",{"slot":index}))
 	inventory.apply_server(connection.initial_inventory)
-	for point: Vector2 in [Vector2(4,-10),Vector2(-9,-9),Vector2(12,4),Vector2(-14,7),Vector2(0,20)]:
-		var target := TargetScript.new(); target.position=Vector3(point.x,0,point.y); add_child(target); _targets.append(target)
+	if _studio_runtime == null:
+		for point: Vector2 in [Vector2(4,-10),Vector2(-9,-9),Vector2(12,4),Vector2(-14,7),Vector2(0,20)]:
+			var target := TargetScript.new(); target.position=Vector3(point.x,0,point.y); add_child(target); _targets.append(target)
 	connection.room_changed.connect(_room_state)
 	connection.inventory_received.connect(inventory.apply_server)
 	connection.poses_received.connect(_poses)

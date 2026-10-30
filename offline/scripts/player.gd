@@ -36,6 +36,7 @@ var _view_model: Node3D
 var _swing_remaining: float = 0.0
 var _lantern_on: bool = true
 var network_driver
+var respawn_floor: float = -35.0
 var _network_clock: float = 0.0
 var _network_jump: bool = false
 
@@ -178,7 +179,7 @@ func _physics_process(delta: float) -> void:
 	velocity.x = move_toward(velocity.x, direction.x * speed, acceleration * delta)
 	velocity.z = move_toward(velocity.z, direction.z * speed, acceleration * delta)
 	move_and_slide()
-	if global_position.y < -35.0:
+	if global_position.y < respawn_floor:
 		respawn()
 	var locked := shift_locked or first_person
 	var body_facing := Facing.target(Vector2(direction.x, direction.z), camera_yaw, locked, avatar.rotation.y)

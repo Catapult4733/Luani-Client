@@ -353,6 +353,11 @@ def main():
     desktop = applications / 'org.luani.Client.desktop'
     if desktop.exists() and 'X-Luani-Managed=true' not in desktop.read_text(errors='replace'):
         raise RuntimeError('An unmanaged Luani desktop entry already exists.')
+    studio_desktop = applications / 'org.luani.Studio.desktop'
+    if studio_desktop.is_symlink() or (studio_desktop.exists() and
+            (not studio_desktop.is_file() or studio_desktop.stat().st_uid != os.getuid() or
+             'X-Luani-Studio-Managed=true' not in studio_desktop.read_text(errors='replace'))):
+        raise RuntimeError('An unmanaged Luani Studio desktop entry already exists; it was preserved.')
     next_link = base / ('.current-' + uuid.uuid4().hex)
     try:
         next_link.symlink_to(Path('releases') / release_name, target_is_directory=True)
@@ -366,6 +371,9 @@ def main():
     desktop_exec = desktop_exec_line(executable)
     desktop_text = '[Desktop Entry]\nType=Application\nName=Luani Client\nComment=Luani multiplayer client\nExec=' + desktop_exec + ' %u\nIcon=' + str(current / 'icon.svg') + '\nTerminal=false\nCategories=Game;\nMimeType=x-scheme-handler/luani;\nStartupWMClass=Luani Client\nX-Luani-Managed=true\n'
     atomic_text(desktop, desktop_text)
+    # Studio shares the managed client binary, but never competes for luani://.
+    studio_text = '[Desktop Entry]\nType=Application\nName=Luani Studio\nComment=Build and publish Luani worlds\nExec=' + desktop_exec + ' --studio\nIcon=' + str(current / 'icon.svg') + '\nTerminal=false\nCategories=Development;Game;\nX-Luani-Studio-Managed=true\n'
+    atomic_text(studio_desktop, studio_text)
     # Reset on BOTH install and update, including an already-installed release.
     # Mask competing handlers per user; never delete/disable other applications.
     if shutil.which('update-desktop-database'):
@@ -388,6 +396,7 @@ def main():
     print('Configured luani:// for this user; removed ' + str(len(association['removed_handlers'])) + ' competing associations.')
     print('Installed. Launch “Luani Client” from your applications menu, or run:')
     print('  ' + shlex.quote(str(launcher)))
+    print('Launch “Luani Studio” from your applications menu, or run: ' + shlex.quote(str(launcher)) + ' --studio')
     print('Run the same install command again to update. Device-local settings and older releases are retained.')
     if str(bin_dir) not in os.environ.get('PATH', '').split(os.pathsep):
         print('~/.local/bin is not on this shell’s PATH; use the full launch path above or log in again.')

@@ -1,0 +1,13 @@
+{
+  "schema": 1, "maxObjects": 256, "maxDepth": 32, "maxBytes": 262144,
+  "classes": {
+    "Folder": {},
+    "Model": {"position":["vector",-4096,4096,[0,0,0]],"rotation":["vector",-180,180,[0,0,0]]},
+    "Part": {"position":["vector",-4096,4096,[0,2,0]],"rotation":["vector",-180,180,[0,0,0]],"size":["vector",0.1,512,[4,1,4]],"shape":["enum",["Block","Ball","Cylinder"],"Block"],"color":["color","8a91a3"],"anchored":["boolean",true],"collidable":["boolean",true],"transparency":["number",0,1,0]},
+    "SpawnPoint": {"position":["vector",-4096,4096,[0,0.2,0]],"rotation":["vector",-180,180,[0,0,0]],"size":["vector",0.1,512,[6,0.4,6]],"color":["color","a78bfa"]},
+    "Weld": {"part0":["reference",null],"part1":["reference",null],"enabled":["boolean",true]},
+    "PointLight": {"position":["vector",-4096,4096,[0,8,0]],"rotation":["vector",-180,180,[0,0,0]],"color":["color","ffffff"],"brightness":["number",0,8,1],"range":["number",0.1,128,20],"shadows":["boolean",false]},
+    "SpotLight": {"position":["vector",-4096,4096,[0,8,0]],"rotation":["vector",-180,180,[-90,0,0]],"color":["color","ffffff"],"brightness":["number",0,8,1],"range":["number",0.1,128,20],"angle":["number",1,89,45],"shadows":["boolean",false]},
+    "DirectionalLight": {"position":["vector",-4096,4096,[0,10,0]],"rotation":["vector",-180,180,[-45,-30,0]],"color":["color","fff3dd"],"brightness":["number",0,8,1],"shadows":["boolean",true]}
+  }
+}

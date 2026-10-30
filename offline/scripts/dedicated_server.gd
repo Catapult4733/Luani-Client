@@ -6,6 +6,8 @@ const Catalog = preload("res://scripts/item_catalog.gd")
 const Facing = preload("res://scripts/facing.gd")
 const AvatarSync = preload("res://scripts/avatar_sync.gd")
 const AvatarData = preload("res://scripts/avatar_data.gd")
+const StudioData = preload("res://scripts/studio_data.gd")
+const StudioRuntime = preload("res://scripts/studio_runtime.gd")
 const SCATTER = [
  ["sword",4,-5],["lantern",-5,-4],["spring_coil",2,6],
  ["sword",14,-13],["lantern",-17,8],["spring_coil",15,15],
@@ -80,8 +82,9 @@ func _receive(id: int, message: Dictionary) -> void:
 	member.rate = int(member.rate)+1
 	if int(member.rate)>90: _transport.disconnect_peer(id); return
 	if member.phase == "pending":
-		if message.get("type") != "auth" or message.size()!=3 or message.get("protocol") != 1 or not message.get("admission") is String or str(message.admission).length()!=43:
+		if message.get("type") != "auth" or message.size() not in [3,4] or message.keys().any(func(k: Variant) -> bool: return not k in ["type","protocol","admission","studio_worlds"]) or message.get("protocol") != 1 or not message.get("admission") is String or str(message.admission).length()!=43 or message.has("studio_worlds") and message.studio_worlds != 1:
 			_transport.disconnect_peer(id); return
+		member.studio_worlds = message.get("studio_worlds") == 1
 		member.phase = "verifying"
 		_authorize(id, str(message.admission))
 		return
@@ -121,9 +124,13 @@ func _authorize(id: int, admission: String) -> void:
 		_leaving.append({"admission_id":data.admission_id,"data":data.datastore,"leaving":true})
 		return
 	var room := str(data.instance_id)
+	if data.get("world") is Dictionary and not _peers[id].get("studio_worlds",false):
+		_status(id,"Update Luani Client to play creator worlds."); _transport.disconnect_peer(id); return
 	if not _rooms.has(room):
 		if _rooms.size()>=4: _transport.disconnect_peer(id); return
-		_make_room(room)
+		var document: Dictionary = data.world if data.get("world") is Dictionary else {}
+		if not document.is_empty() and not StudioData.validate(document).is_empty(): _transport.disconnect_peer(id); return
+		_make_room(room,document)
 	var population := 0
 	for other in _peers.values():
 		if other.get("room")==room: population+=1
@@ -135,14 +142,14 @@ func _authorize(id: int, admission: String) -> void:
 	var capsule := CapsuleShape3D.new(); capsule.radius=0.46; capsule.height=3.04
 	var collision := CollisionShape3D.new(); collision.shape=capsule; collision.position.y=1.53
 	body.add_child(collision)
-	add_child(body)
-	body.global_position=_rooms[room].origin+Vector3(population*2,0.2,0)
+	(_rooms[room].root as Node3D).add_child(body)
+	body.global_position=_rooms[room].origin+_rooms[room].spawn+Vector3(population*2,0,0)
 	var member: Dictionary = _peers[id]
 	member.merge({"phase":"admitted","room":room,"admission_id":str(data.admission_id),"profile":data.profile,"body":body,"bag":bag,"seq":0,"move":Vector2.ZERO,"yaw":0.0,"facing":0.0,"look_locked":false,"sprint":false,"jump":false,"input_at":_clock(),"use_at":0.0,"action_at":0.0,"lantern":true,"swing":0},true)
 	_transport.send_message(id,{"type":"welcome","player_key":str(data.profile.public_id),"profile":data.profile,"instance_id":room,"inventory":_bag_data(bag)})
 	_broadcast_state(room)
 
-func _make_room(id: String) -> void:
+func _make_room(id: String, document: Dictionary = {}) -> void:
 	var slot := 0
 	for candidate in range(4):
 		var taken := false
@@ -152,6 +159,17 @@ func _make_room(id: String) -> void:
 	var origin := Vector3(float(slot)*1024.0,0,0)
 	var room_root := Node3D.new(); add_child(room_root)
 	var room := {"origin":origin,"root":room_root,"slot":slot,"last_used":_clock(),"pickups":{},"targets":[],"next_pickup":19}
+	room.spawn = Vector3(0,0.2,0); room.studio = null; room.kill_height = -35.0; room.container = room_root
+	if not document.is_empty():
+		# Each creator room has an independent physics space; nested or distant
+		# creator geometry cannot collide with another tenant's world.
+		remove_child(room_root); room_root.queue_free()
+		var isolated := SubViewport.new(); isolated.own_world_3d = true; isolated.size = Vector2i(16,16); isolated.render_target_update_mode = SubViewport.UPDATE_DISABLED; add_child(isolated)
+		var runtime := StudioRuntime.new(); isolated.add_child(runtime); runtime.build(document,"server")
+		room.origin = Vector3.ZERO; room.root = runtime; room.studio = runtime; room.spawn = runtime.spawn_position(); room.kill_height = runtime.kill_height()
+		room.container = isolated
+		_rooms[id] = room
+		return
 	for i in range(SCATTER.size()):
 		var entry: Array = SCATTER[i]
 		room.pickups[str(i+1)]={"item":entry[0],"point":Vector3(float(entry[1]),0,float(entry[2])),"ready":0.0}
@@ -190,7 +208,7 @@ func _physics_process(delta: float) -> void:
 		body.move_and_slide()
 		var face_target := Facing.target(movement, float(member.yaw), bool(member.look_locked), float(member.facing))
 		member.facing=lerp_angle(float(member.facing), face_target, minf(delta*Facing.rate(bool(member.look_locked)),1.0))
-		if body.position.y< -35.0: body.position=_rooms[member.room].origin+Vector3(0,0.2,0); body.velocity=Vector3.ZERO
+		if body.global_position.y<float(_rooms[member.room].kill_height): body.global_position=_rooms[member.room].origin+_rooms[member.room].spawn; body.velocity=Vector3.ZERO
 	for action in _actions:
 		if _peers.has(action.peer): _action(int(action.peer),action.message)
 	_actions.clear()
@@ -201,7 +219,7 @@ func _physics_process(delta: float) -> void:
 			if member.get("room") == room_id: occupied = true
 		if occupied: _rooms[room_id].last_used = now
 		elif now - float(_rooms[room_id].last_used) > 90.0:
-			_rooms[room_id].root.queue_free(); _rooms.erase(room_id); continue
+			_rooms[room_id].container.queue_free(); _rooms.erase(room_id); continue
 		for target in _rooms[room_id].targets:
 			if int(target.hits)==0 and now>=float(target.reset):
 				target.hits=3; target.body.collision_layer=1; changed=true
@@ -248,7 +266,7 @@ func _action(id: int, message: Dictionary) -> void:
 			var pickup_id := str(room.next_pickup); room.next_pickup=int(room.next_pickup)+1
 			room.pickups[pickup_id]={"item":str(item.id),"point":dropped,"ready":now+0.8}
 		"respawn":
-			body.position=room.origin+Vector3(0,0.2,0); body.velocity=Vector3.ZERO
+			body.global_position=room.origin+room.spawn; body.velocity=Vector3.ZERO
 		"use":
 			if now<float(member.use_at): return
 			if bag.equipped_id()=="sword":
@@ -304,14 +322,16 @@ func _broadcast_snapshots() -> void:
 			var body := member.body as CharacterBody3D
 			var p: Vector3 = body.global_position-_rooms[room_id].origin
 			poses.append([str(member.profile.public_id),snappedf(p.x,0.001),snappedf(p.y,0.001),snappedf(p.z,0.001),body.velocity.x,body.velocity.y,body.velocity.z,member.facing,body.is_on_floor(),member.sprint,member.bag.equipped_id(),member.lantern,member.swing,member.seq])
-		_broadcast(room_id,{"type":"poses","players":poses},false)
+		var snapshot := {"type":"poses","players":poses}
+		if _rooms[room_id].studio != null: snapshot.parts = _rooms[room_id].studio.dynamic_state()
+		_broadcast(room_id,snapshot,false)
 
 func _broadcast(room_id: String, message: Dictionary, reliable: bool = true) -> void:
 	for id: int in _peers:
 		if _peers[id].get("room")==room_id: _transport.send_message(id,message,reliable)
 
 func _control(payload: Dictionary) -> Dictionary:
-	var request := HTTPRequest.new(); request.timeout=8.0; request.max_redirects=0; request.body_size_limit=65536
+	var request := HTTPRequest.new(); request.timeout=8.0; request.max_redirects=0; request.body_size_limit=1048576
 	add_child(request)
 	var error := request.request(_api,PackedStringArray(["Content-Type: application/json","X-Luani-Host-Key: "+_key]),HTTPClient.METHOD_POST,JSON.stringify(payload))
 	if error!=OK: request.queue_free(); return {}
@@ -326,7 +346,7 @@ func _pulse() -> void:
 	var outgoing: Array[Dictionary] = _leaving.duplicate(true)
 	for member in _peers.values():
 		if member.get("phase")=="admitted": outgoing.append({"admission_id":member.admission_id,"data":_bag_data(member.bag),"avatar_revision":AvatarData.revision(member.profile.get("avatar",{}))})
-	var answer: Dictionary = await _control({"action":"pulse","boot_id":_boot,"players":outgoing,"avatar_updates":true})
+	var answer: Dictionary = await _control({"action":"pulse","boot_id":_boot,"players":outgoing,"avatar_updates":true,"studio_worlds":true})
 	if answer.get("ok")==true:
 		if _last_ok == 0.0: print("Luani control heartbeat accepted; host is ready for admissions.")
 		_last_ok=_clock()

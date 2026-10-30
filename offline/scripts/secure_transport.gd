@@ -34,6 +34,8 @@ func start_client(endpoint: Dictionary) -> Error:
 func _process(_delta: float) -> void:
 	if _host == null: return
 	for _index in range(256):
+		# Signal consumers may close this transport while handling a packet.
+		if _host == null: break
 		var event: Array = _host.service(0)
 		var kind: int = int(event[0])
 		if kind == ENetConnection.EVENT_NONE: break
@@ -81,6 +83,9 @@ func rtt(id: int) -> float:
 
 func flush() -> void:
 	if _host != null: _host.flush()
+
+func local_port() -> int:
+	return _host.get_local_port() if _host != null else 0
 
 func close() -> void:
 	_peers.clear()

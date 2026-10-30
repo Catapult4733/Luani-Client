@@ -4,12 +4,14 @@ signal entered
 signal room_changed(data: Dictionary)
 signal inventory_received(data: Dictionary)
 signal poses_received(players: Array)
+signal parts_received(parts: Array)
 signal lost(message: String)
 signal status(message: String)
 const Transport = preload("res://scripts/secure_transport.gd")
 var player_key: String = ""
 var roster: Array = []
 var initial_inventory: Dictionary = {}
+var world_data: Dictionary = {}
 var _transport: Transport
 var _server: int = -1
 var _launch: Dictionary = {}
@@ -18,6 +20,11 @@ var _entered := false
 var _sequence: int = 0
 
 func start(launch: Dictionary) -> void:
+	world_data.clear()
+	if launch.get("world") is Dictionary:
+		var validation: String = preload("res://scripts/studio_data.gd").validate(launch.world)
+		if not validation.is_empty(): _fail("Invalid published game world."); return
+		world_data = launch.world.duplicate(true)
 	_launch=launch
 	_transport=Transport.new(); add_child(_transport)
 	_transport.peer_joined.connect(_connected)
@@ -29,7 +36,9 @@ func start(launch: Dictionary) -> void:
 
 func _connected(id: int) -> void:
 	_server=id
-	_transport.send_message(id,{"type":"auth","protocol":1,"admission":str(_launch.get("admission",""))})
+	var hello := {"type":"auth","protocol":1,"admission":str(_launch.get("admission",""))}
+	if not world_data.is_empty(): hello.studio_worlds = 1
+	_transport.send_message(id,hello)
 	_launch.erase("admission")
 
 func _message(id: int, message: Dictionary) -> void:
@@ -43,7 +52,7 @@ func _message(id: int, message: Dictionary) -> void:
 			initial_inventory=message.get("inventory",{})
 			SessionState.set_identity(profile)
 			SessionState.game=_launch.get("game",{})
-			SessionState.online=true
+			SessionState.online=_launch.get("studio_local") != true
 			_entered=true; _launch.clear(); entered.emit()
 		"world":
 			if _entered:
@@ -55,7 +64,9 @@ func _message(id: int, message: Dictionary) -> void:
 		"inventory":
 			if _entered: inventory_received.emit(message.get("data",{}))
 		"poses":
-			if _entered: poses_received.emit(message.get("players",[]))
+			if _entered:
+				poses_received.emit(message.get("players",[]))
+				if message.get("parts") is Array: parts_received.emit(message.parts)
 		"status": status.emit(str(message.get("message","")).substr(0,200))
 
 func send_input(direction: Vector3, yaw: float, sprint: bool, jump: bool, look_locked: bool = false) -> void:

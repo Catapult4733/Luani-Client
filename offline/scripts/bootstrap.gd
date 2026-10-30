@@ -8,6 +8,9 @@ const UI = preload("res://scripts/ui_theme.gd")
 const MobileUI = preload("res://scripts/mobile_ui.gd")
 const Connecting = preload("res://scripts/connecting_screen.gd")
 const MobilePerformance = preload("res://scripts/mobile_performance.gd")
+const StudioEditor = preload("res://scripts/studio_editor.gd")
+const StudioLocalServer = preload("res://scripts/studio_local_server.gd")
+const StudioData = preload("res://scripts/studio_data.gd")
 var _screen: CanvasLayer
 var _status: Label
 var _network: Network
@@ -15,6 +18,7 @@ var _world: Node
 var _android: Node
 var _website: Object
 var _returning := false
+var _local_authority: StudioLocalServer
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -24,6 +28,8 @@ func _ready() -> void:
 		add_child(Server.new())
 		return
 	MobileUI.configure(get_window())
+	if args == PackedStringArray(["--studio"]) and not OS.has_feature("android"):
+		var editor := StudioEditor.new(); add_child(editor); return
 	_build_launcher()
 	if OS.has_feature("android"):
 		get_tree().quit_on_go_back = false
@@ -45,10 +51,28 @@ func _ready() -> void:
 	var descriptor := int(args[1])
 	if descriptor<3 or descriptor>128: _status.text="Invalid launch handoff."; return
 	var file := FileAccess.open("/proc/self/fd/"+str(descriptor),FileAccess.READ)
-	if file==null or file.get_length()>65536: _status.text="Launch handoff unavailable."; return
+	if file==null or file.get_length()>1048576: _status.text="Launch handoff unavailable."; return
 	var data: Variant = JSON.parse_string(file.get_as_text()); file.close()
-	if not data is Dictionary or data.get("protocol")!=1: _status.text="Launch expired. Join again from the website."; return
+	if not data is Dictionary: _status.text="Launch expired. Join again from the website."; return
+	if data.get("protocol") == 2:
+		if not StudioData.validate(data.get("world")).is_empty() or not data.get("profile") is Dictionary: _status.text="Invalid Studio world."; return
+		if data.get("mode") == "edit":
+			_screen.hide(); var editor := StudioEditor.new(); editor.initial = data; add_child(editor); return
+		if data.get("mode") == "play": _begin_studio_playtest(data); return
+		_status.text="Invalid Studio launch."; return
+	if data.get("protocol")!=1: _status.text="Launch expired. Join again from the website."; return
 	_begin_network(data)
+
+func _begin_studio_playtest(data: Dictionary) -> void:
+	_stop_local_server()
+	_local_authority = StudioLocalServer.new(); _local_authority.world_document = data.world; _local_authority.profile = data.profile; add_child(_local_authority)
+	var error: Error = _local_authority.start()
+	if error != OK: _stop_local_server(); _status.text="Could not start the isolated local Studio server."; return
+	_begin_network(_local_authority.launch_data())
+
+func _stop_local_server() -> void:
+	if is_instance_valid(_local_authority): _local_authority.queue_free()
+	_local_authority = null
 
 func _open_website() -> void:
 	if _website != null:
@@ -68,6 +92,7 @@ func _discard_network() -> void:
 
 func _begin_network(data: Dictionary) -> void:
 	_discard_network()
+	if data.get("studio_local") != true: _stop_local_server()
 	if OS.has_feature("android"): _show_connecting()
 	else:
 		_status.text="Authenticating with the game server…"
@@ -115,6 +140,7 @@ func _entered() -> void:
 
 func _lost(message: String) -> void:
 	if _returning: return
+	_stop_local_server()
 	Input.mouse_mode=Input.MOUSE_MODE_VISIBLE
 	if is_instance_valid(_world): _world.queue_free(); _world=null
 	SessionState.online=false
@@ -124,6 +150,7 @@ func _lost(message: String) -> void:
 		_open_website(); _website.call("showMessage", message)
 
 func _practice() -> void:
+	_stop_local_server()
 	if is_instance_valid(_android): _android.cancel_pending()
 	_hide_website()
 	_discard_network()
@@ -141,6 +168,7 @@ func return_to_website() -> void:
 	_discard_network()
 	SessionState.online=false
 	SessionState.mobile_move=Vector2.ZERO; SessionState.mobile_jump=false; SessionState.mobile_sprint=false
+	_stop_local_server()
 	_screen.show(); _returning=false; _open_website()
 
 func _notification(what: int) -> void:
