@@ -58,6 +58,7 @@ def main():
     java_source=source/'distribution/android/java';shutil.copytree(java_source,android/'src/main/java',dirs_exist_ok=True)
     rules=android/'proguard-rules.pro';rules.write_text((rules.read_text() if rules.exists() else '')+'\n-keep class org.luani.client.LuaniWebsitePlugin { *; }\n')
     preset=(source/'distribution/android/export_play.cfg').read_text();(project/'export_presets.cfg').write_text(preset)
+    vm=re.search(r'^version/name="([^"]+)"$',preset,re.M);cm=re.search(r'^version/code=(\d+)$',preset,re.M);version=vm.group(1) if vm else "0.5.0-play.2";version_code=int(cm.group(1)) if cm else 50006
     assert 'package/unique_name="com.luani.client"' in preset and 'gradle_build/target_sdk="36"' in preset and 'gradle_build/export_format=1' in preset
     ET.register_namespace('android',ANDROID);ET.register_namespace('tools','http://schemas.android.com/tools')
     manifest=android/'src/main/AndroidManifest.xml';tree=ET.parse(manifest);app=tree.getroot().find('application');assert app is not None
@@ -84,7 +85,7 @@ def main():
     policy=root/'policy-tests';policy.mkdir();subprocess.run([str(jdk/'bin/javac'),'-d',str(policy),str(java_source/'org/luani/client/WebsitePolicy.java'),str(source/'tools/java/WebsitePolicyTest.java'),str(source/'tools/java/SupportPolicyTest.java')],env=env,check=True)
     subprocess.run([str(jdk/'bin/java'),'-cp',str(policy),'org.luani.client.WebsitePolicyTest'],env=env,check=True)
     subprocess.run([str(jdk/'bin/java'),'-cp',str(policy),'org.luani.client.SupportPolicyTest'],env=env,check=True)
-    out=root/'artifacts';out.mkdir();unsigned=out/'luani-play-unsigned.aab';aab=out/'luani-client-0.5.0-play.1-50004.aab'
+    out=root/'artifacts';out.mkdir();unsigned=out/'luani-play-unsigned.aab';aab=out/('luani-client-'+version+'-'+str(version_code)+'.aab')
     log=root/'play-export.log';print('Exporting actual AAB with SDK36 and the original verified Play upload certificate.',flush=True)
     with log.open('w') as stream:
         result=subprocess.run([str(Path.home()/'Desktop/Godot_v4.7.1-stable_linux.x86_64'),'--headless','--path',str(project),'--editor','--export-release','Google Play Closed Test',str(unsigned)],env=env,stdout=stream,stderr=subprocess.STDOUT,timeout=900)
@@ -99,7 +100,7 @@ def main():
     def bt(*parts):return subprocess.check_output(command+list(parts),env=env,text=True,stderr=subprocess.STDOUT,timeout=240)
     valid=bt('validate','--bundle='+str(aab));(out/'bundletool-validation.txt').write_text(valid)
     xml=bt('dump','manifest','--bundle='+str(aab));(out/'AndroidManifest.xml').write_text(xml)
-    parsed=ET.fromstring(xml);assert parsed.get('package')=='com.luani.client' and parsed.get('{'+ANDROID+'}versionCode')=='50004'
+    parsed=ET.fromstring(xml);assert parsed.get('package')=='com.luani.client' and parsed.get('{'+ANDROID+'}versionCode')==str(version_code)
     uses=parsed.find('uses-sdk');assert uses is not None and uses.get('{'+ANDROID+'}targetSdkVersion')=='36'
     permissions={p.get('{'+ANDROID+'}name','') for p in parsed.findall('uses-permission')};assert permissions=={'android.permission.INTERNET'}
     assert 'org.luani.client.LuaniWebsitePlugin' in xml and 'com.luani.client.LuaniLaunch' in xml and 'android:scheme="luani"' in xml
@@ -122,13 +123,13 @@ def main():
     tools=sdk/'build-tools/36.1.0'
     verified=subprocess.check_output([str(tools/'apksigner'),'verify','--verbose','--print-certs',str(apk)],env=env,text=True);assert UPLOAD.replace(':','').lower() in verified
     badging=subprocess.check_output([str(tools/'aapt'),'dump','badging',str(apk)],env=env,text=True)
-    assert "package: name='com.luani.client'" in badging and "versionCode='50004'" in badging and "targetSdkVersion:'36'" in badging and 'application-debuggable' not in badging
+    assert "package: name='com.luani.client'" in badging and f"versionCode='{version_code}'" in badging and "targetSdkVersion:'36'" in badging and 'application-debuggable' not in badging
     with zipfile.ZipFile(apk) as z:
         native=[n for n in z.infolist() if n.filename.startswith('lib/') and n.filename.endswith('.so')];compressed=all(n.compress_type!=zipfile.ZIP_STORED for n in native)
     assert 'PAGE_ALIGNMENT_16K' in cfg or compressed,'Generated native packaging is neither16KB-aligned nor compressed'
     aligned=subprocess.run([str(tools/'zipalign'),'-c','-P','16','-v','4',str(apk)],env=env,capture_output=True,text=True);assert aligned.returncode==0
     assert sha(archive)==args.source_sha256,'Source archive changed during build'
-    report={'schema':1,'source_commit':args.source_commit,'source_archive_sha256':args.source_sha256,'aab':str(aab),'aab_sha256':sha(aab),'aab_bytes':aab.stat().st_size,'package':'com.luani.client','version':'0.5.0-play.1','version_code':50004,'target_sdk':36,'min_sdk':24,'abis':sorted(expected_abis),'upload_certificate_sha256':UPLOAD,'provided_play_upload_certificate_match':True,'new_key_generated':False,'bundletool_version':'1.18.3','bundletool_sha256':BUNDLETOOL_SHA,'aab_signature_verified':True,'bundletool_validate_passed':True,'native_elf_checks':libs,'bundle_requests_16kb_alignment':'PAGE_ALIGNMENT_16K' in cfg,'generated_apk_all_native_libraries_compressed':compressed,'generated_apk_zipalign_16k_passed':True,'generated_apk':str(apk),'generated_apk_sha256':sha(apk),'permissions':sorted(permissions),'luani_branding_verified':True,'required_notices_retained':True,'google_play_submitted':False,'google_play_approved':False,'runtime_exercised':False,'policy_declarations_completed':False}
+    report={'schema':1,'source_commit':args.source_commit,'source_archive_sha256':args.source_sha256,'aab':str(aab),'aab_sha256':sha(aab),'aab_bytes':aab.stat().st_size,'package':'com.luani.client','version':version,'version_code':version_code,'target_sdk':36,'min_sdk':24,'abis':sorted(expected_abis),'upload_certificate_sha256':UPLOAD,'provided_play_upload_certificate_match':True,'new_key_generated':False,'bundletool_version':'1.18.3','bundletool_sha256':BUNDLETOOL_SHA,'aab_signature_verified':True,'bundletool_validate_passed':True,'native_elf_checks':libs,'bundle_requests_16kb_alignment':'PAGE_ALIGNMENT_16K' in cfg,'generated_apk_all_native_libraries_compressed':compressed,'generated_apk_zipalign_16k_passed':True,'generated_apk':str(apk),'generated_apk_sha256':sha(apk),'permissions':sorted(permissions),'luani_branding_verified':True,'required_notices_retained':True,'google_play_submitted':False,'google_play_approved':False,'runtime_exercised':False,'policy_declarations_completed':False}
     (out/'play-build-report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
 
 def sha256_bytes(data):return hashlib.sha256(data).hexdigest()
