@@ -87,6 +87,8 @@ func leave() -> void:
 	if _entered and _transport != null:
 		_transport.send_message(_server,{"type":"leave"})
 		_transport.flush()
+		_transport.close()
+		_entered=false
 
 func _process(_delta: float) -> void:
 	if not _entered and _deadline>0 and Time.get_ticks_msec()*0.001>_deadline:

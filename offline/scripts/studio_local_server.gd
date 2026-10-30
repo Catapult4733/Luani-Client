@@ -40,7 +40,10 @@ func start() -> Error:
 	var error: Error = transport.start_server(0,key,certificate)
 	if error != OK: return error
 	admission = Marshalls.raw_to_base64(crypto.generate_random_bytes(32)).replace("+","-").replace("/","_").replace("=","")
-	endpoint = {"host":"127.0.0.1","port":transport.local_port(),"certificate":certificate.save_to_string(),"common_name":"luani-game"}
+	certificate.save("user://studio_loopback.crt")
+	var cert_string := FileAccess.get_file_as_string("user://studio_loopback.crt")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://studio_loopback.crt"))
+	endpoint = {"host":"127.0.0.1","port":transport.local_port(),"certificate":cert_string,"common_name":"luani-game"}
 	_deadline = Time.get_ticks_msec() * 0.001 + 20.0
 	return OK
 
