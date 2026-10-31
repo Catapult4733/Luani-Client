@@ -40,9 +40,23 @@ func start() -> Error:
 	var error: Error = transport.start_server(0,key,certificate)
 	if error != OK: return error
 	admission = Marshalls.raw_to_base64(crypto.generate_random_bytes(32)).replace("+","-").replace("/","_").replace("=","")
-	certificate.save("user://studio_loopback.crt")
-	var cert_string := FileAccess.get_file_as_string("user://studio_loopback.crt")
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://studio_loopback.crt"))
+	var cert_nonce: String = Marshalls.raw_to_base64(crypto.generate_random_bytes(12)).replace("+","").replace("/","").replace("=","")
+	var cert_path := "user://studio_loopback_%d_%s.crt" % [OS.get_process_id(), cert_nonce]
+	var cert_global_path := ProjectSettings.globalize_path(cert_path)
+	var save_error: Error = certificate.save(cert_path)
+	var cert_string := ""
+	var read_error: Error = OK
+	if save_error == OK:
+		cert_string = FileAccess.get_file_as_string(cert_path)
+		read_error = FileAccess.get_open_error()
+	if FileAccess.file_exists(cert_path):
+		DirAccess.remove_absolute(cert_global_path)
+	if save_error != OK:
+		transport.close()
+		return save_error
+	if read_error != OK or cert_string.is_empty():
+		transport.close()
+		return ERR_FILE_CANT_READ if read_error == OK else read_error
 	endpoint = {"host":"127.0.0.1","port":transport.local_port(),"certificate":cert_string,"common_name":"luani-game"}
 	_deadline = Time.get_ticks_msec() * 0.001 + 20.0
 	return OK
